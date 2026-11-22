@@ -46,7 +46,6 @@ test_daytime_defence_lines
 test_defence_grounds
 test_defence_repeats
 test_delusional_reading
-test_delusional_self_doubt
 test_demon_types
 test_demon_when_hanged
 test_dialogue
@@ -166,6 +165,7 @@ test_roles_registry
 test_roles_secrets
 test_roles_shelter
 test_self_doubt_poisoner
+test_shared_delusion
 test_shared_model
 test_sighter_contest
 test_sighting_followup

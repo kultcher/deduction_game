@@ -926,6 +926,52 @@ internal static class CaseEvalKernel
     /// Populates sparse own-reading states in exact first-appearance order; worlds ruled out
     /// by ownBurdenMe get of[i] = -1 and are excluded from counts (and expandedPost).
     /// </summary>
+    /// <summary>
+    /// Whether the listener `me` is the world's Delusional holder (not Marked: one burden a person).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ListenerDeluded(WorldEntry w, int me) =>
+        w.Marked != me && w.EffectiveModifier == WorldEntry.ModDelusional && (w.Holders & (1 << me)) != 0;
+
+    /// <summary>
+    /// The weight on the listener's own Delusional-holder worlds that sets its chance of being the
+    /// Delusional, before any evidence, to `prior` (Tuning.Workshop.OWN_DELUSION_PRIOR; shared
+    /// Delusion doubt, Michael, Nov 22): over the worlds its own-burden knowledge allows with it
+    /// good, odds(prior) over the worlds' own odds. 1 when it holds in none or every one of them,
+    /// or when prior is negative (no reweight); 0 for a listener that can't be Delusional.
+    /// </summary>
+    public static double OwnDelusionWeight(long[] worlds, int me, int knownMod, int hiddenMask, double prior)
+    {
+        if (prior < 0.0 || me < 0)
+        {
+            return 1.0;
+        }
+        long good = 0, held = 0;
+        for (int i = 0; i < worlds.Length; i++)
+        {
+            var w = new WorldEntry(worlds[i]);
+            if ((w.Evil & (1 << me)) != 0 || !OwnBurdenOk(w, me, knownMod, hiddenMask))
+            {
+                continue;
+            }
+            good++;
+            if (ListenerDeluded(w, me))
+            {
+                held++;
+            }
+        }
+        if (held == 0 || held == good)
+        {
+            return 1.0;
+        }
+        if (prior <= 0.0)
+        {
+            return 0.0;
+        }
+        double s = (double)held / good;
+        return (prior / (1.0 - prior)) * ((1.0 - s) / s);
+    }
+
     public static (int Ns, int[] Of, byte[] FlatCodes, double[] Counts) CompileOwnCounts(
         int ccHandle,
         int[] fallbackClassOf,
@@ -937,7 +983,31 @@ internal static class CaseEvalKernel
         long[] fallbackWorlds,
         int ownBurdenMe,
         int ownBurdenMod,
-        int ownBurdenHiddenMask)
+        int ownBurdenHiddenMask) =>
+        CompileOwnCountsWeighted(ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids,
+            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask, -1.0, out _);
+
+    /// <summary>
+    /// CompileOwnCounts with the listener's own Delusion prior (OwnDelusionWeight): states split by
+    /// whether the listener is the world's Delusional holder, so each class-state cell is one or
+    /// the other, and stateWeights[o] carries the weight (1 elsewhere). CaseEval multiplies it into
+    /// the state's own likelihood, on both sides of the case. A negative prior leaves the worlds as
+    /// the deal gives them (stateWeights all 1, no split).
+    /// </summary>
+    public static (int Ns, int[] Of, byte[] FlatCodes, double[] Counts) CompileOwnCountsWeighted(
+        int ccHandle,
+        int[] fallbackClassOf,
+        int nc,
+        int kOwn,
+        byte[] flatTables,
+        byte[] flatValids,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int ownBurdenMe,
+        int ownBurdenMod,
+        int ownBurdenHiddenMask,
+        double ownDelusionPrior,
+        out double[] stateWeights)
     {
         var cc = SolverContext.GetCompiledCase(ccHandle);
         int[] classOf = cc != null ? cc.ClassOf : fallbackClassOf;
@@ -947,48 +1017,32 @@ internal static class CaseEvalKernel
         long[]? worlds = ownBurdenMe >= 0
             ? SolverContext.ResolveWorlds(universeHandle >= 0 ? universeHandle : (cc?.UniverseHandle ?? -1), Array.Empty<int>(), fallbackWorlds)
             : null;
+        double dWeight = worlds != null
+            ? OwnDelusionWeight(worlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask, ownDelusionPrior)
+            : 1.0;
+        // Split the states by the listener's own Delusion only where it carries a weight.
+        bool split = dWeight != 1.0;
 
         int[] of = new int[n];
-        if (kOwn == 0)
-        {
-            double[] counts0 = new double[actualNc];
-            if (worlds != null)
-            {
-                for (int i = 0; i < n; i++)
-                {
-                    if (OwnBurdenOk(new WorldEntry(worlds[i]), ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask))
-                    {
-                        of[i] = 0;
-                        counts0[classOf[i]] += 1.0;
-                    }
-                    else
-                    {
-                        of[i] = -1;
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < n; i++)
-                {
-                    counts0[classOf[i]] += 1.0;
-                }
-            }
-            return (1, of, Array.Empty<byte>(), counts0);
-        }
-
         var codesList = new List<byte[]>(16);
-
-        if (kOwn <= 39)
+        var deludedList = new List<bool>(16);
+        // States keyed by the own cards' digits (base 3) and, when split, the Delusion flag.
+        var packedIdx = new Dictionary<long, int>(32);
+        var bytesIdx = new Dictionary<byte[], int>(32, ByteArrayComparer.Instance);
+        bool packedKeys = kOwn <= 38;
+        int keyLen = kOwn + (split ? 1 : 0);
+        for (int i = 0; i < n; i++)
         {
-            var indices = new Dictionary<long, int>(32);
-            for (int i = 0; i < n; i++)
+            WorldEntry w = worlds != null ? new WorldEntry(worlds[i]) : default;
+            if (worlds != null && !OwnBurdenOk(w, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask))
             {
-                if (worlds != null && !OwnBurdenOk(new WorldEntry(worlds[i]), ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask))
-                {
-                    of[i] = -1;
-                    continue;
-                }
+                of[i] = -1;
+                continue;
+            }
+            bool deluded = split && ListenerDeluded(w, ownBurdenMe);
+            int sIdx;
+            if (packedKeys)
+            {
                 long packed = 0L;
                 for (int c = 0; c < kOwn; c++)
                 {
@@ -996,7 +1050,11 @@ internal static class CaseEvalKernel
                     long d = flatTables[off] == 1 ? 0L : (flatValids[off] == 1 ? 1L : 2L);
                     packed = packed * 3L + d;
                 }
-                if (!indices.TryGetValue(packed, out int sIdx))
+                if (split)
+                {
+                    packed = packed * 2L + (deluded ? 1L : 0L);
+                }
+                if (!packedIdx.TryGetValue(packed, out sIdx))
                 {
                     byte[] code = new byte[kOwn];
                     for (int c = 0; c < kOwn; c++)
@@ -1005,41 +1063,40 @@ internal static class CaseEvalKernel
                         code[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
                     }
                     sIdx = codesList.Count;
-                    indices[packed] = sIdx;
+                    packedIdx[packed] = sIdx;
                     codesList.Add(code);
+                    deludedList.Add(deluded);
                 }
-                of[i] = sIdx;
             }
-        }
-        else
-        {
-            var indices = new Dictionary<byte[], int>(32, ByteArrayComparer.Instance);
-            for (int i = 0; i < n; i++)
+            else
             {
-                if (worlds != null && !OwnBurdenOk(new WorldEntry(worlds[i]), ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask))
-                {
-                    of[i] = -1;
-                    continue;
-                }
-                byte[] code = new byte[kOwn];
+                byte[] key = new byte[keyLen];
                 for (int c = 0; c < kOwn; c++)
                 {
                     int off = c * n + i;
-                    code[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
+                    key[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
                 }
-                if (!indices.TryGetValue(code, out int sIdx))
+                if (split)
                 {
-                    sIdx = codesList.Count;
-                    indices[code] = sIdx;
-                    codesList.Add(code);
+                    key[kOwn] = deluded ? (byte)1 : (byte)0;
                 }
-                of[i] = sIdx;
+                if (!bytesIdx.TryGetValue(key, out sIdx))
+                {
+                    byte[] code = new byte[kOwn];
+                    Array.Copy(key, code, kOwn);
+                    sIdx = codesList.Count;
+                    bytesIdx[key] = sIdx;
+                    codesList.Add(code);
+                    deludedList.Add(deluded);
+                }
             }
+            of[i] = sIdx;
         }
 
         if (codesList.Count == 0)
         {
             codesList.Add(new byte[kOwn]);
+            deludedList.Add(false);
         }
 
         int ns = codesList.Count;
@@ -1054,9 +1111,14 @@ internal static class CaseEvalKernel
         }
 
         byte[] flatCodes = new byte[ns * kOwn];
+        stateWeights = new double[ns];
         for (int s = 0; s < ns; s++)
         {
-            Array.Copy(codesList[s], 0, flatCodes, s * kOwn, kOwn);
+            if (kOwn > 0)
+            {
+                Array.Copy(codesList[s], 0, flatCodes, s * kOwn, kOwn);
+            }
+            stateWeights[s] = deludedList[s] ? dWeight : 1.0;
         }
 
         return (ns, of, flatCodes, counts);
@@ -1211,7 +1273,8 @@ internal static class CaseEvalKernel
         byte[] flatOwnCodes,
         double[] routeCredits,
         double[] testLog2Ratios,
-        double biasFactor)
+        double biasFactor,
+        double[] ownStateWeights)
     {
         // evalInts layout (9 ints):
         //  [0] ns (own states count)
@@ -1289,7 +1352,8 @@ internal static class CaseEvalKernel
             {
                 v *= Factor(flatOwnCodes[oBase + c], ownErrs[c], ownQs[c]);
             }
-            ownLike[o] = v;
+            // The listener's own Delusion prior (CompileOwnCountsWeighted), on both sides.
+            ownLike[o] = ownStateWeights.Length == ns ? v * ownStateWeights[o] : v;
         }
 
         // 2. Test-factor likelihoods:

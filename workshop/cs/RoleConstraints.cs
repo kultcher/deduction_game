@@ -865,10 +865,12 @@ internal static class RoleConstraintsKernel
             // checking it as well charged a Delusional teller's wrong reading twice (Codex,
             // #183). They still hold the gift (the claim above), and the gift's own acts stay
             // checked: a Martyr's or Executor's one chosen target, a Veteran's one night. The
-            // listener's own readings keep their check: they read them themself, and only a
-            // listener's own reading is strong alone (DESIGN), so "I may be the Delusional one"
-            // doesn't excuse them (Bailiff's run of test_connections_pairings, #194).
-            bool deludedReader = live && !contentOnly && source != ownPersonIdx
+            // listener's own readings too (shared Delusion doubt, Michael, Nov 22): in its worlds
+            // as the Delusional holder they say anything, priced by CaseEval at the gift's draw,
+            // and those worlds start at Tuning.Workshop.OWN_DELUSION_PRIOR (CaseEval._own_counts),
+            // so agreement lowers the doubt and a clash raises it, instead of a clash ruling the
+            // world out (#194's check, which kept "I may be the Delusional one" from mattering).
+            bool deludedReader = live && !contentOnly
                 && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
             // A reading under a fallen omen (burdens prototype): every good person was poisoned
             // that night, the listener too, so its content says nothing in worlds where the

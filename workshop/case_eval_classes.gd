@@ -104,6 +104,11 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# The same for the quiet-night Warden guards (the Test juror's comparison without
 		# them, WorkshopCanvas.guard_reasons).
 		key_input.append(["quiet_guards_off", Movement.Live.quiet_guards_enabled, Movement.Live.quiet_guards_skip.duplicate()])
+	# The listener's own readings (known) are read in its worlds as the Delusional holder too
+	# (shared Delusion doubt, Michael, Nov 22): its holding splits the classes, as any teller's.
+	var own_tellers: int = Solver.Roles.relay_mediums(Solver.person_ids(view), known) & 0xFFFF if Domain.live(view) and not known.is_empty() else 0
+	if own_tellers != 0:
+		key_input.append(["own_tellers", own_tellers])
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -162,12 +167,12 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 
 	var movement_ok: bool = _movement_ok(view, cards, live)
 	var q_arr: Array = reports.map(func(c): return chance_content(view, c))
-	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
+	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr, own_tellers)
 	if cache_enabled:
 		_compiled[key] = out
 	return out
 
-static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array) -> Dictionary:
+static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array, own_tellers: int = 0) -> Dictionary:
 	_ensure_cc_epoch()
 	var u_key: String = Solver._universe_key(view)
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
@@ -214,7 +219,7 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 							marked_m |= 1 << pi
 				else:
 					marked_m |= (1 << n_people) - 1
-	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
+	var mediums: int = Solver.Roles.relay_mediums(ids, cards) | own_tellers
 	var forbidden_specs: PackedInt32Array = Solver.Roles.forbidden_specs(ids, cards) if (live and roles_on) else PackedInt32Array()
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
 	var concl_at = conclusion.get("at", view.get("alignment_epoch", ""))
@@ -482,16 +487,32 @@ static func _own_burden_hidden_mask() -> int:
 			m |= 1 << code
 	return m
 
-## Depends only on which own cards there are (and any live listener's own_burden filter),
-## so listeners sharing the same compiled case share it without breaking CaseEval.compile reuse.
-static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Dictionary:
+## The listener's chance of being the Delusional before any evidence, for its own worlds' weight
+## (shared Delusion doubt, Michael, Nov 22): Tuning.Workshop.OWN_DELUSION_PRIOR for a good
+## listener with the secret on the script, 0 for one whose gift the deal never makes Delusional
+## (SourceDoubt.could_hold_secret) or that knows it isn't, -1 (the deal's share stands) otherwise.
+## What it knows of its own burden rules the worlds out in the kernel (CaseEvalKernel.OwnBurdenOk).
+static func own_delusion_prior(view: Dictionary, knowledge: Dictionary) -> float:
+	if not Domain.live(view) or view.get("own_burden", {}).is_empty():
+		return -1.0
+	if not "delusional" in view.get("world_options", {}).get("modifiers", []):
+		return -1.0
+	if knowledge.get("not_delusional", false) or not preload("res://workshop/source_doubt.gd").could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
+		return 0.0
+	return Tuning.Workshop.OWN_DELUSION_PRIOR
+
+## Depends only on which own cards there are (and any live listener's own_burden filter and own
+## Delusion prior), so listeners sharing the same compiled case share it without breaking
+## CaseEval.compile reuse. "weights": each state's own Delusion weight (1 off its Delusional worlds).
+static func _own_counts(view: Dictionary, cc: Dictionary, own: Array, knowledge: Dictionary = {}) -> Dictionary:
 	var ob: Dictionary = view.get("own_burden", {}) if Domain.live(view) else {}
 	var ob_me: int = Solver.person_index(view, str(ob.get("self", ""))) if not ob.is_empty() else -1
 	var ob_mod: int = _own_burden_mod(str(ob.get("kind", ""))) if ob_me >= 0 else -1
+	var d_prior: float = own_delusion_prior(view, knowledge) if ob_me >= 0 else -1.0
 	if own.is_empty() and ob_me < 0:
-		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()]}
+		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()], "weights": PackedFloat64Array([1.0])}
 	# Keyed by the exact compiled case (its input and C# registration), not only a hash.
-	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id)), ob_me, ob_mod]
+	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id)), ob_me, ob_mod, d_prior]
 	var key = hash(ref)
 	if cache_enabled and _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
 		return _own_cache[key]
@@ -499,13 +520,13 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
-	var out: Dictionary = _own_counts_cs(view, cc, own, tables, valids, ob_me, ob_mod)
+	var out: Dictionary = _own_counts_cs(view, cc, own, tables, valids, ob_me, ob_mod, d_prior)
 	out["_ref"] = ref
 	if cache_enabled:
 		_own_cache[key] = out
 	return out
 
-static func _own_counts_cs(view: Dictionary, cc: Dictionary, own: Array, tables: Array, valids: Array, ob_me: int = -1, ob_mod: int = -1) -> Dictionary:
+static func _own_counts_cs(view: Dictionary, cc: Dictionary, own: Array, tables: Array, valids: Array, ob_me: int = -1, ob_mod: int = -1, d_prior: float = -1.0) -> Dictionary:
 	_ensure_cc_epoch()
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var cc_h: int = _handle_for(cc)
@@ -532,15 +553,16 @@ static func _own_counts_cs(view: Dictionary, cc: Dictionary, own: Array, tables:
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval._own_counts", pack_u)
 	var b = SolverBackend._bridge()
-	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids, u_handle, fb_worlds, ob_me, ob_mod, hidden_mask))
+	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids, u_handle, fb_worlds, ob_me, ob_mod, hidden_mask, d_prior))
 	var of: PackedInt32Array = b.CaseEvalGetLastOwnOf()
+	var weights: PackedFloat64Array = b.CaseEvalGetLastOwnWeights()
 	var flat_codes: PackedByteArray = b.CaseEvalGetLastOwnFlatCodes()
 	var counts: PackedFloat64Array = b.CaseEvalGetLastOwnCounts()
 	var codes: Array = []
 	codes.resize(ns)
 	for s in range(ns):
 		codes[s] = flat_codes.slice(s * k_own, (s + 1) * k_own) if k_own > 0 else PackedByteArray()
-	return {"states": ns, "counts": counts, "of": of, "codes": codes, "_flat_codes": flat_codes}
+	return {"states": ns, "counts": counts, "of": of, "codes": codes, "_flat_codes": flat_codes, "weights": weights}
 
 ## Likelihood factor of one state for a card: holds, healthy but wrong, or no healthy reading.
 static func _factor(st: int, err: float, q: float) -> float:
@@ -601,13 +623,36 @@ static func _class_like_cs(cc: Dictionary, errs: Array, skip: int) -> PackedFloa
 static func _state_like(view: Dictionary, own: Array, errs: Array, codes: Array) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
 	out.resize(codes.size())
-	var qs: Array = own.map(func(c): return chance_content(view, c))
+	var qs: Array = own.map(func(c): return own_chance_content(view, c))
 	for o in range(codes.size()):
 		var v = 1.0
 		for c in range(own.size() - 1, -1, -1):
 			v *= _factor(codes[o][c], errs[c], qs[c])
 		out[o] = v
 	return out
+
+## chance_content for one of the listener's own readings held outside the case (the own
+## states): where its table checks its content, the gift's draw; where it doesn't (a role-checked
+## reading, a Seer's, whose content only the role check reads, and the role check reads case
+## cards), 1, so a world where the listener is the Delusional is neither helped nor hurt by a
+## reading nothing weighs in its healthy worlds (shared Delusion doubt, Nov 22).
+static func own_chance_content(view: Dictionary, card: Dictionary) -> float:
+	var ref: Array = [Solver._universe_key(view), view.people, view.get("timeline", {}), card.kind, card.get("source", ""), card.get("role", ""), card.get("observed_at", {}), card.get("data", {}), card.get("duty_only", false), card.get("testimony_only", false)]
+	var key: int = hash(ref)
+	if not (cache_enabled and _own_checked_cache.has(key) and _own_checked_cache[key].ref == ref):
+		if _own_checked_cache.size() > 1024:
+			_own_checked_cache.clear()
+		var t: PackedByteArray = Solver.report_table(view, card)
+		var v: PackedByteArray = _valid_table(view, card)
+		var checked: bool = false
+		for i in range(mini(t.size(), v.size())):
+			if v[i] == 1 and t[i] == 0:
+				checked = true
+				break
+		_own_checked_cache[key] = {"ref": ref, "checked": checked}
+	return chance_content(view, card) if _own_checked_cache[key].checked else 1.0
+
+static var _own_checked_cache: Dictionary = {}
 
 static var _team_prior_cache: Dictionary = {}
 

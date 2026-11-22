@@ -158,7 +158,6 @@ func _lie(sd: int) -> void:
 
 
 func _init() -> void:
-	SourceDoubt.delusional_self_doubt = false  # the listener's own self-doubt, off to keep the numbers plain
 	var sd: int = _seed()
 	check(sd > 0, "a seed with a Poisoner on the script (%d)" % sd)
 	if sd <= 0:

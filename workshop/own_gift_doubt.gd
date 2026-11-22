@@ -46,6 +46,64 @@ static func posterior(view: Dictionary, listener: Dictionary, held: Array) -> Di
 	return out
 
 
+## Each reader's chance of being the Delusional, from one judgement over the cards the refresh
+## held (shared Delusion doubt, Michael, Nov 22; for Quill): {"own": the listener's own, or -1
+## with no gift reading of its own held or no Delusional on the script, "of": {reader id: chance}
+## for each other person whose reading it holds}. One CaseEval evaluation with its worlds kept
+## (CaseEval.capture_worlds), summed by who holds the secret in each.
+static func delusion(view: Dictionary, listener: Dictionary, held: Array) -> Dictionary:
+	var out: Dictionary = {"own": -1.0, "of": {}}
+	if not "delusional" in view.get("world_options", {}).get("modifiers", []):
+		return out
+	var self_id: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
+	var readers: Dictionary = {}
+	for c in view.get("cards", []):
+		if str(c.get("kind", "")) != "report" or c.get("quoted", false) or not (str(c.get("id", "")) in held):
+			continue
+		var src: String = str(c.get("relay_source", "")) if str(c.get("relay_source", "")) == self_id else str(c.get("source", ""))
+		var idx: int = Solver.person_index(view, src)
+		if idx >= 0:
+			readers[src] = idx
+	if readers.is_empty():
+		return out
+	var q: Dictionary = Solver.empty_case()
+	q.cards = held.duplicate()
+	q.conclusion = {"type": "secret_mod", "mod": "delusional", "target": self_id if readers.has(self_id) else str(readers.keys()[0]), "at": view.get("alignment_epoch", "")}
+	var was: bool = CaseEval.capture_worlds
+	CaseEval.capture_worlds = true
+	CaseEval.captured = []
+	var ev: Dictionary = CaseEval.evaluate(view, q, listener)
+	CaseEval.capture_worlds = was
+	var cap: Array = CaseEval.captured
+	CaseEval.captured = []
+	if ev.get("impossible", false) or cap.is_empty():
+		return out
+	var post: PackedFloat64Array = cap[-1].worlds
+	var universe: Array = Solver.universe(view)
+	var total: float = 0.0
+	var by: Dictionary = {}
+	for i in range(mini(post.size(), universe.size())):
+		var m: float = post[i]
+		if m <= 0.0:
+			continue
+		total += m
+		var w: Dictionary = universe[i]
+		if str(w.get("modifier", "")) != "delusional":
+			continue
+		var h: int = int(w.get("holders", 0))
+		for src in readers:
+			if h & (1 << int(readers[src])) and int(w.get("marked", -1)) != int(readers[src]):
+				by[src] = float(by.get(src, 0.0)) + m
+	if total <= 0.0:
+		return out
+	for src in readers:
+		var pv: float = float(by.get(src, 0.0)) / total
+		if src == self_id:
+			out.own = pv
+		else:
+			out.of[src] = pv
+	return out
+
 ## The refresh's inputs, kept on the NPC (as metadata, outside its saved state) until asked.
 static func stage(n, view: Dictionary, listener: Dictionary, held: Array) -> void:
 	n.set_meta(META, {"view": view, "listener": listener, "held": held})

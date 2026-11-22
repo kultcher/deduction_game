@@ -1007,14 +1007,16 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
-	## With the Delusional secret on the script, a good NPC's own readings are this unsure:
-	## its gift might be the Delusional one and give it wrong readings without it knowing
-	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
-	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
-	const DELUSIONAL_SELF_DOUBT = 0.1
+	## With the Delusional secret on the script, a good NPC's chance, before any evidence, that
+	## it is the Delusional one and its gift says anything (shared Delusion doubt, Michael,
+	## Nov 22): one doubt for all its readings, in the judge's worlds where it holds the secret
+	## (CaseEval._own_counts), so readings that agree with each other and the town lower it for
+	## every night, and clashes raise it. Retires DELUSIONAL_SELF_DOUBT (0.1 per night). Others'
+	## readings keep the deal's own share. A burden it knows it holds rules it out.
+	const OWN_DELUSION_PRIOR = 0.07
 	## The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift
-	## failed, from the reading clashing with what else it holds, starting from the poison and
-	## Delusional self-doubt) at or above which it doubts its gift for that night
+	## failed, from the reading clashing with what else it holds, starting from the poison
+	## self-doubt and OWN_DELUSION_PRIOR) at or above which it doubts its gift for that night
 	## (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4
 	## meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings
 	## and about 1 in 20 sound ones.

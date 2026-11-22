@@ -78,9 +78,6 @@ func _hear(made: Dictionary, listener_index: int, trust: float) -> Dictionary:
 
 
 func _init() -> void:
-	# Seed 692's script carries Delusional: its self-doubt is the listener's own, not the
-	# reader's, so it doesn't touch the reader's doubt here; off to keep the numbers plain.
-	SourceDoubt.delusional_self_doubt = false
 	var call: Dictionary = _game(true)
 	check(call.filed > 0, "a case calling the reading a failed gift can be filed (%s)" % call.g.last_error)
 	if call.filed <= 0:

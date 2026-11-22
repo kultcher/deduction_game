@@ -19,6 +19,7 @@ public partial class SolverBridge : RefCounted
     private static int[] _lastOwnOf = Array.Empty<int>();
     private static byte[] _lastOwnFlatCodes = Array.Empty<byte>();
     private static double[] _lastOwnCounts = Array.Empty<double>();
+    private static double[] _lastOwnWeights = Array.Empty<double>();
 
     public static int GetMode() => _mode;
     public static void SetMode(int mode) => _mode = Math.Clamp(mode, ModeGdscript, ModeVerify);
@@ -718,16 +719,25 @@ public partial class SolverBridge : RefCounted
         long[] fallbackWorlds,
         int ownBurdenMe,
         int ownBurdenMod,
-        int ownBurdenHiddenMask)
+        int ownBurdenHiddenMask,
+        double ownDelusionPrior)
     {
-        var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCounts(
+        var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCountsWeighted(
             ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids,
-            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask);
+            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask,
+            ownDelusionPrior, out double[] weights);
         _lastOwnOf = of;
         _lastOwnFlatCodes = flatCodes;
         _lastOwnCounts = counts;
+        _lastOwnWeights = weights;
         return ns;
     }
+
+    public static double[] CaseEvalGetLastOwnWeights() => _lastOwnWeights;
+
+    /// <summary>The listener's own Delusion weight (CaseEvalKernel.OwnDelusionWeight), for tests.</summary>
+    public static double CaseEvalOwnDelusionWeight(int universeHandle, long[] fallbackWorlds, int me, int knownMod, int hiddenMask, double prior) =>
+        CaseEvalKernel.OwnDelusionWeight(SolverContext.ResolveWorlds(universeHandle, Array.Empty<int>(), fallbackWorlds), me, knownMod, hiddenMask, prior);
 
     public static int[] CaseEvalGetLastOwnOf() => _lastOwnOf;
     public static byte[] CaseEvalGetLastOwnFlatCodes() => _lastOwnFlatCodes;
@@ -773,9 +783,10 @@ public partial class SolverBridge : RefCounted
         byte[] flatOwnCodes,
         double[] routeCredits,
         double[] testLog2Ratios,
-        double biasFactor) =>
+        double biasFactor,
+        double[] ownStateWeights) =>
         CaseEvalKernel.EvaluatePosterior(
             ccHandle, universeHandle, fallbackWorlds, evalInts, tuningDoubles,
             teamPrior, fits, fitsBefore, caseErrs, ownErrs, ownQs,
-            counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor);
+            counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor, ownStateWeights);
 }
