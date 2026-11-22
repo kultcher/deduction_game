@@ -8,7 +8,7 @@
 ## What changed
 
 1. **The Mistaken call's cause** (Michael, Nov 22: the player picks it).
-   - Under "Mistaken", the reading card offers "Poisoned that night" (the plain Mistaken call, that night's reading only) and "Delusional all along".
+   - Under "Mistaken", the reading card offers "Mistaken that night" (the plain Mistaken call, that night's reading only) and "Delusional all along".
    - The live editor's side panel offers the same two as dropdown entries.
    - Both appear only where the script can deal Delusional; elsewhere Mistaken works as before. They aren't offered on a Medium's passing-on.
    - "Delusional all along" uses the existing Delusional challenge mode. That mode used to need a group of readings. On one reading it now covers every reading by the same reader in the case (`reading_challenges.gd` `reader_group`), so all of them take the same discount.
@@ -43,11 +43,11 @@
 
 ## Wording
 
-- **Approved by Michael (Nov 22):** "Poisoned that night", "Delusional all along".
+- **Approved by Michael (Nov 22):** "Mistaken that night" (Michael: "go with Mistaken", through Seneschal; it was briefly "Poisoned that night") and "Delusional all along".
 - **Draft tips:**
   - "Something fooled the gift that night only: poison, or a misleading registration."
   - "Their gift has never worked: every reading of theirs in this case is doubted."
-- **Put to Michael through Seneschal:** "Poisoned that night" also covers a Red Herring or a Marked misregistration, which aren't poison. "Fooled that night" would cover them.
+- **Settled:** "Poisoned that night" named only poison, though the call also covers a Red Herring or a Marked misregistration. Michael chose "Mistaken that night", which covers all three.
 
 ## Small calls made on Michael's behalf
 

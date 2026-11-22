@@ -21,8 +21,9 @@ const HONEST_LABEL = "Mistaken"
 const HONEST_TIP = "The reading was wrong, but honestly told: something fooled the gift."
 ## The Mistaken call's two causes (Michael, Nov 22): that night's reading alone (poison, a
 ## Marked soul, a Red Herring), or a Delusional gift, which counts against all of the
-## reader's readings. The labels are Michael's (Nov 22); the tips are drafts.
-const NIGHT_ONLY_LABEL = "Poisoned that night"
+## reader's readings. The labels are Michael's (Nov 22: "Mistaken that night", which covers
+## poison, a Red Herring and Marked, and "Delusional all along"); the tips are drafts.
+const NIGHT_ONLY_LABEL = "Mistaken that night"
 const NIGHT_ONLY_TIP = "Something fooled the gift that night only: poison, or a misleading registration."
 const DELUSION_ALL_ALONG_LABEL = "Delusional all along"
 const DELUSION_ALL_ALONG_TIP = "Their gift has never worked: every reading of theirs in this case is doubted."
