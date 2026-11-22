@@ -3,7 +3,7 @@
 - **Agent:** Claude-Herald
 - **Base:** main at 0b692d4, after #527.
 - **Status:** PR open.
-- **Next actor:** Bailiff. This PR moves golden, in reply text only, and re-baselines to `baseline_c19c809`.
+- **Next actor:** Bailiff. This PR moves golden, in reply text only, and re-baselines to `baseline_35d96b9`.
 
 ## What changed
 
@@ -19,11 +19,7 @@ All of it is wording Michael approved on Nov 22, via Seneschal.
   - her claim, "One less question for the town to puzzle over: I am the {role}.";
   - 31 lines with modern words replaced (`docs/design/nisha_register.md`, #529), approved as a set.
 
-## Not in this PR
-
-Odette's three lines are drafts sent to Seneschal and await Michael:
-- `public_claim`, "Since we are doing public confessions today";
-- two public lines that say "tonight".
+- **Odette's public claim** (Michael's wording): "Are we doing public confessions tonight? Let's get mine over with: I am the {role}." Her two other public lines that say "tonight" stay as they are (Michael: public statements are made in the evening).
 
 ## Measured
 

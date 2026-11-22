@@ -44,12 +44,12 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 22, approved wording): `baseline_c19c809`
+### Current baseline (Nov 22, approved wording): `baseline_35d96b9`
 
-`tools/golden/baseline_c19c809/` is the capture from `claude/herald-51795-wording` at `c19c809` (main at
-`0b692d4`, merged in). Michael's approved wording, Nov 22: four `public_claim` lines that fit any
+`tools/golden/baseline_35d96b9/` is the capture from `claude/herald-51795-wording` at `35d96b9` (main at
+`64669cf`, merged in). Michael's approved wording, Nov 22: four `public_claim` lines that fit any
 day (Isolde, Dorian, Bart, Kiran), `support_vibes_for` ("I can't believe them evil"), and Nisha's
-register (her claim and 31 lines without modern words).
+register (her claim and 31 lines without modern words), and Odette's public claim.
 - **Divergence from `baseline_e2d39bd`:** reply text only, on every seed (first at a day-1 or
   day-2 meeting). With `--ignore engine,reply` all five seeds are identical, so beliefs, votes and
   outcomes are unchanged.
