@@ -658,6 +658,30 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			if not tellings.has(tk):
 				tellings[tk] = []
 			tellings[tk].append(id)
+	# A reading (a lone one, or one teller's together) reads, as context, any burden claim or
+	# player's word on a secret about a person it names (as the night items read claims):
+	# without them a Seer's "yes" on a person who claims, or is argued, to be Marked counts in
+	# full against them, while the joint judgement explains it by the mark (Marked badge
+	# against the town, Nov 22).
+	var burden_ctx: Array = held.filter(func(x): return by_id[x].kind == "secret_claim" or by_id[x].get("player_word", false))
+	var burden_about := func(ids: Array) -> Array:
+		var got: Array = []
+		if burden_ctx.is_empty():
+			return got
+		var who: Array = []
+		for id in ids:
+			if not names_memo.has(id):
+				names_memo[id] = _names(by_id, [id], people)
+			who = _union(who, names_memo[id])
+		for x in burden_ctx:
+			if x in ids:
+				continue
+			if not names_memo.has(x):
+				names_memo[x] = _names(by_id, [x], people)
+			var about: Array = [str(by_id[x].get("subject", ""))] if by_id[x].kind == "secret_claim" else names_memo[x]
+			if about.any(func(p): return p in who):
+				got.append(x)
+		return got
 	var teller_keys: Array = tellings.keys()
 	teller_keys.sort()
 	for tk in teller_keys:
@@ -666,10 +690,12 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			continue
 		for id in ids:
 			placed[id] = true
-		out.append({"key": "teller:" + tk, "ids": ids, "ctx": [], "kind": "unit"})
+		out.append({"key": "teller:" + tk, "ids": ids, "ctx": burden_about.call(ids), "kind": "unit"})
 	for id in held:
 		if not placed.has(id):
-			out.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
+			var c: Dictionary = by_id[id]
+			var lone_ctx: Array = burden_about.call([id]) if c.kind == "report" and not c.get("player_word", false) else []
+			out.append({"key": id, "ids": [id], "ctx": lone_ctx, "kind": "card"})
 	if row_name == "hexer":
 		# The Hexer's day evidence, in one always-on connection (see the header).
 		var day_cards: Array = held.filter(func(id): return by_id[id].kind in DAY_KINDS)
