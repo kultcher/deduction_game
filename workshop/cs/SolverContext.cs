@@ -195,7 +195,19 @@ internal static class SolverContext
     private static readonly Dictionary<int, UniverseMeta> UniverseMetaByHandle = new(64);
     private static readonly List<LiveActivityKernel.CompiledMovementFactor> MovementFactors = new(64);
     private static readonly List<CaseEvalKernel.CompiledCaseEntry> CompiledCases = new(64);
-    private static readonly List<Dictionary<long, double>> RoleConstraintMemos = new(256);
+    internal sealed class RoleConstraintMemoEntry
+    {
+        public readonly Dictionary<long, double> Weights = new(256);
+        public int[] ForbiddenSpecs = Array.Empty<int>();
+        public bool Live;
+        public bool ViewIsEmpty;
+        public bool HasCurse;
+        public int CurseFrom;
+        public int CurseUntil;
+        public bool Populated;
+    }
+
+    private static readonly List<RoleConstraintMemoEntry> RoleConstraintMemos = new(256);
 
     public static void Clear()
     {
@@ -310,11 +322,11 @@ internal static class SolverContext
     public static int CreateRoleConstraintMemo()
     {
         int slot = RoleConstraintMemos.Count;
-        RoleConstraintMemos.Add(new Dictionary<long, double>(256));
+        RoleConstraintMemos.Add(new RoleConstraintMemoEntry());
         return slot;
     }
 
-    public static Dictionary<long, double>? GetRoleConstraintMemo(int slot) =>
+    public static RoleConstraintMemoEntry? GetRoleConstraintMemo(int slot) =>
         (slot >= 0 && slot < RoleConstraintMemos.Count) ? RoleConstraintMemos[slot] : null;
 
     private static readonly List<double[]> PresenceWeights = new(16);

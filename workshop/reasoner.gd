@@ -661,6 +661,11 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 			needs_marked = true
 		if role == "chronicler" or (role == "rumormonger" and card.get("data", {}).get("secret", "marked") != "marked"):
 			needs_holders = true
+		var fb: int = Solver.Roles.forbidden_burdens(card)
+		if fb != 0:
+			needs_holders = true
+			if (fb & (1 << 1)) != 0:
+				needs_marked = true
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
 	var bits: Dictionary = Solver.world_bits(view)
 	var evil_arr: PackedInt64Array = bits.evil

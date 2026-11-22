@@ -38,7 +38,7 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 			"input": input.duplicate(true),
 			"slot": slot,
 			"populated": false,
-			"seer": seer_flag(cards),
+			"marked_mask": marked_mask(ids, cards),
 			"mediums": relay_mediums(ids, cards),
 		}
 	return cache[key]
@@ -101,7 +101,7 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 		var bridge = SolverBackend._bridge()
 		if bool(entry.populated):
 			var packed_w: int = SolverBackend.pack_world(world)
-			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), bool(entry.seer), int(entry.mediums))
+			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), int(entry.marked_mask), int(entry.mediums))
 			if not hit.is_empty():
 				return hit[0]
 		var res: PackedFloat64Array = _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -145,7 +145,7 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 		if u_handle >= 0:
 			SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, bool(entry.seer), int(entry.mediums))
+		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, int(entry.marked_mask), int(entry.mediums))
 		if not hit.is_empty():
 			return hit
 	var res: PackedFloat64Array = _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -234,7 +234,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		pub_roles[pr_pos + 1] = _intern_role(role_map, str(pub_roles_dict[person]))
 		pr_pos += 2
 
-	var seer_on: bool = seer_flag(cards)
+	var marked_m: int = marked_mask(ids, cards)
 	var mediums_mask: int = relay_mediums(ids, cards)
 	var omen_all: int = 0
 	for oc in cards:
@@ -253,7 +253,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		1 if routes_avail else 0,
 		1 if routes_okay else 0,
 		1 if use_coarse_memo else 0,
-		1 if seer_on else 0,
+		marked_m,
 		mediums_mask,
 		omen_all,  # the hanged Ill-Omened claimants whose windows cover these cards
 	])
@@ -512,32 +512,34 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		return SolverBackend._bridge().RoleFitsWeightsMemoByHandle(memo_slot, u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 	return SolverBackend._bridge().RoleFitsWeightsByHandle(u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 
-static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
+static func coarse_mask(people: int, world: Dictionary, marked_m: int, mediums: int) -> int:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var packed: int = SolverBackend.pack_world(world)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.coarse_mask", pack_u)
-	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums))
+	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, marked_m, mediums))
 	return cs_val
 
-static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
+static func coarse_masks(people: int, universe: Array, marked_m: int, mediums: int, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
 	if not SolverBackend.profiling_enabled:
-		return _coarse_masks_dispatch(people, universe, seer, mediums, u_handle, sub_indices)
+		return _coarse_masks_dispatch(people, universe, marked_m, mediums, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, u_handle, sub_indices)
+	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, marked_m, mediums, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
+static func _coarse_masks_dispatch(people: int, universe: Array, marked_m: int, mediums: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
 	var fallback: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 	if u_handle >= 0:
 		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums)
+	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, marked_m, mediums)
 	return cs_out
 
-static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
+static func _coarse_mask_gd(people: int, world: Dictionary, marked_m: int, mediums: int) -> int:
 	var n: int = people + 1
-	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
+	var mk: int = int(world.marked)
+	var m_val: int = (mk + 1) if (marked_m != 0 and mk >= 0 and (marked_m & (1 << mk)) != 0) else 0
+	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + m_val
 	if mediums != 0:
 		var mod: int = SolverBackend.modifier_code(world) if world.has("modifier") else 1
 		var tellers: int = mediums & 0xFFFF
@@ -554,6 +556,7 @@ static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums:
 ## isn't checked; Codex, #183). High 16 bits: whoever claims a burden other than Marked (their
 ## claim is checked in good worlds) and the hanged Ill-Omened claimants (the omen window),
 ## who matter for any burden but Marked (Argon, Nov 21).
+## Impossible pairs (forbidden_burdens) are handled as a 1-bit kill state rather than here.
 static func relay_mediums(ids: Array, cards: Array) -> int:
 	assert(ids.size() <= 15, "relay_mediums packs two masks into a signed 32-bit int")
 	var bits: int = 0
@@ -578,8 +581,6 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			bits |= 1 << teller
 		elif burden_code(card) > 0 and str(card.data.secret_kind) != "marked":
 			claim_bits |= 1 << teller
-		elif forbidden_burdens(card) != 0:
-			claim_bits |= 1 << teller  # a claimed role the deal keeps some burden off
 	return bits | (claim_bits << 16)
 
 static func _live_cards(cards: Array) -> Array:
@@ -592,11 +593,69 @@ static func _routing_cards(cards: Array) -> Array:
 			out.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
 	return out
 
+## Per-person bitmask of people whose Marked status is read by RoleConstraints on `cards`.
+## Replaces the global seer_flag boolean so CoarseMask only splits on people actually named
+## by an evil-detecting reading or Marked claim (shrinking the x8 Marked multiplier to x(k+1)).
+static func marked_mask(ids: Array, cards: Array) -> int:
+	var mask: int = 0
+	for c in cards:
+		if c.get("quoted", false) or c.get("testimony_only", false):
+			continue
+		var kind: String = str(c.get("kind", ""))
+		var data: Dictionary = c.get("data", {}) if c.get("data") is Dictionary else {}
+		if kind == "secret_claim":
+			if burden_claims_bind and not c.get("content_only", false) and str(data.get("secret_kind", "")) == "marked":
+				var si: int = ids.find(str(c.get("source", "")))
+				if si >= 0:
+					mask |= 1 << si
+			continue
+		if kind != "report":
+			continue
+		var role: String = str(c.get("role", ""))
+		if role == "seer":
+			for person in data.get("pair", []):
+				var pi: int = ids.find(str(person))
+				if pi >= 0:
+					mask |= 1 << pi
+		elif role == "martyr" or role == "executor" or role == "registrar":
+			var ti: int = ids.find(str(data.get("target", "")))
+			if ti >= 0:
+				mask |= 1 << ti
+		else:
+			var rdef = C.role_def(role)
+			if rdef != null and rdef.shape == "ROLE_IN_GROUP" and rdef.marked_registers:
+				if rdef.role_group_key == "pair":
+					for person in data.get("pair", []):
+						var pi: int = ids.find(str(person))
+						if pi >= 0:
+							mask |= 1 << pi
+				else:
+					var gi: int = ids.find(str(data.get(rdef.role_group_key, "")))
+					if gi >= 0:
+						mask |= 1 << gi
+	return mask
+
 static func seer_flag(cards: Array) -> bool:
 	# Counting readings a Marked person sways read world.marked too (Solver.marked_counts).
 	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar", "dowser", "hearthwitch", "surveyor", "magistrate"]
-		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")
-		or (forbidden_burdens(c) & (1 << 1)) != 0))  # a claimed role the deal never makes Marked: the key tells Marked apart
+		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
+
+## Packs [source, relayer, stmt_tick, forbidden_bits] quads for every claim card with
+## forbidden_burdens != 0 so CaseEvalKernel can key impossible pairs as a single bit.
+static func forbidden_specs(ids: Array, cards: Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for card in cards:
+		var fb: int = forbidden_burdens(card)
+		if fb == 0:
+			continue
+		var src: int = ids.find(str(card.get("source", "")))
+		var rel: int = ids.find(str(card.relay_source)) if card.has("relay_source") else -1
+		var tick: int = Chronology.tick(Chronology.statement_time(card))
+		out.append(src)
+		out.append(rel)
+		out.append(tick)
+		out.append(fb)
+	return out
 
 ## Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal's placement
 ## table never puts on this card's claimed role (ScriptDef.placement_allows), as bits of the
@@ -693,7 +752,9 @@ static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
 	# else can hold one (CaseEval._own_burden_ok), and a neutral claim must stay neutral there.
 	var ob: Dictionary = view.get("own_burden", {})
 	var me: int = ids_of(view).find(str(ob.get("self", ""))) if not ob.is_empty() else -1
-	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind, ob if me >= 0 else {}])
+	# Domain.worlds is symmetric across players, so the share only depends on whether the
+	# listener knows its own burden, whether it is the claimant, and its known burden kind.
+	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), kind, me >= 0, me == who, str(ob.get("kind", "")) if me >= 0 else ""])
 	if not _burden_share_cache.has(ckey):
 		var good: int = 0
 		var held: int = 0
