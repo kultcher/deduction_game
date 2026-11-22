@@ -14,6 +14,7 @@ var fails = 0
 
 func _init() -> void:
 	var scene = load("res://ui/main.tscn").instantiate()
+	scene.pacing_enabled = false   # this suite drives the town with real mouse input (test_pacing covers the sequence)
 	root.add_child(scene)
 	await process_frame
 	await process_frame
