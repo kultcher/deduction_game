@@ -528,6 +528,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `OMEN_PUSH_STAKES` | `0.35` | A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the usual exposure cost. Sized so that on a close vote a Minion under about the median scrutiny votes yes, and under heavy scrutiny keeps cover. | `sim/mind_meeting.gd`, `sim/mind_vote.gd` |
 | `OMEN_KNOWN_KILL_PENALTY` | `-1.5` | EXPERIMENT (mock/omen-evil-knows, never merges): evil knows the Ill-Omened. A mild pull away from killing them (a Seer's claim is worth 4 to the Demon, a spent first-night gift 0), and toward making them the scapegoat. | `sim/evil.gd` |
 | `OMEN_KNOWN_SCAPEGOAT_BONUS` | `0.4` |  | `sim/evil.gd` |
+| `OMEN_DEAD_BLUFF_RUMOR_CHANCE` | `0.15` | EXPERIMENT: the chance evil still claims a dead holder's Ill-Omened when a Rumormonger reading has shown it in play. | `sim/burdens.gd` |
 | `DEMON_CAUTION_FLOOR` | `0.45` |  | `sim/evil.gd` |
 | `DEMON_CAUTION_DRIFT` | `0.03` |  | `sim/evil.gd` |
 | `HEAT_FADE` | `0.75` |  | `sim/evil.gd` |

@@ -820,6 +820,9 @@ class Evil:
 	## gift 0), and toward making them the scapegoat.
 	const OMEN_KNOWN_KILL_PENALTY = -1.5
 	const OMEN_KNOWN_SCAPEGOAT_BONUS = 0.4
+	## EXPERIMENT: the chance evil still claims a dead holder's Ill-Omened when a Rumormonger
+	## reading has shown it in play.
+	const OMEN_DEAD_BLUFF_RUMOR_CHANCE = 0.15
 	const DEMON_CAUTION_FLOOR = 0.45
 	const DEMON_CAUTION_DRIFT = 0.03
 	const HEAT_FADE = 0.75

@@ -180,3 +180,21 @@ func _evil_knows() -> void:
 	_check(not Burdens.evil_burden_bluff(w, e, "ill_omened", "stay off the rope"), "and so never bluffs it while a real one is dealt")
 	var minion = w.npcs.filter(func(m): return m.alive and m.is_evil() and m.id != w.demon_id and not C.is_demon(m.role) and m.role != "scion")
 	_check(minion.is_empty() or Burdens.omen_push_target(w, minion[0]) == o.id, "a Minion pushes the known holder, claimed or not")
+	# The Demon killed the holder anyway (Michael, Nov 22): evil claims it at its nomination.
+	var w2 = _case().w
+	var o2 = _holder(w2)
+	var e2 = w2.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w2.evil_plan.get("bluffs", {}).get(e2.id, "")) == "":
+		w2.evil_plan["bluffs"][e2.id] = "clerk"
+	_check(Burdens.omen_at_nomination(w2, e2).is_empty(), "while the holder lives, evil never claims it")
+	w2.omen_unclaimed.erase(e2.id)
+	o2.alive = false
+	_check(not Burdens.omen_at_nomination(w2, e2).is_empty(), "once the holder is dead and never claimed it, evil claims it at its nomination")
+	var w3 = _case().w
+	var o3 = _holder(w3)
+	var e3 = w3.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w3.evil_plan.get("bluffs", {}).get(e3.id, "")) == "":
+		w3.evil_plan["bluffs"][e3.id] = "clerk"
+	Burdens.omen_early_warning(w3, o3)
+	o3.alive = false
+	_check(Burdens.omen_at_nomination(w3, e3).is_empty(), "not if the dead holder had claimed it in public")
