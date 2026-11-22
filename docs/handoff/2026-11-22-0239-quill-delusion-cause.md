@@ -18,6 +18,9 @@
    - `seer_contradiction_burden`: the same cards, argued "carries a hidden burden: Delusional".
    - A slate premise can now carry a cause or burden (`"inconsistent:delusional"`).
 
+3. **The juror grades "carries a hidden burden" on the chance of being Delusional** (Michael, Nov 22). Until now it graded the premise through the subject's chance of being good, like every clearing premise. Now `listener_reading` asks the listener the premise itself, before and after the case (`_own_question_chance`, beside `_demon_share`), so readings that clash count for it. The badge's top tier still isn't offered, since the premise clears. `test_juror_listener` checks it (31 checks, 0 failures).
+   - **On today's judge it overshoots:** `seer_contradiction_burden` goes from no badge (0.87) to Strong (179), with the listener at 2.5% → 82% Delusional. Lantern's worked curve has one strong clash at about 13%. Today's judge skips a Delusional reader's readings, so Delusion explains any clash for free, and it has no poison explanation for others' readings. Lantern's core (the uniform draw, and poison on others' readings) should bring this down. Rerun the case when the core lands. The suite only checks the direction, so it survives the change.
+
 ## What I measured
 
 - **Suites:** `test_delusional_reading` gained 5 checks (12 in all, 0 failures):
