@@ -28,14 +28,14 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. A friend's doubtful defence `[decided]`
-    2. Withheld readings: asking for what someone hasn't said `[decided: direction]`
-    3. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
-    4. A gift-holder seeks protection before revealing `[decided: direction]`
-    5. \*The Gravedigger in a reluctant town `[decided]`
-    6. Caught out and pressed again: what's left `[decided]`
-    7. Good NPCs lie tactically `[open]`
-    8. \*Rapport and Warden-credit leftovers `[decided: direction]`
+    1. Legwork that shapes the meeting `[open]`
+    2. A friend's doubtful defence `[decided]`
+    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
+    5. A gift-holder seeks protection before revealing `[decided: direction]`
+    6. \*The Gravedigger in a reluctant town `[decided]`
+    7. Caught out and pressed again: what's left `[decided]`
+    8. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -127,6 +127,26 @@ Lantern). Nothing is open here.
   [decided]
 
 ### NPC behaviour
+
+- **Legwork that shapes the meeting** (Michael, Nov 22). Today, who the player talks to during
+  the day barely changes what's said at the meeting, so a day can feel anticlimactic when
+  what NPCs told you comes out at the meeting anyway. The aim isn't to withhold more at
+  meetings: hearing things early already helps the player plan and steer. The aim is for some
+  of the player's legwork to go public *through* them. Three options, not yet chosen:
+  1. **Headlines at the meeting, details from legwork.** Claims, readings and accusations still
+     come out at the meeting. Small things (an incidental sighting, a remark, who someone spent
+     the afternoon with) surface mostly when asked in private, as the connective tissue of a
+     case. Some of this may already be how volunteered sightings work, so check first.
+  2. **"You tell them": the confidant hands it to the player.** An NPC that trusts the player a
+     lot may leave a private reveal for the player to raise. The player raises it and gets the
+     credit, times it, or keeps the source hidden (it ties in with a hidden Seer seeding its
+     readings through someone it trusts). The safeguard: if the player stays silent, the NPC
+     speaks near the meeting's end ("Well, if you won't say it, I will…"). It's rare by design.
+     Vicar's recommendation.
+  3. **Private conversations shift what they push for:** an NPC the player has just shown a
+     case to raises it itself, or backs the player's nomination.
+
+  Owners when chosen: Beadle, with Herald for the lines. [open]
 
 - **A friend's doubtful defence** (Michael, Nov 22). When a friend of the nominee is close to
   voting yes, it voices a doubtful defence: "I've known Kiran for a long time. He wouldn't be
@@ -224,24 +244,6 @@ Lantern). Nothing is open here.
   A caught lie still implicates strongly, so both need care. The "holds their claimed
   gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
   [open]
-
-- **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
-  Beadle's proposals):
-  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waited for "Anger reasons",
-    which is now built (Beadle #487, Nov 21). **[decided]** (Michael, Nov 21):
-    - **What counts:** a claim about the NPC that its own knowledge proves false. That's a
-      sighting of it, or "they were out", on a night it was home, or a fabricated evil reading
-      of a good NPC;
-    - **who loses trust:** only the teller, not someone relaying it;
-    - **how much:** the same as the existing loss for a public accusation;
-    - **scope:** trust between NPCs only. A voiced line comes later. Owner Beadle;
-  - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
-    meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
-    (Michael, Nov 20, later);
-  - (d) player wards the Warden knows about counting as an alternative explanation: closed,
-    already built.
-
-  [decided: direction]
 
 ### Numbers
 
