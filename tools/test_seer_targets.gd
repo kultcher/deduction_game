@@ -74,6 +74,7 @@ func _init() -> void:
 		var b = others[1]
 		var c = others[2]
 		var d = others[3]
+		sr.suspicion[a.id] = 0.8  # its top suspect is in the "yes"
 		_reading(sr, 0, [c.id, d.id], false)
 		_reading(sr, 1, [a.id, b.id], true)
 		var picks: Array = Mind.seer_picks(w, sr)
@@ -86,6 +87,17 @@ func _init() -> void:
 	print("after a yes: one of the two re-checked %d/30, beside someone cleared %d, someone fresh %d" % [narrowed, beside_cleared, beside_fresh])
 	_check(narrowed >= 15, "after a \"yes\", a sharp Seer usually re-checks one of the two")
 	_check(beside_cleared + beside_fresh == narrowed and beside_cleared >= 5 and beside_fresh >= 5, "narrowing, beside someone it has cleared or someone fresh, about half each")
+	# Its top suspect isn't in the "yes" (Michael, Nov 22): it reads its top suspect instead.
+	var ws3 = _seer(9661)
+	var w3 = ws3[0]
+	var sr3 = ws3[1]
+	var o3: Array = w3.living().filter(func(m): return m != sr3)
+	for i in range(o3.size()):
+		sr3.suspicion[o3[i].id] = 0.5
+	sr3.suspicion[o3[5].id] = 0.9
+	_reading(sr3, 1, [o3[0].id, o3[1].id], true)
+	var ranked3: Array = Mind.ranked_suspects(w3, sr3)
+	_check(C.role_def("seer")._narrowing_pick(w3, sr3, ranked3, {}, {o3[0].id: 1, o3[1].id: 1}).is_empty(), "with its top suspect outside the \"yes\", it doesn't narrow")
 	# Once narrowed (the partner cleared since), the "yes" is settled and no longer narrowed.
 	var ws2 = _seer(9660)
 	var w2 = ws2[0]
