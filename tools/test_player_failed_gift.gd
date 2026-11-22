@@ -78,6 +78,9 @@ func _hear(made: Dictionary, listener_index: int, trust: float) -> Dictionary:
 
 
 func _init() -> void:
+	# The poison doubt on other people's readings (shared Delusion doubt, Nov 22) is off, so
+	# the reader's doubt here is the call's alone.
+	SourceDoubt.poison_others_doubt = false
 	var call: Dictionary = _game(true)
 	check(call.filed > 0, "a case calling the reading a failed gift can be filed (%s)" % call.g.last_error)
 	if call.filed <= 0:

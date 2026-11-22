@@ -497,9 +497,44 @@ static func own_delusion_prior(view: Dictionary, knowledge: Dictionary) -> float
 		return -1.0
 	if not "delusional" in view.get("world_options", {}).get("modifiers", []):
 		return -1.0
-	if knowledge.get("not_delusional", false) or not preload("res://workshop/source_doubt.gd").could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
+	var ob: Dictionary = view.own_burden
+	var can: bool = bool(ob.delusional_ok) if ob.has("delusional_ok") else preload("res://workshop/source_doubt.gd").could_hold_secret(str(knowledge.get("own_role", "")), "delusional")
+	if knowledge.get("not_delusional", false) or not can:
 		return 0.0
 	return Tuning.Workshop.OWN_DELUSION_PRIOR
+
+static var _own_delusion_weight_cache: Dictionary = {}
+
+## The weight on the listener's own Delusional-holder worlds (CaseEvalKernel.OwnDelusionWeight,
+## in GDScript): over the worlds its own-burden knowledge allows with it good, the odds of
+## `prior` over those worlds' own odds. 1 for a negative prior or none or every world held.
+static func own_delusion_weight(view: Dictionary, prior: float) -> float:
+	var ob: Dictionary = view.get("own_burden", {})
+	var me: int = Solver.person_index(view, str(ob.get("self", ""))) if not ob.is_empty() else -1
+	if prior < 0.0 or me < 0:
+		return 1.0
+	var key: String = str([Solver._universe_key(view), me, str(ob.get("kind", "")), prior])
+	if not _own_delusion_weight_cache.has(key):
+		var good: int = 0
+		var held: int = 0
+		for w in Domain.worlds(view):
+			if int(w.evil) & (1 << me) or not _own_burden_ok(ob, me, w):
+				continue
+			good += 1
+			if _listener_deluded(w, me):
+				held += 1
+		var f: float = 1.0
+		if held > 0 and held < good:
+			var sh: float = float(held) / float(good)
+			f = 0.0 if prior <= 0.0 else (prior / (1.0 - prior)) * ((1.0 - sh) / sh)
+		if _own_delusion_weight_cache.size() > 256:
+			_own_delusion_weight_cache.clear()
+		_own_delusion_weight_cache[key] = f
+	return float(_own_delusion_weight_cache[key])
+
+## Whether `me` is the world's Delusional holder (CaseEvalKernel.ListenerDeluded).
+static func _listener_deluded(w: Dictionary, me: int) -> bool:
+	return int(w.get("marked", -1)) != me and str(w.get("modifier", "")) == "delusional" and (int(w.get("holders", 0)) & (1 << me)) != 0
 
 ## Depends only on which own cards there are (and any live listener's own_burden filter and own
 ## Delusion prior), so listeners sharing the same compiled case share it without breaking

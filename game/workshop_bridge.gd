@@ -216,7 +216,10 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 ## or "" for none it would know of. An evil NPC passes none: its view is its good self's.
 static func own_burden(n) -> Dictionary:
 	var held: String = str(n.secret_mod)
-	return {"self": n.id, "kind": held if held != "" and bool(n.burden_self_known) and held not in ScriptDef.HIDDEN_SECRETS else ""}
+	# delusional_ok: whether its gift could be the Delusional one (the deal's placement rules),
+	# for its own Delusion prior (CaseEval.own_delusion_prior; shared Delusion doubt, Nov 22).
+	return {"self": n.id, "kind": held if held != "" and bool(n.burden_self_known) and held not in ScriptDef.HIDDEN_SECRETS else "",
+		"delusional_ok": preload("res://workshop/source_doubt.gd").could_hold_secret(str(n.role), "delusional")}
 
 ## The nights an NPC knows it spent at home, for its movement model (view.own_home):
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not

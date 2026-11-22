@@ -271,7 +271,10 @@ func _judged_case() -> void:
 	var m1: float = float(crowd.judged.get(1, -1.0))
 	print("judged doubt of the own reading: an agreeing teller %.3f, one clashing %.3f, two clashing %.3f (prior %.3f)" % [c1, o1, m1, float(one.self_doubt.get(1, 0.0))])
 	check(c1 >= 0.0 and o1 > c1 and m1 > o1, "the more trusted tellers it clashes with, the more the NPC doubts its own reading")
-	check(c1 < float(calm.self_doubt.get(1, 1.0)), "a reading that fits the rest is doubted less than its prior (%.3f against %.3f)" % [c1, float(calm.self_doubt.get(1, 1.0))])
+	# Its prior is the night's poison and the shared Delusion's (OWN_DELUSION_PRIOR), which sits
+	# in the judge's worlds now, not in the per-night self_doubt (shared Delusion doubt, Nov 22).
+	var start: float = 1.0 - (1.0 - float(calm.self_doubt.get(1, 1.0))) * (1.0 - Tuning.Workshop.OWN_DELUSION_PRIOR)
+	check(c1 < start, "a reading that fits the rest is doubted less than its prior (%.3f against %.3f)" % [c1, start])
 	var trig: float = Tuning.Workshop.SELF_DOUBT_TRIGGER
 	var want_calm: Array = [1] if c1 >= trig else []
 	var want_crowd: Array = [1] if m1 >= trig else []

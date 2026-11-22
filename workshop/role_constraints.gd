@@ -800,20 +800,25 @@ static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
 	var me: int = ids_of(view).find(str(ob.get("self", ""))) if not ob.is_empty() else -1
 	# Domain.worlds is symmetric across players, so the share only depends on whether the
 	# listener knows its own burden, whether it is the claimant, and its known burden kind.
-	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), kind, me >= 0, me == who, str(ob.get("kind", "")) if me >= 0 else ""])
+	# Its own Delusional worlds carry their prior's weight (shared Delusion doubt, Nov 22), as
+	# in the judge's sums, so a neutral claim stays neutral against them too.
+	var classes = preload("res://workshop/case_eval_classes.gd")
+	var dw: float = classes.own_delusion_weight(view, classes.own_delusion_prior(view, {})) if me >= 0 else 1.0
+	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), kind, me >= 0, me == who, str(ob.get("kind", "")) if me >= 0 else "", dw])
 	if not _burden_share_cache.has(ckey):
-		var good: int = 0
-		var held: int = 0
+		var good: float = 0.0
+		var held: float = 0.0
 		for w in Domain.worlds(view):
 			if int(w.evil) & (1 << who):
 				continue
 			# Only a good listener knows its own burden, so these are worlds where it's good.
-			if me >= 0 and ((int(w.evil) & (1 << me)) or not preload("res://workshop/case_eval_classes.gd")._own_burden_ok(ob, me, w)):
+			if me >= 0 and ((int(w.evil) & (1 << me)) or not classes._own_burden_ok(ob, me, w)):
 				continue
-			good += 1
+			var wt: float = dw if me >= 0 and classes._listener_deluded(w, me) else 1.0
+			good += wt
 			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):
-				held += 1
-		_burden_share_cache[ckey] = float(held) / float(good) if good > 0 else 1.0
+				held += wt
+		_burden_share_cache[ckey] = held / good if good > 0.0 else 1.0
 	return float(_burden_share_cache[ckey])
 
 static func ids_of(view: Dictionary) -> Array:

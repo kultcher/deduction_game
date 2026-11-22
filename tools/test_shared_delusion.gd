@@ -94,6 +94,9 @@ func _prior(me: String) -> void:
 	check(omen.delusion < 1e-9, "an Ill-Omened holder can't be Delusional (%.4f)" % omen.delusion)
 	var chron: Dictionary = _ask(_view([], me), _listener(me, "chronicler", []), me, [])
 	check(chron.delusion < 1e-9, "a Chronicler, whom the deal never makes Delusional, can't be (%.4f)" % chron.delusion)
+	var flagged: Dictionary = _view([], me)
+	flagged.own_burden["delusional_ok"] = false
+	check(_ask(flagged, lis, me, []).delusion < 1e-9, "nor can a listener whose own_burden says its gift can't be")
 	# Parity: the kernel's weight against the same count in GDScript.
 	var view: Dictionary = _view([], me)
 	var mi: int = Solver.person_index(view, me)
@@ -108,7 +111,8 @@ func _prior(me: String) -> void:
 			held += 1
 	var s: float = float(held) / float(good)
 	var pr: float = Tuning.Workshop.OWN_DELUSION_PRIOR
-	var gd_w: float = (pr / (1.0 - pr)) * ((1.0 - s) / s)
+	var gd_w: float = Classes.own_delusion_weight(view, pr)
+	check(absf(gd_w - (pr / (1.0 - pr)) * ((1.0 - s) / s)) < 1e-9, "the GDScript weight sets the odds as counted here")
 	var universe: Array = Solver.universe(view)
 	var uh: int = SolverBackend.get_universe_handle(Solver._universe_key(view), universe)
 	var fb: PackedInt64Array = SolverBackend.pack_worlds(universe) if uh < 0 else PackedInt64Array()
