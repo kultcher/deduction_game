@@ -246,8 +246,18 @@ func _test_source_doubt() -> void:
 	var snap: Dictionary = Bridge.capture(g, [], listener.id, "private", listener)
 	_check(snap.listener.has("source_doubt") and not snap.listener.has("discounted") and not snap.listener.has("honesty"),
 		"WorkshopBridge listener snapshot carries source_doubt and omits legacy discounted/honesty")
-	_check(is_equal_approx(Mind.reliability(listener, honest_reader.id, 1, "reading"), 1.0),
-		"Mind.reliability in shared mode ignores poisoned legacy discounted/honesty")
+	# Since the shared Delusion doubt, every reading keeps the ordinary per-night poison doubt,
+	# so reliability isn't 1.0: compare against the same reading with the legacy maps cleared.
+	var rel_poisoned: float = Mind.reliability(listener, honest_reader.id, 1, "reading")
+	listener.discounted.erase(honest_reader.id + ":1")
+	listener.discounted.erase(liar.id + ":*")
+	listener.honesty.erase(honest_reader.id)
+	var rel_clean: float = Mind.reliability(listener, honest_reader.id, 1, "reading")
+	listener.discounted[honest_reader.id + ":1"] = 0.90
+	listener.discounted[liar.id + ":*"] = 0.0
+	listener.honesty[honest_reader.id] = 0.10
+	_check(is_equal_approx(rel_poisoned, rel_clean) and rel_clean > 0.8,
+		"Mind.reliability in shared mode ignores poisoned legacy discounted/honesty (%.3f vs %.3f)" % [rel_poisoned, rel_clean])
 
 	# Now `liar` publicly claims `listener`'s own unique gift ("seer") -> caught lie sets source_doubt[liar:*] == 1.0
 	# and automatically collapses the relayed sighting's hearing_weight!

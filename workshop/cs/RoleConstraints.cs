@@ -485,6 +485,8 @@ internal static class RoleConstraintsKernel
         int ownRoleId = headerInts[8];
         bool routesAvailable = headerInts[9] != 0;
         bool routesOkay = headerInts[10] != 0;
+        // The Minion roles on the script (0: unknown), for the Seer's Scion odds below.
+        int scriptMinionCount = headerInts.Length > 15 ? headerInts[15] : 0;
 
         // 2. Medium relay source health, alive_at_night, and duplicate visit checks (lines 144-153)
         if (relayMediumSourceIndices.Length > 0)
@@ -658,6 +660,8 @@ internal static class RoleConstraintsKernel
         List<int>? seerDemonOverflow = null;
         List<int>? seerReadingsOverflow = null;
         int seerReadingCount = 0;
+        bool seerDemonShifted = false;
+        int seerShiftedTo = 0;
         int veteranNight = -1;
         int martyrTargetToken = 0;
         int executorTargetToken = 0;
@@ -1137,6 +1141,11 @@ internal static class RoleConstraintsKernel
                         demonThen = hx;
                     }
                 }
+                if (demonThen != demon)
+                {
+                    seerDemonShifted = true;
+                    seerShiftedTo |= 1 << demonThen;
+                }
                 if (seerDemonOverflow == null && seerReadingCount < seerDemonStack.Length)
                 {
                     seerDemonStack[seerReadingCount] = demonThen;
@@ -1248,7 +1257,28 @@ internal static class RoleConstraintsKernel
             ReadOnlySpan<int> demonsSpan = seerDemonOverflow != null
                 ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(seerDemonOverflow)
                 : seerDemonStack.Slice(0, seerReadingCount);
-            seerWeight = SeerRhWeight(good & ~(1 << seerSourceIdx), demon, world.Marked, readingsSpan, demonsSpan);
+            int rhPool = good & ~(1 << seerSourceIdx);
+            // A: every reading read the Demon now (a hanged evil soul was a Minion).
+            seerWeight = SeerRhWeight(rhPool, demon, world.Marked, readingsSpan, ReadOnlySpan<int>.Empty);
+            bool bPossible = seerDemonShifted
+                && !RoleHeldByOther(assignRoles.Slice(0, assignCount), assignMasks.Slice(0, assignCount), RoleScion, demon);
+            for (int hb = seerShiftedTo; bPossible && hb != 0; hb &= hb - 1)
+            {
+                // A hanged soul whose role is pinned (a public Revenant, say) wasn't the Demon.
+                int hIdx = System.Numerics.BitOperations.TrailingZeroCount(hb);
+                bPossible = !RoleHeldByOther(assignRoles.Slice(0, assignCount), assignMasks.Slice(0, assignCount), RoleDemon, hIdx);
+            }
+            if (bPossible)
+            {
+                // B: the hanged soul was the Demon then and the Demon now is its risen Scion. Its
+                // prior odds against A on this evil team: the original Demon is any of the team
+                // alike, and B also needs the Demon now dealt the Scion, one Minion role of the
+                // script's (unknown script: one of the team's Minion places).
+                int minionRoles = scriptMinionCount > 0 ? scriptMinionCount : Math.Max(1, System.Numerics.BitOperations.PopCount((uint)evil) - 1);
+                double r = 1.0 / minionRoles;
+                double wB = SeerRhWeight(rhPool, demon, world.Marked, readingsSpan, demonsSpan);
+                seerWeight = (seerWeight + r * wB) / (1.0 + r);
+            }
             if (seerWeight <= 0.0)
             {
                 return 0.0;
@@ -1583,6 +1613,31 @@ internal static class RoleConstraintsKernel
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// Whether someone else's role already pins `person`, so they can't also be `roleId`.
+    private static bool RoleHeldByOther(ReadOnlySpan<int> roles, ReadOnlySpan<int> masks, int roleId, int person)
+    {
+        if (person < 0)
+        {
+            return true;
+        }
+        int bit = 1 << person;
+        for (int i = 0; i < roles.Length; i++)
+        {
+            if (roles[i] == roleId)
+            {
+                if ((masks[i] & bit) == 0)
+                {
+                    return true;
+                }
+            }
+            else if (masks[i] == bit)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static bool AssignRole(Span<int> roles, Span<int> masks, ref int count, int roleId, int candidates)
     {
         for (int i = 0; i < count; i++)

@@ -314,7 +314,11 @@ func _test_seer_before_scion() -> void:
 	var hanged_yes: float = post.call([claim, yes], 1)
 	print("Seer yes on night 0 for the later-hanged %s and %s, a Scion since risen: %s %.3f -> %.3f evil; %s %.3f" % [hanged, people[3].id, people[3].id, other_claim, other_yes, hanged, hanged_yes])
 	# Before the fix both rose alike (0.288 -> 0.326 each); now the yes leans on the hanged.
-	_check(hanged_yes > other_yes + 0.05 and other_yes - other_claim < 0.02, "an early yes on a Demon later hanged, the Scion risen, points at the hanged Demon, not the other person (%.3f against %.3f)" % [hanged_yes, other_yes])
+	# The hanged evil soul was the Demon (the Demon now its Scion) or the Scion itself, at even
+	# odds with the Scion the script's one Minion role, so the lean is half the certain case's
+	# (Nov 22: 0.360 against 0.310; it was 0.39 against 0.30 when the hanged was taken as the
+	# Demon outright).
+	_check(hanged_yes > other_yes + 0.03 and other_yes - other_claim < 0.03, "an early yes on a Demon later hanged, the Scion risen, points at the hanged Demon, not the other person (%.3f against %.3f)" % [hanged_yes, other_yes])
 
 func _test_omen_window() -> void:
 	var people: Array = []

@@ -258,6 +258,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		marked_m,
 		mediums_mask,
 		omen_all,  # the hanged Ill-Omened claimants whose windows cover these cards
+		view.get("script_minions", []).size(),  # the Seer's Scion odds (0: unknown script)
 	])
 
 	var events: Array = view.get("timeline", {}).get("events", [])
