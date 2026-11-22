@@ -30,7 +30,10 @@
    - **Effect** on `seer_contradiction_burden`: before, the town's suspicion of the Seer rose by 0.00 to 0.16 when the player argued Delusion. Now it falls on five of six seeds (by 0.01 to 0.17) and rises by 0.01 on one.
    - So arguing Delusion now clears the reader, as the Workshop hint always said. The badge is unchanged, since the juror grades the cards' evidence.
    - **It moves golden,** because NPC refreshes use this doubt. On this branch golden isn't a gate.
-   - **For Lantern, provisional:** the case's 79% Delusional, where lying should come out ahead. Lantern is tracing it.
+   - **Counted once:** a presented case whose arg isn't certified stays unowned, so it reached a listener both as the player's word card and as these odds (Lantern's read of `shared_ledger.gd`). Pass 3 now skips any (X, Delusional) that already has a `word:secret` card.
+   - **The 79% traced (Lantern):** it's the player's word, not the core. On a rare burden, the player's own "X carries a hidden burden" multiplies the odds about 60×, and the badge's before side doesn't have it. Without the word, lying wins (6% Delusional, 69% evil).
+     - The choice is Michael's, through Seneschal: (a) leave the player's word out of the badge, which Lantern and I both recommend; or (b) set the word's false-arising chance from the burden's share of the deal.
+     - Also his: the word or the odds as the single path for NPCs.
 
 ## What I measured
 

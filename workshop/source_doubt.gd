@@ -226,6 +226,10 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 
 	# Pass 3: Unowned template deduction metadata (`meta.conclusion` + `weight`; never `effects`).
 	var delusion_odds: Dictionary = {}
+	var word_ids: Dictionary = {}
+	for wc in cards:
+		if str(wc.get("id", "")).begins_with("word:secret:"):
+			word_ids[str(wc.id)] = true
 	for eid in ledger:
 		if owned_map.has(eid):
 			continue
@@ -257,6 +261,10 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			# no discount on X's readings, which would count Delusion twice. The old doubt
 			# (DOUBT_ARG_DELUSIONAL_SCALE x weight, capped) is now the odds it multiplies X's
 			# Delusional worlds by: 1 / (1 - doubt).
+			# The player's word for the same (X, Delusional) already argues it (SharedLedger's
+			# word:secret card, when the presented case's arg stays unowned): count it once.
+			if word_ids.has("word:secret:%s:delusional" % ca):
+				continue
 			var d_del: float = minf(Tuning.Workshop.DOUBT_ARG_DELUSIONAL_SCALE * wgt, Tuning.Workshop.DOUBT_ARG_CAP)
 			delusion_odds[ca] = maxf(float(delusion_odds.get(ca, 1.0)), 1.0 / (1.0 - d_del))
 
