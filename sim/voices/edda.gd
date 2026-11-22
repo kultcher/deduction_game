@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "There's no rot in {subject}, dear. I'd know.",
 	"vote_resist_readings_agree": "Not {nominee}, dear. Their readings tally with what I know.",
 	"support_doubt_for": "I've known {target} since we were young, and they never had it in them... did they?",
+	"vote_yes_doubtful_friend": "Forgive me, {nominee}. I've known you since we were young, and it near breaks me to do this.",
 	"opinion_readings_agree": "{subject}'s readings tally with what I know, dear. No rot there.",
 	"opinion_fine": "{subject} seems all right to me—steady enough.",
 	"opinion_unfamiliar": "I don't really know {subject} that well, love; we don't cross paths much.",

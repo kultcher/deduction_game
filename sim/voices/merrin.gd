@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "Thank heaven for {subject}—one soul in this doomed town I'd swear is free of the fiend!",
 	"vote_resist_readings_agree": "I'll not hang {nominee}! Their readings ring true with what I know!",
 	"support_doubt_for": "I've known {target} for so long! Surely they couldn't be the fiend's own... could they?",
+	"vote_yes_doubtful_friend": "Woe and heartbreak! Forgive me, {nominee}—even the dearest may hide the darkest heart!",
 	"opinion_readings_agree": "{subject}'s readings ring true with what I know. Thank heaven, one soul free of the fiend!",
 	"opinion_fine": "{subject} seems all right to me, mercifully!",
 	"opinion_unfamiliar": "Alas, I don't really know {subject} that well—who knows what lurks behind a quiet door?",

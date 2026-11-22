@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "I have observed nothing to suggest {subject} is in league with the fiend.",
 	"vote_resist_readings_agree": "I decline to hang {nominee}: their readings are consistent with what I know.",
 	"support_doubt_for": "My long acquaintance with {target} argues against this... though acquaintance, I must concede, is not proof.",
+	"vote_yes_doubtful_friend": "Forgive me, {nominee}. Affection is not evidence, and I could not let it outweigh what is.",
 	"opinion_readings_agree": "{subject}'s readings are consistent with what I know; I find no sign of the fiend in them.",
 	"opinion_fine": "On the available evidence, {subject} seems all right to me.",
 	"opinion_unfamiliar": "I do not really know {subject} that well; my sample of their conduct is small.",

@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "{subject}? Nah, not one of them. No way.",
 	"vote_resist_readings_agree": "No way I'm hanging {nominee}! Their readings line up with what I know.",
 	"support_doubt_for": "{target}? No way. I've known them forever. They wouldn't... right?",
+	"vote_yes_doubtful_friend": "Sorry, {nominee}. Really. I just—I wish I could say no.",
 	"opinion_readings_agree": "{subject}'s readings line up with what I know. Not one of them, no way.",
 	"opinion_fine": "{subject} seems all right to me! No weirdness there.",
 	"opinion_unfamiliar": "Honestly, I don't really know {subject} that well—barely talked to them!",

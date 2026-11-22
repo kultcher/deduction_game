@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "Strange as it sounds coming from me, I don't take {subject} for one of the wicked.",
 	"vote_resist_readings_agree": "I'm not staking a rope on {nominee}: their readings hold up against what I know.",
 	"support_doubt_for": "I've known {target} for ages, and murder seems terribly unlike them... doesn't it?",
+	"vote_yes_doubtful_friend": "Nothing personal, {nominee}. Well—a little personal. Forgive me.",
 	"opinion_readings_agree": "{subject}'s readings hold up against what I know, so I don't take them for one of the wicked.",
 	"opinion_fine": "{subject} seems all right to me—almost boringly respectable.",
 	"opinion_unfamiliar": "I don't really know {subject} that well, I'm afraid; they keep their cards close.",

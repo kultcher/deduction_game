@@ -164,6 +164,12 @@ func _doubtful_friend() -> void:
 		if said == "" or not (t.name in said) or "{" in said:
 			unvoiced.append(vid)
 	_check(unvoiced.is_empty(), "every voice says the doubting defence in its own words, naming the nominee (Herald, Michael's set) %s" % [unvoiced])
+	var unvoiced_yes: Array = []
+	for vid in load("res://sim/dialogue_voices.gd").VOICES.keys():
+		var said: String = load("res://sim/dialogue.gd").voice_line(vid, "vote_yes_doubtful_friend", "", {"nominee": t.name})
+		if said == "" or not (t.name in said) or "{" in said:
+			unvoiced_yes.append(vid)
+	_check(unvoiced_yes.is_empty(), "and the reluctant friend's yes, in each voice (Michael's set) %s" % [unvoiced_yes])
 	f.friends.erase(t.id)
 	_check(near < 0.0 or not ("would they?" in speak.call(near)), "someone who isn't their friend speaks up plainly")
 

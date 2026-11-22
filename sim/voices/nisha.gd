@@ -43,6 +43,7 @@ const LINES = {
 	"opinion_clear": "Nothing I've observed supports the hypothesis that {subject} is evil.",
 	"vote_resist_readings_agree": "I won't vote to hang {nominee}: their readings are in keeping with what I know.",
 	"support_doubt_for": "I've known {target} a long time, and nothing in all that time points to this. Still, I can't rule it out.",
+	"vote_yes_doubtful_friend": "Forgive me, {nominee}. I've known you as a friend, but the facts of the case reveal you as something else.",
 	"opinion_readings_agree": "{subject}'s readings are in keeping with what I know, which argues against them being evil.",
 	"opinion_fine": "{subject} seems all right to me—no anomalies so far.",
 	"opinion_unfamiliar": "I don't really know {subject} that well; treat them as an open question.",
