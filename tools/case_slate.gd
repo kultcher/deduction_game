@@ -109,6 +109,9 @@ const CASES = {
 var _texts: Dictionary = {}
 
 func _init() -> void:
+	# SLATE_NO_DERIVED_DOUBT=1: the average listener holds no derived doubt (before Nov 22).
+	if OS.get_environment("SLATE_NO_DERIVED_DOUBT") == "1":
+		preload("res://game/profile_judge.gd").derived_doubt = false
 	var args: Array = OS.get_cmdline_user_args()
 	var per_case: int = 10
 	var path: String = "user://case_slate.jsonl"
