@@ -24,7 +24,8 @@
 ##               never four people at 70% in a two-evil town
 ##
 ##   firsthand   what the listener knows for itself among the cards it holds: its own
-##               readings, and a sighting of it on a night it knows it spent at home
+##               readings, its own sightings and vigils, and a sighting of it on a night it
+##               knows it spent at home
 ##   core        the items holding a firsthand card (the seed), judged together with every
 ##               other item worth more next to the seed than apart from it. Each candidate
 ##               is tested against the seed only, never against what already joined, so the
@@ -101,6 +102,10 @@ static var force_row: String = ""
 ## cleared him. The sighting still counts in full through its item, against its teller (the
 ## sighter contest with the listener's own home night). A tool turns it on to compare.
 static var seed_wrong_sightings: bool = false
+## What the listener saw for itself (its own sightings and vigils, not quoted or relayed)
+## seeds the core like its own readings (Michael, Nov 22). On in play; a tool turns it off
+## to compare.
+static var seed_own_sightings: bool = true
 ## Measurement switches (on in play), for showing what each rule changes on a replay:
 ## - reuse_rule: a presenter's case that reuses its own cards doesn't stack (case_plan's
 ##   replacement, case_step's shared part).
@@ -732,8 +737,8 @@ static func pool(item_list: Array) -> Dictionary:
 	return {"ids": ids, "ctx": ctx}
 
 
-## The held cards the listener knows firsthand (sorted ids): its own readings, and
-## (seed_wrong_sightings) a sighting of it on a night it knows it spent at home. That
+## The held cards the listener knows firsthand (sorted ids): its own readings, its own
+## sightings and vigils (seed_own_sightings), and (seed_wrong_sightings) a sighting of it on a night it knows it spent at home. That
 ## sighting is knowledge about its teller: "he says he saw me out, and I wasn't".
 static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> Array:
 	var self_id: String = str(listener.get("id", ""))
@@ -742,6 +747,9 @@ static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> A
 	for id in held:
 		var c: Dictionary = by_id[id]
 		if c.kind == "report" and str(c.get("source", "")) == self_id:
+			out.append(id)
+		elif seed_own_sightings and c.kind in ["sighting", "vigil"] and str(c.get("source", "")) == self_id \
+				and not c.get("quoted", false) and not c.has("relay_source"):
 			out.append(id)
 		elif seed_wrong_sightings and c.kind == "sighting" and self_id in c.get("subjects", [c.get("subject", "")]):
 			var night: String = str(c.get("night", -1))

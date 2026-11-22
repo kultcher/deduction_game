@@ -48,8 +48,10 @@ func _init() -> void:
 	# Off in play since #506 (Lantern, Nov 21): seeding pulled the sighting's whole movement item
 	# into the core. The mechanism is still checked below, with the switch on.
 	check(not Connections.seed_wrong_sightings, "a wrong sighting of the listener doesn't seed the core in play")
+	check(Connections.seed_own_sightings, "the listener's own sightings and vigils seed the core in play (Michael, Nov 22)")
 	Connections.seed_wrong_sightings = true
 	_firsthand()
+	_own_sightings()
 	_tests_and_members()
 	_arithmetic()
 	_combine()
@@ -73,6 +75,29 @@ func _init() -> void:
 
 
 # ------------------------------------------------------------ the rules, on hand-made cards
+
+func _own_sightings() -> void:
+	var by_id: Dictionary = _cards()
+	by_id["my_sight"] = {"id": "my_sight", "kind": "sighting", "source": "me", "subject": "x", "subjects": ["x"], "night": 2}
+	by_id["my_vigil"] = {"id": "my_vigil", "kind": "vigil", "source": "me", "subject": "y", "subjects": ["y"], "night": 1}
+	by_id["quoted_sight"] = {"id": "quoted_sight", "kind": "sighting", "source": "me", "subject": "z", "subjects": ["z"], "night": 1, "quoted": true}
+	by_id["relayed_sight"] = {"id": "relayed_sight", "kind": "sighting", "source": "me", "subject": "z", "subjects": ["z"], "night": 3, "relay_source": "y"}
+	var listener: Dictionary = {"id": "me", "knowledge": {"own_outings": {"1": false, "2": false, "3": true}}}
+	var held: Array = by_id.keys()
+	var first: Array = Connections.firsthand(by_id, held, listener)
+	check(first == ["my_sight", "my_vigil", "own", "saw_me_home", "watch"], "firsthand: its own sighting and vigil count like its own readings (%s)" % str(first))
+	check("quoted_sight" not in first and "relayed_sight" not in first and "saw_x" not in first, "not a quoted or relayed sighting, nor someone else's sighting")
+	Connections.seed_own_sightings = false
+	check("my_sight" not in Connections.firsthand(by_id, held, listener), "with the option off, its own sighting doesn't seed")
+	Connections.seed_own_sightings = true
+	var none: Array = Connections.items(by_id, held, people_of(), "none")
+	var keys: Array = Connections.seed_keys(none, first)
+	check("night:1" in keys and "night:2" in keys, "the nights holding its own sighting and vigil seed the core (%s)" % str(keys))
+
+
+func people_of() -> Array:
+	return ["me", "x", "y", "z"]
+
 
 func _cards() -> Dictionary:
 	return {
