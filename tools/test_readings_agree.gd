@@ -30,6 +30,7 @@ func _init() -> void:
 	_playtest_51795()
 	_doubtful_friend()
 	_reluctant_yes()
+	_trust_damp()
 	print("Readings agree: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -188,3 +189,25 @@ func _reluctant_yes() -> void:
 	_check(said.call(0.6) == "", "not one whose yes was firm")
 	f.friends.erase(t.id)
 	_check(said.call(0.05) == "", "nor someone who isn't their friend")
+
+## Strong trust in the nominee blunts the town's pressure and the player's yes (Michael, Nov 22).
+func _trust_damp() -> void:
+	var w = _world()
+	w.begin_meeting()
+	var goods: Array = w.living_good()
+	var v = goods[0]
+	var t = goods[1]
+	v.suspicion[t.id] = 0.18
+	v.consensus_pressure[t.id] = 0.20
+	var parts_at := func(trust: float) -> Dictionary:
+		v.npc_trust[t.id] = trust
+		w.meeting["vote_parts"] = {}
+		MindVote.vote(w, v, t.id, goods[2].id, true, "", 0)
+		return w.meeting["vote_parts"].get(v.id, {}).get("parts", {})
+	var low: Dictionary = parts_at.call(0.6)
+	var high: Dictionary = parts_at.call(0.95)
+	_check(not low.has("trusts_nominee"), "below the trust level, nothing is damped")
+	var social: float = maxf(0.0, float(high.get("town_pressure", 0.0))) + maxf(0.0, float(high.get("player_votes_yes", 0.0)))
+	var expect: float = -Tuning.Meeting.VOTE_TRUST_DAMP_MAX * 0.8 * social
+	_check(high.has("trusts_nominee") and is_equal_approx(float(high["trusts_nominee"]), expect), "at trust 0.95, the town's pressure and the player's yes count for less (%.3f)" % float(high.get("trusts_nominee", 0.0)))
+	_check(is_equal_approx(float(high.get("suspicion", 0.0)), float(low.get("suspicion", 0.0))), "suspicion from evidence isn't damped")
