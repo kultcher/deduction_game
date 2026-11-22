@@ -272,6 +272,13 @@ func _hidden_burden() -> void:
 	print("hidden burden: Delusional %.3f -> %.3f (x%.2f, %s)" % [float(heard.get("chance_before", -1.0)), float(heard.get("chance", -1.0)), float(r.get("lr", 0.0)), str(r.get("category", ""))])
 	check(r.get("ready", false) and float(heard.get("chance_before", 1.0)) < 0.2, "the hidden-burden premise reads the chance of being Delusional, low before the case (%.3f)" % float(heard.get("chance_before", -1.0)))
 	check(float(heard.get("chance", 0.0)) > float(heard.get("chance_before", 1.0)) and float(r.get("lr", 0.0)) > 1.0, "and a Seer's clashing readings raise it (x%.2f)" % float(r.get("lr", 0.0)))
+	# "Is Marked" reads the chance of the mark too (Michael, Nov 22), not of being good: low before.
+	var mp: String = model.add_premise(a.id, "marked", Vector2(0, 200))
+	_link(model, view, mp, [_id(g, view, yes_n)])
+	var rm: Dictionary = Live.test_juror(g, model.compile(mp))
+	var mheard: Dictionary = rm.get("listener", {})
+	print("is Marked: %.3f -> %.3f (x%.2f, %s)" % [float(mheard.get("chance_before", -1.0)), float(mheard.get("chance", -1.0)), float(rm.get("lr", 0.0)), str(rm.get("category", ""))])
+	check(rm.get("ready", false) and float(mheard.get("chance_before", 1.0)) < 0.2, "the Marked premise reads the chance of being Marked, low before the case (%.3f)" % float(mheard.get("chance_before", -1.0)))
 
 func _done() -> void:
 	print("Juror as listener: %d checks, %d failures" % [checks, fails])

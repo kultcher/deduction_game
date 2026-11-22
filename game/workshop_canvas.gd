@@ -450,7 +450,10 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 		if not split.is_empty():
 			chance_before = 1.0 - before * float(split.before)
 			chance = 1.0 - after * float(split.after)
-	if type == "secret_mod":
+	# A burden premise ("carries a hidden burden", "is Marked") reads the listener's chance of the
+	# burden itself, not of being good (Michael, Nov 22: a Marked case read Weak with listeners
+	# 99% sure of the mark).
+	if type in ["secret_mod", "marked"]:
 		var own: Dictionary = _own_question_chance(pj, conclusion)
 		if not own.is_empty():
 			chance_before = float(own.before)

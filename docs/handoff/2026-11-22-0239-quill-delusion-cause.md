@@ -35,6 +35,9 @@
      - The choice is Michael's, through Seneschal: (a) leave the player's word out of the badge, which Lantern and I both recommend; or (b) set the word's false-arising chance from the burden's share of the deal.
      - Also his: the word or the odds as the single path for NPCs.
 
+6. **"Is Marked" is graded on the listener's chance of the mark, not of being good** (Michael, Nov 22, a bug against the design; Lantern found a Marked case reading Weak with listeners 99% sure of the mark). `listener_reading` asks the premise itself for "marked" as for "secret_mod". `test_juror_listener` checks it (32 checks).
+   - `marked_rescue` and `marked_bluff` both go from Weak to Strong, with the listener at 2.5% → 98.7% Marked. The Demon's bluff reads exactly as strong as the real holder's claim, because the player's word drives both. That's Michael's open choice (a).
+
 ## What I measured
 
 - **Suites:** `test_delusional_reading` gained 5 checks (12 in all, 0 failures):
