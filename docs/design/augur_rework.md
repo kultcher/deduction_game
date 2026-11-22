@@ -54,9 +54,10 @@ The first free part of the day gave no reading 38 times, when the Augur stayed h
 
 ## Open
 
-1. **When the Demon learns of a Hot.** If it learns that same night, it can kill the Augur before
-   it speaks, and the best reading is lost unless a Medium recovers it. If it learns in time for
-   the following night, the Augur always gets one day to speak. Vicar recommends the latter.
+1. ~~**When the Demon learns of a Hot**~~: **the same night** (Michael, Nov 22). The Demon can
+   kill the Augur before it speaks. "I'd rather the Augur start a little too weak/vulnerable and
+   tune it up than have it end games too easily." Learning in time for the following night is the
+   lever if it proves too weak.
 2. **Whether Hot is still too strong** once the Demon reacts. To check in play. The fallbacks:
    Hot needs at least three others in the building, or the reading is single use.
 3. **Who builds it:** Lantern (the judge needs where the Demon was in each world, by building, for
