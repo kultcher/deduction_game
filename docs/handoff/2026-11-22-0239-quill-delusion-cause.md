@@ -26,6 +26,12 @@
    - 25 cases move by under 1%. The Gravedigger and Dowser "0" cases lose about a tenth.
    - `seer_contradiction_burden` goes from 179 to 148, still Strong. These deals' scripts have no Poisoner, so lying and Delusion stay the only explanations of a Seer contradicting itself.
 
+5. **An argued "carries a hidden burden: Delusional" moves belief in the burden, not the readings** (option (b), agreed with Lantern; his hook facb7262). In `source_doubt.gd` Pass 3 the flat discount on the subject's readings (0.7 × weight) is gone, because with the core it counted Delusion twice. The same number d = 0.7 × weight (capped at 0.9) becomes the odds 1 / (1 − d) on the subject's Delusional worlds (`case_data.delusion_odds`): about 3.3 at full weight, 10 at most. No new constant; `DOUBT_ARG_DELUSIONAL_SCALE`'s comment says what it means now, and `tuning_catalogue.md` is regenerated.
+   - **Effect** on `seer_contradiction_burden`: before, the town's suspicion of the Seer rose by 0.00 to 0.16 when the player argued Delusion. Now it falls on five of six seeds (by 0.01 to 0.17) and rises by 0.01 on one.
+   - So arguing Delusion now clears the reader, as the Workshop hint always said. The badge is unchanged, since the juror grades the cards' evidence.
+   - **It moves golden,** because NPC refreshes use this doubt. On this branch golden isn't a gate.
+   - **For Lantern, provisional:** the case's 79% Delusional, where lying should come out ahead. Lantern is tracing it.
+
 ## What I measured
 
 - **Suites:** `test_delusional_reading` gained 5 checks (12 in all, 0 failures):

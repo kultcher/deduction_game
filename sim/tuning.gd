@@ -1225,6 +1225,9 @@ class Workshop:
 	const DOUBT_GD_GOOD_TRUST_MIN = 0.60
 	const DOUBT_ARG_MISLED_SCALE = 0.8
 	const DOUBT_ARG_UNRELIABLE_SCALE = 0.5
+	## An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped
+	## at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared
+	## Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3.
 	const DOUBT_ARG_DELUSIONAL_SCALE = 0.7
 	const DOUBT_ARG_CAP = 0.9
 	const DOUBT_CHALLENGE_LYING_MIN_AGR = 0.6
