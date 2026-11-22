@@ -158,7 +158,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CRED_WEIGHT_STATEMENT` | `0.35` |  | `game/game_meeting.gd` |
 | `CRED_WEIGHT_BARE_NOMINATION` | `1.0` |  | `game/game_meeting.gd` |
 | `CRED_DECLARATION_CHANGE` | `0.1` | Changing the demon-type declaration (game/demon_declaration.gd): a straight cut to every NPC's credibility, kept in their track-record target. About one failed case among two claims: CRED_STEP * CRED_SPAN * 0.5. | `game/demon_declaration.gd` |
-| `DISTRUST_EXPLAIN_THRESHOLD` | `0.35` |  | `sim/mind.gd` |
+| `DISTRUST_EXPLAIN_THRESHOLD` | `0.35` |  | `sim/mind.gd`, `sim/mind_call_on.gd` |
 | `SECRET_KEPT_BASE` | `0.03` | Overnight secret-keeping recovery | `sim/mind.gd` |
 | `SECRET_KEPT_PRIVACY_SCALE` | `0.04` |  | `sim/mind.gd` |
 | `SECRET_KEPT_RUMOR_MULT` | `0.4` |  | `sim/mind.gd` |
@@ -381,6 +381,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PUBLIC_CLAIM_DAY_SLOPE` | `0.4` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
 | `PUBLIC_CLAIM_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
+| `CALL_ON_PRESSURE_BUMP` | `0.3` | "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC the Demonologist calls on feels, in pressure units: it adds to the "say it before the town?" decision as that much more pressure would, and lowers the bar for volunteering a night sighting by as much. | `sim/mind_call_on.gd` |
 | `PUBLIC_CLAIM_FEW_LEFT` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_BASE` | `0.2` |  | `sim/mind_meeting.gd` |

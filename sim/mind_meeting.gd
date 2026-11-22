@@ -312,11 +312,12 @@ static func _reading_public(w, src, e: Dictionary) -> bool:
 			return src.claim_public and bool(own.get("shared", false))
 	return false
 
-static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void:
+static func _volunteer_night_sightings(w, n, lines: Array, facts: Array, bump: float = 0.0) -> void:
 	if n.silenced: return
 	var score = trait_of(n, "gossip") + trait_of(n, "confidence")
 	var panic = paranoia(w, n)
-	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic + _testimony_sighting_bar(w, n)
+	# bump: being called on by the Demonologist ("Call on") lowers the bar a little.
+	var threshold = Tuning.Meeting.VOLUNTEER_SIGHTING_BASE - panic + _testimony_sighting_bar(w, n) - bump
 	w.observe_decision(n, "volunteer_night_sightings", score >= threshold, {"score": score, "threshold": threshold, "comparison": ">=",
 		"inputs": {"gossip": trait_of(n, "gossip"), "confidence": trait_of(n, "confidence"), "paranoia": panic, "composure": trait_of(n, "composure")},
 		"threshold_parts": {"base": Tuning.Meeting.VOLUNTEER_SIGHTING_BASE, "paranoia": -panic}, "gate": "Gossip + Confidence threshold; eligible untold sightings still require disclosure/cover checks; no random draw"})
@@ -437,7 +438,7 @@ static func choose_double_claim(w, l, rival, role: String) -> bool:
 	w.dlog.think(l.id, "plan", "Will claim the %s too, the gift %s just claimed: a deliberate double claim (heat %.2f)." % [C.role_name(role), rival.name, heat], {"from": old, "to": role, "rival": rival.id})
 	return true
 
-static func _public_claim_decision(w, n) -> String:
+static func _public_claim_decision(w, n, bump: float = 0.0) -> String:
 	if n.is_evil():
 		switch_taken_bluff(w, n)
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
@@ -472,6 +473,9 @@ static func _public_claim_decision(w, n) -> String:
 	var silence: float = _silence_bonus(w, n)
 	if silence > 0.0:
 		parts["silence"] = silence
+	# Called on by the Demonologist ("Call on"): a light push, like a little more pressure.
+	if bump > 0.0:
+		parts["called_on"] = bump * Tuning.Meeting.PUBLIC_CLAIM_PRESSURE_SLOPE * (1.0 - Tuning.Meeting.PUBLIC_CLAIM_COMPOSURE_DAMP * trait_of(n, "composure"))
 	# Promised to tell the Demonologist first once protected, or offered them a deal for it
 	# today (a vigil, a ward, or keeping it quiet): hold it back until that's settled
 	# (triage 3.2: Odette asked for a vigil, then claimed at that evening's meeting).
