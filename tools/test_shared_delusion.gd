@@ -80,6 +80,7 @@ func _init() -> void:
 	_case_c(me, p)
 	_case_d(me, p)
 	_case_e(me, p)
+	_case_odds(me, p)
 	_exposed()
 	print("Shared Delusion: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
@@ -187,6 +188,64 @@ func _case_e(me: String, p: Array) -> void:
 	var r: Dictionary = _ask(_view([_claim(p[4], "seer"), y, n], me), _listener(me, "clerk", []), p[4], [])
 	print("(e) another Seer's yes then no: P(that Seer Delusional) %.1f%% -> %.1f%%" % [100.0 * before.delusion, 100.0 * r.delusion])
 	check(r.delusion > before.delusion, "(e) a reader contradicting itself is likelier the Delusional (%.3f)" % r.delusion)
+
+## Quill's argued premise: case_data.delusion_odds = {X: factor} multiplies X's Delusional-holder
+## worlds on the after side only. Reader X (a claimed Seer) has two "yes" readings, both naming
+## p[2]; a good Clerk listens. Factor 1 is no hook; a larger factor raises P(X Delusional) after
+## the case and weakens X's readings' pull on p[2]; the before side never moves.
+func _case_odds(me: String, p: Array) -> void:
+	var x: String = p[4]
+	var named: String = p[2]
+	var r1: Dictionary = _reading("o_n1", x, "seer", 1, {"pair": [named, p[3]], "yes": true})
+	var r2: Dictionary = _reading("o_n2", x, "seer", 2, {"pair": [named, p[5]], "yes": true})
+	var view: Dictionary = _view([_claim(x, "seer"), r1, r2], me)
+	var lis: Dictionary = _listener(me, "clerk", [])
+	var ask = func(odds) -> Dictionary:
+		Caches.clear_all()
+		var cs = Solver.empty_case()
+		cs.cards = view.cards.map(func(c): return c.id)
+		if odds != null:
+			cs["delusion_odds"] = {x: float(odds)}
+		cs.conclusion = {"type": "secret_mod", "mod": "delusional", "target": x, "at": "Original alignment"}
+		var r: Dictionary = CaseEval.evaluate(view, cs, lis)
+		return {"prior": float(r.prior), "delusion": float(r.posterior),
+			"named_before": float(r.people[named].prior), "named": float(r.people[named].posterior)}
+	var none: Dictionary = ask.call(null)
+	var rows: Array = []
+	for f in [1.0, 2.0, 3.0]:
+		var r: Dictionary = ask.call(f)
+		rows.append(r)
+		print("(odds) factor %d: P(X Delusional) %.4f -> %.4f; the named person's evil chance %.4f -> %.4f" % [int(f), r.prior, r.delusion, r.named_before, r.named])
+	print("(odds) no hook: P(X Delusional) %.4f -> %.4f; named %.4f -> %.4f" % [none.prior, none.delusion, none.named_before, none.named])
+	var same: bool = true
+	for key in none:
+		same = same and absf(float(none[key]) - float(rows[0][key])) < 1e-12
+	check(same, "(odds) factor 1 gives exactly the posteriors of no hook")
+	check(rows[2].delusion > rows[1].delusion and rows[1].delusion > none.delusion, "(odds) a larger factor raises P(X Delusional) after the case (%.4f < %.4f < %.4f)" % [none.delusion, rows[1].delusion, rows[2].delusion])
+	check(rows[2].named < none.named, "(odds) and weakens X's readings' pull on the person they name (%.4f < %.4f)" % [rows[2].named, none.named])
+	check(none.named > none.named_before, "(odds) the readings do pull on that person without the hook (%.4f > %.4f)" % [none.named, none.named_before])
+	var before_same: bool = true
+	for r in rows:
+		before_same = before_same and absf(r.prior - none.prior) < 1e-12 and absf(r.named_before - none.named_before) < 1e-12
+	check(before_same, "(odds) the before side is unchanged by the factor")
+	# With no Delusional on the script there are no holder worlds to weigh: the odds change nothing.
+	var bare: Dictionary = view.duplicate(true)
+	bare.world_options.modifiers = ["marked", "ill_omened", "unrequited"]
+	Caches.clear_all()
+	var cs2 = Solver.empty_case()
+	cs2.cards = bare.cards.map(func(c): return c.id)
+	cs2["delusion_odds"] = {x: 3.0}
+	cs2.conclusion = {"type": "evil", "target": named, "at": "Original alignment"}
+	var cs3 = cs2.duplicate(true)
+	cs3.erase("delusion_odds")
+	var a: float = float(CaseEval.evaluate(bare, cs2, lis).posterior)
+	Caches.clear_all()
+	var b: float = float(CaseEval.evaluate(bare, cs3, lis).posterior)
+	check(absf(a - b) < 1e-12, "(odds) with no Delusional on the script the odds change nothing (%.6f, %.6f)" % [a, b])
+	# The compile key carries the odds' people: a case with them never reuses one compiled without.
+	var cc_a: Dictionary = CaseEval.compile(view, view.cards, {"conclusion": {"type": "evil", "target": named}, "delusion_odds": {x: 3.0}})
+	var cc_b: Dictionary = CaseEval.compile(view, view.cards, {"conclusion": {"type": "evil", "target": named}})
+	check(cc_a.input != cc_b.input, "(odds) the compile key includes delusion_odds' people")
 
 ## In play: a good gifted NPC's refresh leaves its own chance and each reader's in workshop_state.
 func _exposed() -> void:

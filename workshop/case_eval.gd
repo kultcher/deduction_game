@@ -125,6 +125,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	var fits_before = _class_fits(view, cc, [], knowledge)
 	var fits = fits_before if (cache_enabled and Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
 	fits = _doubted_role_fits(view, cc, cards, knowledge, fits, listener)
+	fits = delusion_odds_fits(view, cc, case_data, fits)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
