@@ -11,6 +11,7 @@ const Decisions = preload("res://sim/dialogue_decisions.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const Observations = preload("res://sim/dialogue_observations.gd")
 const Contract = preload("res://sim/dialogue_contract.gd")
+const C = preload("res://sim/content.gd")
 const INTENTS = ["report", "doubted", "friend", "rival", "conceal", "revise", "alibi"]
 
 ## Verbal tics: a signature word that reads as character once and as a template by the third
@@ -226,7 +227,7 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	var extra: String = choices[int(counts.get(count_key, 0)) % choices.size()]
 	# Single replacement, not general string formatting of player/evidence text.
 	extra = extra.replace("{subject}", str(context.get("subject", "")))
-	var chunks: Array = [extra, spoken]
+	var chunks: Array = [extra, _continue_after(extra, spoken)]
 	if authored_form:
 		var rendered_form: String = extra.replace("{argument}", str(intent.get("argument", "")))
 		var when_label: String = str(intent.get("when", "last night"))
@@ -248,6 +249,32 @@ static func _compose(id: String, intent: Dictionary, context: Dictionary, memory
 	memory["seen"] = seen
 	memory["counts"] = counts
 	return result
+
+## After a lead-in that runs on ("If it helps,", "...but", "Um, yes—"), the statement continues
+## the sentence, so its first word takes a small letter (Coroner, playtests 23973 and 51795:
+## "If it helps, Last night..."). "I" and names keep their capital.
+static func _continue_after(lead: String, statement: String) -> String:
+	var l: String = lead.strip_edges()
+	if statement.is_empty() or l.is_empty():
+		return statement
+	var last: String = l[l.length() - 1]
+	var runs_on: bool = last in [",", "—", "-"] or (last == last.to_lower() and last != last.to_upper())
+	if not runs_on:
+		return statement
+	var first_word: String = statement.split(" ", false, 1)[0] if statement.contains(" ") else statement
+	var bare: String = first_word.rstrip(",.;:!?'’")
+	if bare == "I" or bare.begins_with("I'") or bare.begins_with("I’") or _is_name(bare):
+		return statement
+	return statement[0].to_lower() + statement.substr(1)
+
+static func _is_name(word: String) -> bool:
+	for p in C.CAST:
+		if str(p["name"]) == word:
+			return true
+	for r in C.ROLES:
+		if str(C.ROLES[r]["name"]) == word:
+			return true
+	return false
 
 ## Compose an uninterrupted NPC turn from already-approved utterances. Nothing here
 ## chooses disclosures or infers relationships from content. "preceded" means the caller

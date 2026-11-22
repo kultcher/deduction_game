@@ -520,6 +520,9 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	var spoken: String = C.spoken_when(e["day"], w.day)
 	var when = spoken[0].to_upper() + spoken.substr(1)
 	var body: String = reading_body(str(e["text"]))
+	if body.begins_with("I have given my life over"):
+		# Led by when it happened, the Martyr's choice is told in the past (Coroner, 51795).
+		body = "I gave my life over" + body.substr("I have given my life over".length())
 	if body.contains(C.spoken_day(int(e["day"]))):
 		# The reading already says which day (the Augur's "…the morning or afternoon of the
 		# second day"; Michael, Nov 19): a lead naming the evening would read as when it happened.
@@ -530,7 +533,7 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 			said = Dialogue.voice_line(n.id, "augur_yes" if bool(e.get("data", {}).get("yes", false)) else "augur_no", said, {"day": C.spoken_day(int(e["day"]))})
 		return {"kind": "report", "statement": said, "event_id": info_eid(n.id, e)}
 	if e.has("phase"):
-		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
+		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On %s, in the %s" % [C.spoken_day(int(e["day"])), C.PHASES[e["phase"]].to_lower()]
 	elif body.ends_with(" " + spoken):
 		body = body.substr(0, body.length() - spoken.length() - 1) # the lead already says when
 	return {"kind": "report", "statement": "%s, %s." % [when, body], "event_id": info_eid(n.id, e)}
