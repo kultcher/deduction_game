@@ -215,6 +215,59 @@ follow (contradiction, then elimination). Being as sure as Kiran or Dorian (abou
 day 3, roughly when you were, isn't out-deducing the player. It's worth watching whether
 elimination after a demon kill is often this sharp.
 
+## What drove the town toward Nisha (Michael's follow-up)
+
+Nisha (the Chronicler) peaked at the end of day 2:
+
+| | Day 1 | End of day 2 |
+|---|---|---|
+| Odette | 0.14 | **0.41** |
+| Isolde | 0.02 | **0.34** |
+| Dorian | 0.04 | 0.20 |
+| Kiran | 0.10 | 0.18 |
+
+Three things raised her and two lowered her. Figures come from taking whole groups of what
+each mind had heard out, at the start and end of day 2.
+
+**What raised her:**
+1. **Elimination, driven by the Demon's counts.** Jory's Dowser counts cleared Odette,
+   Fenwick and Lian, and never included Nisha. With those three cleared, more of the
+   remaining evil fell on the people left uncleared, and she was one.
+   - **The size:** Jory's readings add +0.11 to Isolde's suspicion of her, +0.14 to
+     Odette's, and +0.08 to Dorian's.
+   - **Isolde's case:** much of hers sits outside what she heard in public. Jory told her his
+     first count in private on day 2, which cleared three people for her. With them gone,
+     Nisha was her top suspect.
+2. **Merrin's pair.** Merrin's fake Archivist reading was "one of Kiran and Nisha is the
+   Scion".
+   - **For most:** it was discredited by the double claim and then by Kiran's Gravedigger
+     reading, so it added little (+0.07 for Isolde at the end of day 2).
+   - **For Odette:** she believed Merrin, so Kiran and Nisha were her pair. She ended on
+     Kiran 0.47 and Nisha 0.41, everyone else near zero. Merrin also told her privately on
+     day 1.
+3. **Her late claim.** Nisha claimed Chronicler only when pressed on her nomination, late on
+   day 2.
+   - **For most:** it nudged her up slightly (+0.02 to +0.03).
+   - **For Odette:** it added +0.15. A claim made under pressure fits a Scion bluffing, and
+     that's how Odette's pair read it.
+
+**What lowered her:**
+- **The double claim and Kiran's Gravedigger reading.** Both discredited Merrin's reading,
+  which cleared Nisha by 0.05 to 0.18 depending on the mind.
+- **Odette's Rumormonger reading ("one of Nisha and Lian is Unrequited").** It cut her
+  suspicion for Isolde, Dorian, Kiran and Edda (−0.06 to −0.12 on day 1).
+  - **Why:** being named in a reading about a Burden reads as being an ordinary townsperson
+    with a secret, not as evil.
+  - **The contrast:** that's the opposite of your thought that the reading might be cover.
+    No NPC weighed that possibility.
+  - **The exception:** Lian knew he was the Unrequited himself. For him the reading said
+    nothing about Nisha.
+
+**The town didn't count Jory nominating her.** Accusations and nominations aren't evidence
+in the belief model, but his readings were, and they did the work.
+
+**The outcome:** she died that night, which is what then moved the town onto Jory (above).
+
 **A method note.** The probes take out only what a mind has *heard*. They can't remove:
 - **its own readings and anything told to it privately:** those are kept separately, which
   is likely where Merrin's private tip to Odette sits;
