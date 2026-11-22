@@ -34,6 +34,7 @@ func _init() -> void:
 	_double_claim()
 	_witness_lying()
 	_bluff_change_clean()
+	_playtest_nov22()
 	print("Double claim response: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -240,3 +241,30 @@ func _bluff_change_clean() -> void:
 		if MindMeeting.choose_double_claim(w, t, rival, old):
 			any = true
 	_check(not any and not MindMeeting.switch_taken_bluff(w, t), "a Revenant-turned townsperson never double-claims or switches")
+
+## Michael's playtest, Nov 22: a Poisoner double-claimed its own ally's bluffed gift, hanging
+## the ally; and, its bluff switched to a first-night gift on day 1, had no reading to give.
+func _playtest_nov22() -> void:
+	var g = _game()
+	var w = g.w
+	var m = w.minion()
+	var ally = w.npcs.filter(func(x): return x.is_evil() and x != m)[0]
+	var role: String = "archivist"
+	var acted := false
+	for k in 400:
+		_unclaimed(m)
+		m.dialogue_memory.erase("double_claim")
+		m.info_log = m.info_log.filter(func(x): return not (x.get("fake", false) and x.get("shared", false)))
+		w.seed_value = 1000 + k
+		if MindMeeting.choose_double_claim(w, m, ally, role):
+			acted = true
+	_check(not acted, "a Minion never double-claims a teammate's claim")
+	# A late switch to a first-night gift still gets that night's reading.
+	var good = w.living_good()[0]
+	m.info_log = m.info_log.filter(func(x): return not x.get("fake", false))
+	var before: String = str(w.evil_plan["bluffs"].get(m.id, ""))
+	MindMeeting._change_bluff(w, m, before, role)
+	var fakes: Array = m.info_log.filter(func(x): return x.get("fake", false) and str(x.get("role", "")) == role)
+	_check(fakes.size() == 1 and int(fakes[0].get("day", -1)) == 0, "switched to the Archivist on day %d, it has a first-night Archivist reading to tell" % w.day)
+	MindMeeting._change_bluff(w, m, role, role)
+	_check(m.info_log.filter(func(x): return x.get("fake", false) and str(x.get("role", "")) == role).size() <= 1, "and never more than one")

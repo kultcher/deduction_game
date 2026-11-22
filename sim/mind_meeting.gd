@@ -411,6 +411,7 @@ static func _change_bluff(w, n, old: String, new: String) -> void:
 		s.info_log = s.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))
 		s.applied_info = s.info_log.size()
 		s.role = new if C.ROLES.has(new) and C.ROLES[new]["align"] == "good" else ""
+	Evil.backfill_start_reading(w, n, new)
 
 ## A Minion that hears a claim may take that gift as its own bluff: a deliberate double
 ## claim (Michael, Nov 19). Never the Demon or a Scion, never once it has claimed, nor if a
@@ -421,6 +422,10 @@ static func choose_double_claim(w, l, rival, role: String) -> bool:
 	if not l.is_evil() or not C.is_minion(l.role) or l.turned or l.id == w.demon_id or l.role == "scion" or l.claim_public or l.claimed_role != "" or l.silenced:
 		return false
 	if role == "" or C.ROLES.get(role, {}).get("kind", "") == "evil":
+		return false
+	# Never against a teammate's claim (Michael's playtest, Nov 22): the double claim is there to
+	# discredit a good claimant; against an ally it only hangs one of them.
+	if Evil.is_teammate(w, l, rival.id):
 		return false
 	if l.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
 		return false

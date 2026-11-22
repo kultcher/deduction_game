@@ -1074,6 +1074,37 @@ static func _mark_fake(entry: Dictionary) -> void:
 	entry["true"] = false
 	entry["fake"] = true
 
+## A bluff switched after the first night to a gift that only reads on the first night (a
+## double claim, or a taken bluff) still needs that night's reading, or the bluffer has
+## nothing to tell (Michael's playtest, Nov 22). Made now, as of night 0, and checked against
+## what's public like any fabrication.
+static func backfill_start_reading(w, n, role: String) -> void:
+	if w.day == 0 or not C.ROLES.get(role, {}).get("first_night", false) or not C.has_role_def(role):
+		return
+	if n.info_log.any(func(e): return e.get("fake", false) and str(e.get("role", "")) == role):
+		return
+	var bdef = C.role_def(role)
+	var plan: Dictionary = w.evil_plan
+	var s: String = str(plan.get("scapegoat", ""))
+	var m = mate(w, n)
+	if m == null:
+		m = n
+	var saved: int = w.day
+	w.day = 0
+	var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, m, [])
+	var entry: Dictionary = {} if gen.is_empty() else _stamp_fake(w, gen["entry"], role, false)
+	w.day = saved
+	if entry.is_empty():
+		return
+	var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, m, entry, false), s)
+	entry = vetted["entry"]
+	entry["day"] = 0
+	_mark_fake(entry)
+	entry["why"] = "evil fabrication: " + named(w, str(gen["why"])) + " (the first night's reading for a bluff taken up later)"
+	n.info_log.append(entry)
+	_remember_frame(n, entry, s)
+	w.dlog.add("fake_info", n.id, "", entry, "%s (evil, now bluffing %s) prepares its first-night reading: %s [%s]" % [n.name, role, entry["text"], entry["why"]])
+
 ## A fabricated reading as it will be told: its gift, its night (or day phase).
 static func _stamp_fake(w, entry: Dictionary, bluff: String, day_only: bool) -> Dictionary:
 	entry["day"] = w.day
