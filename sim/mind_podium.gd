@@ -52,13 +52,19 @@ static func options(w, d) -> Dictionary:
 		return {"silenced": true, "gift": "", "nights": []}
 	var gift: String = "role"
 	if d.claim_public:
-		gift = "readings" if (_unshared_readings(d) > 0 or _ongoing_info(d.claimed_role)) else ""
+		gift = "readings" if (_unshared_readings(d) > 0 or _ongoing_info(d.claimed_role) or _never_read(d)) else ""
 	return {"silenced": false, "gift": gift, "nights": range(0, w.day)}
 
 
 static func _unshared_readings(d) -> int:
 	return d.info_log.filter(func(e): return not e.get("shared", false) and not e.get("disowned", false)).size()
 
+
+## Claimed a gift with readings but never told one of it (playtest 51795: an Archivist claim with
+## no reading behind it): the town can still press for it.
+static func _never_read(d) -> bool:
+	var role: String = d.claimed_role
+	return role != "" and C.has_readings(role) and not d.info_log.any(func(e): return e.get("shared", false) and str(e.get("role", role)) == role)
 
 static func _ongoing_info(role: String) -> bool:
 	return role != "" and C.has_readings(role) and not (role in C.START_ROLES)

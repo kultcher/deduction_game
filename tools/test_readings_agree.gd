@@ -10,6 +10,8 @@ const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const MindVote = preload("res://sim/mind_vote.gd")
+const MindPodium = preload("res://sim/mind_podium.gd")
+const Gifts = preload("res://sim/gifts.gd")
 
 var checks = 0
 var fails = 0
@@ -24,6 +26,7 @@ func _check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_opinion()
 	_vote()
+	_playtest_51795()
 	print("Readings agree: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -91,3 +94,29 @@ func _vote() -> void:
 	var res2: Dictionary = {"nominee": t.id, "no": [v2.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
 	v2.workshop_state["confirmed_readings"] = {}
 	_check(MindVote.vote_resistance_lines(w, res2).filter(func(x): return "readings agree" in str(x.get("statement", ""))).is_empty(), "no record, nothing said")
+
+## Playtest 51795 (Coroner): whoever is on the block doesn't voice resistance to the
+## counter-nomination, a reading naming only me isn't cited for its reader, and a claimant who
+## never told a reading of the claimed gift can still be pressed for one.
+func _playtest_51795() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var blk = goods[0]
+	var t = goods[1]
+	blk.workshop_state["confirmed_readings"] = {t.id: _rec("known")}
+	var res: Dictionary = {"nominee": t.id, "no": [blk.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id, "prev_block": blk.id}
+	var said: Array = MindVote.vote_resistance_lines(w, res)
+	res.erase("prev_block")
+	var control: Array = MindVote.vote_resistance_lines(w, res)
+	_check(said.is_empty() and not control.is_empty(), "the one on the block doesn't speak against the counter-nomination (it would otherwise)")
+	# A reading about only the listener confirms what it knows of itself, but isn't kept to cite.
+	var l = goods[3]
+	var reader = goods[4]
+	var card: Dictionary = {"id": "c1", "kind": "report", "source": reader.id, "role": "martyr", "night": 1, "data": {"target": l.id}}
+	_check(Gifts.subjects({"role": card["role"], "data": card["data"]}) == [l.id], "a Martyr reading naming only the listener is seen as about it alone, so it isn't cited")
+	# The podium: an Archivist claim with no reading behind it can be pressed.
+	var c = goods[5]
+	c.claim_public = true
+	c.claimed_role = "archivist"
+	c.info_log = []
+	_check(MindPodium.options(w, c)["gift"] == "readings", "a claimant who never told a reading of its gift can be pressed for one")

@@ -722,7 +722,10 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 		if not rank.has(tier):
 			continue
 		var best: Dictionary = record.get(src, {})
-		if best.is_empty() or int(rank[tier]) > int(rank.get(str(best.get("tier", "")), 0)):
+		# A reading about only me confirms what I know of myself, not something to cite for the
+		# reader (playtest 51795): it still moves trust, but isn't kept to speak of.
+		var self_only: bool = Gifts.subjects({"role": str(c.get("role", "")), "data": c.get("data", {})}) == [n.id]
+		if not self_only and (best.is_empty() or int(rank[tier]) > int(rank.get(str(best.get("tier", "")), 0))):
 			record[src] = {"tier": tier, "card": cid, "day": w.day, "source": str(r.get("source", "")), "agreement": snappedf(float(r.get("agreement", 0.0)), 0.001)}
 		if n.is_shadow or n.is_evil():
 			continue

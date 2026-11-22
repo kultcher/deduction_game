@@ -222,7 +222,9 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 	for vid in res.get("no", []):
 		if picked.size() >= Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS:
 			break
-		if vid == nominee or not w.by_id.has(vid):
+		# Nor whoever is on the block (playtest 51795: the Demon on the block spoke up for the
+		# counter-nominee): its "no" speaks for itself.
+		if vid == nominee or vid == str(res.get("prev_block", "")) or not w.by_id.has(vid):
 			continue
 		var v = w.by_id[vid]
 		if v.silenced or not v.alive:
