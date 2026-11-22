@@ -8,7 +8,7 @@
 ## What changed
 
 1. **The Mistaken call's cause** (Michael, Nov 22: the player picks it).
-   - Under "Mistaken", the reading card offers "Poisoned that night" (the plain Mistaken call, that night's reading only) and "Delusional all along".
+   - Under "Mistaken", the reading card offers "Mistaken that night" (the plain Mistaken call, that night's reading only) and "Delusional all along".
    - The live editor's side panel offers the same two as dropdown entries.
    - Both appear only where the script can deal Delusional; elsewhere Mistaken works as before. They aren't offered on a Medium's passing-on.
    - "Delusional all along" uses the existing Delusional challenge mode. That mode used to need a group of readings. On one reading it now covers every reading by the same reader in the case (`reading_challenges.gd` `reader_group`), so all of them take the same discount.
@@ -17,6 +17,9 @@
    - `seer_contradiction`: a Seer's "yes" then "no" on one pair, argued "readings don't fit together: Delusional".
    - `seer_contradiction_burden`: the same cards, argued "carries a hidden burden: Delusional".
    - A slate premise can now carry a cause or burden (`"inconsistent:delusional"`).
+
+3. **The juror grades "carries a hidden burden" on the chance of being Delusional** (Michael, Nov 22). Until now it graded the premise through the subject's chance of being good, like every clearing premise. Now `listener_reading` asks the listener the premise itself, before and after the case (`_own_question_chance`, beside `_demon_share`), so readings that clash count for it. The badge's top tier still isn't offered, since the premise clears. `test_juror_listener` checks it (31 checks, 0 failures).
+   - **On today's judge it overshoots:** `seer_contradiction_burden` goes from no badge (0.87) to Strong (179), with the listener at 2.5% → 82% Delusional. Lantern's worked curve has one strong clash at about 13%. Today's judge skips a Delusional reader's readings, so Delusion explains any clash for free, and it has no poison explanation for others' readings. Lantern's core (the uniform draw, and poison on others' readings) should bring this down. Rerun the case when the core lands. The suite only checks the direction, so it survives the change.
 
 ## What I measured
 
@@ -40,11 +43,11 @@
 
 ## Wording
 
-- **Approved by Michael (Nov 22):** "Poisoned that night", "Delusional all along".
+- **Approved by Michael (Nov 22):** "Mistaken that night" (Michael: "go with Mistaken", through Seneschal; it was briefly "Poisoned that night") and "Delusional all along".
 - **Draft tips:**
   - "Something fooled the gift that night only: poison, or a misleading registration."
   - "Their gift has never worked: every reading of theirs in this case is doubted."
-- **Put to Michael through Seneschal:** "Poisoned that night" also covers a Red Herring or a Marked misregistration, which aren't poison. "Fooled that night" would cover them.
+- **Settled:** "Poisoned that night" named only poison, though the call also covers a Red Herring or a Marked misregistration. Michael chose "Mistaken that night", which covers all three.
 
 ## Small calls made on Michael's behalf
 

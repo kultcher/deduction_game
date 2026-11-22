@@ -364,6 +364,22 @@ static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
 	var b: float = share.call(before, "posterior") if not (before.is_empty() or before.get("impossible", false)) else share.call(after, "prior")
 	return {"before": b, "after": share.call(after, "posterior")}
 
+## The listener's own chance of the premise itself, before and after the case: {before, after},
+## or {} if it can't be read. For "carries a hidden burden" (Michael, Nov 22, the shared
+## Delusion doubt): the juror grades the chance the subject is Delusional, not their chance
+## of being good, so readings that clash count for it. Asked of the same two plans as
+## _demon_share.
+static func _own_question_chance(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
+	if not pj.get("ready", false) or str(conclusion.get("target", "")) == "":
+		return {}
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var after: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_after", {}), pj.get("counted_after", [])), {}, {}, {}, conclusion.duplicate(true))
+	if after.is_empty() or after.get("impossible", false):
+		return {}
+	var before: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_before", {}), pj.get("counted_before", [])), {}, {}, {}, conclusion.duplicate(true))
+	var b: float = float(before.get("posterior", 0.0)) if not (before.is_empty() or before.get("impossible", false)) else float(after.get("prior", 0.0))
+	return {"before": clampf(b, 0.0, 1.0), "after": clampf(float(after.get("posterior", 0.0)), 0.0, 1.0)}
+
 ## `plan` with only the challenges the connections model still counts: those of the stored
 ## cases above its floor (`counted`, Connections.cases' entries, matched by key to the plan's
 ## stored cases) and NPC defences, not a faded case's
@@ -429,6 +445,11 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 		if not split.is_empty():
 			chance_before = 1.0 - before * float(split.before)
 			chance = 1.0 - after * float(split.after)
+	if type == "secret_mod":
+		var own: Dictionary = _own_question_chance(pj, conclusion)
+		if not own.is_empty():
+			chance_before = float(own.before)
+			chance = float(own.after)
 	var lr: float = exp(_logit(chance) - _logit(chance_before))
 	# An accepted lie call presses its teller as the liar rather than moving the odds (the
 	# clash is in the worlds already): the badge's words name it (Herald words the line).
