@@ -14,6 +14,7 @@ var fails = 0
 
 func _init() -> void:
 	var scene = load("res://ui/main.tscn").instantiate()
+	scene.pacing_enabled = false   # this suite drives the town with real mouse input (test_pacing covers the sequence)
 	root.add_child(scene)
 	await process_frame
 	await process_frame
@@ -581,11 +582,6 @@ func _menu_labels(menu: PopupMenu) -> Array:
 	return labels
 
 func _right_click(at: Vector2) -> void:
-	# A hanging or the night's reveal plays over the town and takes clicks until it ends
-	# (ui/pacing/pacing_overlay.gd): end it first, as a player would.
-	for p in root.find_children("Pacing", "", true, false):
-		p.finish()
-	await process_frame
 	var move = InputEventMouseMotion.new()
 	move.position = at
 	root.push_input(move, true)

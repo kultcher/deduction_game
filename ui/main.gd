@@ -113,7 +113,7 @@ func _ready() -> void:
 func _consume_headlines() -> void:
 	# The execution and the night's reveal play as a sequence (Michael, Nov 22); the headlines
 	# they replace aren't shown, and the rest wait until the sequence ends.
-	var plan: Array = _pacing_plan(g.last_events)
+	var plan: Array = _pacing_plan(g.last_events) if pacing_enabled else []
 	var rest: Array = []
 	for event in g.last_events:
 		if event.k != "headline":
@@ -135,6 +135,8 @@ func _consume_headlines() -> void:
 			open_reveal())
 
 const PACED_HEADLINES = ["execution", "martyr", "death", "quiet"]
+## Off for suites that drive the town with real mouse input and don't test the sequence.
+var pacing_enabled: bool = true
 var pacing_open: bool = false
 var _reveal_after_pacing: bool = false
 
