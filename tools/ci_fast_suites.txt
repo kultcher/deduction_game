@@ -236,3 +236,4 @@ test_workshop_vote_and_alibi
 test_workshop_votes
 test_workshop_why
 test_would_vote
+test_demon_candidates
