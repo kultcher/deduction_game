@@ -10,6 +10,7 @@ const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const MindVote = preload("res://sim/mind_vote.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const Gifts = preload("res://sim/gifts.gd")
 
@@ -122,19 +123,39 @@ func _playtest_51795() -> void:
 	c.info_log = []
 	_check(MindPodium.options(w, c)["gift"] == "readings", "a claimant who never told a reading of its gift can be pressed for one")
 
-## A friend of the nominee who came near to voting yes defends them with doubt (Michael, Nov 22).
+## A friend of the nominee whose vote sits close to the yes line defends them with doubt, in
+## the support turn (Michael, Nov 22: support_doubt_for, Herald's key).
 func _doubtful_friend() -> void:
 	var w = _world()
 	var goods: Array = w.living_good()
 	var f = goods[0]
 	var t = goods[1]
-	f.workshop_state["confirmed_readings"] = {}
 	if not (t.id in f.friends):
 		f.friends.append(t.id)
-	var line := func(margin: float) -> String:
-		var res: Dictionary = {"nominee": t.id, "no": [f.id], "yes": [], "voter_parts": {f.id: {"parts": {}, "margin": margin, "yes": false}}, "threshold": 6, "count": 0, "by": goods[2].id}
-		return " ".join(PackedStringArray(MindVote.vote_resistance_lines(w, res).map(func(x): return str(x.get("statement", x.get("text", ""))))))
-	_check("would they?" in line.call(-0.03), "a friend just short of a yes defends them with doubt (%s)" % line.call(-0.03))
-	_check(not ("would they?" in line.call(-0.6)), "not a friend far from a yes")
+	var nominator: String = goods[2].id
+	w.begin_meeting()
+	w.meeting["pending"] = {"nominee": t.id, "by": nominator}
+	var MindSupport = load("res://sim/mind_support.gd")
+	var rng_before = w.rng.state
+	var m0: float = MindVote.dry_margin(w, f, t.id, nominator)
+	_check(w.rng.state == rng_before, "the dry run leaves the world's random stream as it was")
+	# Find a suspicion that puts it near the line, and one far below.
+	var near: float = -1.0
+	var far: float = -1.0
+	for k in range(0, 101, 2):
+		f.suspicion[t.id] = k / 100.0
+		var m: float = MindVote.dry_margin(w, f, t.id, nominator)
+		if near < 0.0 and absf(m) < Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN:
+			near = k / 100.0
+		if far < 0.0 and m < -Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN:
+			far = k / 100.0
+	var speak := func(susp: float) -> String:
+		f.suspicion[t.id] = susp
+		var out: Dictionary = {"lines": [], "facts": [], "speakers": []}
+		var ctx: Dictionary = {"for_ids": [], "accused": 0, "spoken": [], "nominator": nominator, "case_facts": []}
+		MindSupport._speak(w, f, t, {"move": "vibes", "side": "for"}, ctx, out)
+		return " ".join(PackedStringArray(out["lines"].map(func(x): return str(x.get("statement", x.get("text", ""))))))
+	_check(near >= 0.0 and "would they?" in speak.call(near), "a friend near the yes line speaks up with doubt (suspicion %.2f, dry margin %.2f)" % [near, m0])
+	_check(far >= 0.0 and not ("would they?" in speak.call(far)), "a friend far from it speaks up plainly")
 	f.friends.erase(t.id)
-	_check(not ("would they?" in line.call(-0.03)), "nor someone who isn't their friend")
+	_check(near < 0.0 or not ("would they?" in speak.call(near)), "someone who isn't their friend speaks up plainly")
