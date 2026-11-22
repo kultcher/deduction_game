@@ -158,6 +158,10 @@ func _run() -> void:
 	scene.meeting_view.settled.emit()
 	await process_frame
 	check(scene.get_node_or_null("Pacing") != null, "and it plays once the stage has settled")
+	check(is_zero_approx(scene.headlines.modulate.a), "headlines already showing are hidden while it plays (Codex on #537)")
+	scene.get_node("Pacing").finish()
+	await process_frame
+	check(is_equal_approx(scene.headlines.modulate.a, 1.0), "and come back when it ends")
 	scene.queue_free()
 	print("Pacing: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

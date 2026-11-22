@@ -134,8 +134,14 @@ func _open_pacing_when_settled(plan: Array, rest: Array) -> void:
 	if meeting_view != null and meeting_view.presenting():
 		meeting_view.settled.connect(func(): _open_pacing_when_settled(plan, rest), CONNECT_ONE_SHOT)
 		return
+	# A headline already showing sits on a higher canvas layer: hide the headlines while the
+	# sequence plays (Codex on #537); they come back with it.
+	if headlines != null:
+		headlines.modulate.a = 0.0
 	PacingOverlay.open(self, g.w, plan, reduced_motion, func():
 		pacing_open = false
+		if headlines != null:
+			headlines.modulate.a = 1.0
 		for event in rest:
 			headlines.enqueue(event)
 		if _reveal_after_pacing:
