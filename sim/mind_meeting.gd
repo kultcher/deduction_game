@@ -427,6 +427,10 @@ static func choose_double_claim(w, l, rival, role: String) -> bool:
 	# discredit a good claimant; against an ally it only hangs one of them.
 	if Evil.is_teammate(w, l, rival.id):
 		return false
+	# Nor once it has told anyone, even in private, that it holds another gift (playtest 51795:
+	# the Poisoner had told Lian it was the Registrar).
+	if w.npcs.any(func(o): return o != l and not (str(o.known_claims.get(l.id, {}).get("role", "")) in ["", role])):
+		return false
 	if l.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
 		return false
 	# One roll per Minion per game, up front (Michael, Nov 20): is it looking to double-claim

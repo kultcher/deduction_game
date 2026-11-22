@@ -259,6 +259,19 @@ func _playtest_nov22() -> void:
 		if MindMeeting.choose_double_claim(w, m, ally, role):
 			acted = true
 	_check(not acted, "a Minion never double-claims a teammate's claim")
+	# Nor once it has privately told someone another gift (playtest 51795).
+	var good_rival = w.living_good()[0]
+	var listener = w.living_good()[1]
+	var told := false
+	for k in 400:
+		_unclaimed(m)
+		m.dialogue_memory.erase("double_claim")
+		listener.known_claims[m.id] = {"role": "registrar" if good_rival.role != "registrar" else "clerk", "readings": [], "via": m.id}
+		w.seed_value = 3000 + k
+		if MindMeeting.choose_double_claim(w, m, good_rival, good_rival.role):
+			told = true
+	listener.known_claims.erase(m.id)
+	_check(not told, "nor once it has told someone in private that it holds another gift")
 	# A late switch to a first-night gift still gets that night's reading.
 	var good = w.living_good()[0]
 	m.info_log = m.info_log.filter(func(x): return not x.get("fake", false))
