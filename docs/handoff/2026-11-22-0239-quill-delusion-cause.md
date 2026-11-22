@@ -58,6 +58,28 @@
   - The hidden-burden premise grades against itself, because the juror reads it as clearing the person.
 - These are the cases to rerun once the shared doubt lands.
 
+## Status at Michael's soft pause (Nov 22, evening)
+
+Everything is pushed; nothing is in flight.
+
+**Current numbers, tip 70cedf80, which has Lantern's (b′): the player's word at its credibility.** 10 NPCs, seeds 1–6:
+
+| Case | Badge | Strength | Listener's chance of the burden | Town's suspicion of the subject |
+|---|---|---|---|---|
+| `marked_rescue` | Strong | 205 | 2.5% → 84% Marked | up 0.07–0.23 |
+| `marked_bluff` | Strong | 205 | 2.5% → 84% Marked | up 0.17–0.21 |
+| `seer_contradiction_burden` | Strong | 10.1 | 2.5% → 20.5% Delusional | up 0.27–0.36 |
+
+- The 98.7% and 79% figures above were measured before (b′) reached the branch, so these numbers replace them.
+- Under (b′) the badge rates the burden Strong, while the town comes away more suspicious of the person. That's with Seneschal, for Michael.
+
+**Waiting for Michael:**
+- **Playtest 52102:** "nominate X #case" weighs the case silently (`_player_nomination`, speak = false). `case <#>` on an open nomination speaks (`hear_town`). This is for Herald or Beadle, and it's in Coroner's `docs/playtests/52102.md`, PR #526.
+- **Card #76:** a block reading presented against a resident finds no subject. That's mine, from the same report, and waits for Michael's read.
+- **Pass 3 odds:** they're effectively a dead path, because the player's word card carries burden premises in play. They come out if Michael keeps the word as the single NPC path.
+
+**Next for me:** sign off the evidence area of the Burdens landing PR, after Argon's speed pass merges. Then the Call-on refusal check, once Beadle builds it.
+
 ## Wording
 
 - **Approved by Michael (Nov 22):** "Mistaken that night" (Michael: "go with Mistaken", through Seneschal; it was briefly "Poisoned that night") and "Delusional all along".
