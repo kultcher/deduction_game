@@ -93,6 +93,25 @@ func _run() -> void:
 	o2.finish()
 	check(ended.size() == 2, "Skip or Esc ends the whole sequence")
 	await process_frame
+	# Codex on #537: a real click on the night's result panel moves on (the panel doesn't eat it).
+	var o3 = PacingOverlay.open(host, w, PacingPlans.night(w, "You kept watch.", alive), false, func(): ended.append(true))
+	var g3 := 0
+	while not o3._waiting and g3 < 200:
+		o3._process(0.1)
+		g3 += 1
+	await process_frame
+	var panel: Control = o3.find_child("NightResult", true, false)
+	var panel_ignores: bool = panel != null and panel.mouse_filter == Control.MOUSE_FILTER_IGNORE
+	var at_panel: int = o3.index
+	var click_ev = InputEventMouseButton.new()
+	click_ev.button_index = MOUSE_BUTTON_LEFT
+	click_ev.pressed = true
+	click_ev.position = panel.get_global_rect().get_center() if panel != null else Vector2.ZERO
+	root.push_input(click_ev, true)
+	await process_frame
+	check(panel_ignores and o3.index > at_panel, "a click on the result panel goes on")
+	o3.finish()
+	await process_frame
 	check(host.get_child_count() == 0, "and the overlay is gone")
 	# Codex on #537: a kill that ends the game brings no dawn, but it still plays (then the reveal).
 	var scene = load("res://ui/main.tscn").instantiate()

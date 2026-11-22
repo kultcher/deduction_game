@@ -128,6 +128,7 @@ func _next() -> void:
 			_left = _secs(FADE_SECS)
 		"portrait":
 			_show_portrait(str(b.id))
+			_let_clicks_through()
 			_left = _secs(0.5)
 		"headline":
 			var l: RichTextLabel = _above if str(b.get("pos", "above")) == "above" else _below
@@ -140,10 +141,13 @@ func _next() -> void:
 			_left = _secs(float(b.get("secs", 0.8)))
 		"mark":
 			_mark()
+			_let_clicks_through()
 		"wheel":
 			_wheel(b)
+			_let_clicks_through()
 		"panel":
 			_show_panel(str(b.text))
+			_let_clicks_through()
 			_left = _secs(0.4)
 		"continue":
 			_waiting = true
@@ -154,6 +158,12 @@ func _next() -> void:
 			_left = _secs(0.3)
 		_:
 			_left = 0.0
+
+## Nothing on the stage takes the mouse: a click anywhere reaches the overlay (Codex on #537:
+## the result panel, a PanelContainer, stopped clicks by default).
+func _let_clicks_through() -> void:
+	for c in _stage.find_children("*", "Control", true, false):
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _process(delta: float) -> void:
 	if _shake_left > 0.0:
