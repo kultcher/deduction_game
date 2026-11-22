@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, caught lying about me): `baseline_01f5290`
+### Current baseline (Nov 22, dialogue slips): `baseline_e2d39bd`
+
+`tools/golden/baseline_e2d39bd/` is the capture from `claude/herald-dialogue-slips` at `e2d39bd`
+(main at the PR's base). Three wording fixes from Coroner's playtest 51795: no capital after a
+run-on lead-in ("If it helps, last night…"), the Martyr's choice told in the past after "Last
+night," and a reading's day spoken ("On the second day, in the evening") rather than a numeral.
+- **Divergence from `baseline_01f5290`:** reply text only. 54875 at record 142, 692 at 69 and
+  98933 at 232 differ in a spoken line; with `--ignore engine,reply` all five seeds are
+  identical, so beliefs, votes and outcomes are unchanged. 42 and 900 are identical outright.
+- **Outcomes:** unchanged on every seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, caught lying about me): `baseline_01f5290`
 
 `tools/golden/baseline_01f5290/` is the capture from `claude/beadle-caught-lying` at `01f5290`
 (main at `c1519a3`; with Codex's fix on #506). An NPC told something about itself it knows is false
