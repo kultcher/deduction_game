@@ -28,16 +28,18 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
-    2. A gift-holder seeks protection before revealing `[decided: direction]`
-    3. \*The Gravedigger in a reluctant town `[decided]`
-    4. Caught out and pressed again: what's left `[decided]`
-    5. Good NPCs lie tactically `[open]`
-    6. \*Rapport and Warden-credit leftovers `[decided: direction]`
+    1. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    2. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
+    3. A gift-holder seeks protection before revealing `[decided: direction]`
+    4. \*The Gravedigger in a reluctant town `[decided]`
+    5. Caught out and pressed again: what's left `[decided]`
+    6. Good NPCs lie tactically `[open]`
+    7. \*Rapport and Warden-credit leftovers `[decided: direction]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
-    1. \*Movement wording: "pass by" and "road" `[decided]`
+    1. Show answers carried into the next case when filing `[decided]`
+    2. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
@@ -124,6 +126,20 @@ Lantern). Nothing is open here.
   [decided]
 
 ### NPC behaviour
+
+- **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
+  Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
+  - **NPCs ask in private:** now and then, an NPC asks a claimant for a reading it should
+    already have, such as a first-night gift's.
+  - **NPCs press at the meeting:** rarely, a confident NPC presses someone it suspects of
+    holding back.
+  - **The cost:** a deferral with a reason costs a little, a bare deflection more, and the cost
+    builds by day.
+  - **The player's version:** one softer ask per meeting, outside a nomination. Refusing costs
+    some suspicion and makes a circumstantial card.
+
+  Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
+  The action's name is Michael's. [decided: direction]
 
 - **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
   revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
@@ -213,6 +229,10 @@ Lantern). Nothing is open here.
 Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
+
+- **Show answers carried into the next case when filing** (Michael, Nov 22; playtest 23973).
+  An answer the player picked on a Workshop card carries into the next case without being
+  shown. Low priority. Owner Herald or Quill, as they agree. [decided]
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
