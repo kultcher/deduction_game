@@ -64,6 +64,47 @@ const PAPER_ART = {
 	"town_hall": "buildings_paper/town_hall",
 }
 
+## The gallows on the green in the middle of town (Michael, Nov 22), in map pixels: its
+## bottom centre and width (about a cottage's size). Dressing only: no hit or sign.
+const GALLOWS_AT = Vector2(740, 428)
+const GALLOWS_W = 110.0
+
+## The graveyard grows (Michael, Nov 22): its gates, one headstone at the start, and one more
+## for each death, hanging or murder. Headstones are drawn from the set in a shuffled order
+## fixed by the case's seed, with no repeat until the whole set has been used.
+const GRAVESTONES = ["stone_cross_wood", "stone_celtic", "stone_cross_peaked", "stone_sprig_scallop",
+	"stone_cross_scallop", "stone_sprig_pointed", "stone_cross_round"]
+## Headstone places in the graveyard's box, in the order they fill: [dx from the box's centre,
+## rise of the stone's foot above the box's bottom, scale]. Two rows behind the gate, then
+## one each side of it.
+const GRAVE_SLOTS = [[0, 70, 0.85], [-16, 44, 1.0], [16, 44, 1.0], [-32, 70, 0.85], [32, 70, 0.85],
+	[-48, 44, 1.0], [48, 44, 1.0], [-64, 70, 0.85], [64, 70, 0.85], [-80, 44, 1.0], [80, 44, 1.0],
+	[-96, 70, 0.85], [96, 70, 0.85], [-100, 6, 1.0], [100, 6, 1.0]]
+const GRAVE_GATE_W = 150.0
+const GRAVE_STONE_H = 42.0
+
+## The headstones for a case with `count` graves: a shuffled run of the set, reshuffled each
+## time it's used up (never the same stone twice in a row across a reshuffle).
+static func gravestones(case_seed: int, count: int) -> Array:
+	var rng = RandomNumberGenerator.new()
+	rng.seed = hash([case_seed, "graveyard"])
+	var out: Array = []
+	while out.size() < count:
+		var bag: Array = GRAVESTONES.duplicate()
+		for i in range(bag.size() - 1, 0, -1):
+			var j: int = rng.randi_range(0, i)
+			var tmp = bag[i]
+			bag[i] = bag[j]
+			bag[j] = tmp
+		if not out.is_empty() and bag[0] == out[-1]:
+			bag.push_back(bag.pop_front())
+		out.append_array(bag)
+	return out.slice(0, count)
+
+## Graves so far: the first headstone, and one for each of the dead.
+static func grave_count(w) -> int:
+	return 1 + w.npcs.filter(func(n): return not n.alive).size()
+
 ## A townsperson's own cottage art (named after them in full: Bartholomew, not bart).
 static func cottage_art(n) -> String:
 	return "cottages_poc/%s-cottage-papercraft-v1" % String(n.name).to_lower()
@@ -219,6 +260,44 @@ func _road_points(a: String, b: String) -> Array:
 func _art(rel: String, scale: float = 0.5):
 	return UITheme.tex("art/" + rel, scale)
 
+## The graveyard: headstones behind the gate (one more for each death), the side ones in
+## front. Returns the screen rect it covers, for its sign and its hit box.
+func _draw_graveyard(w, tint: Color) -> Rect2:
+	var box: Rect2 = Geo.building_box(MAP_PADS["graveyard"])
+	var foot := Vector2(box.get_center().x, box.end.y)
+	var count: int = mini(grave_count(w), GRAVE_SLOTS.size())
+	var stones: Array = gravestones(int(w.seed_value), count)
+	var order: Array = range(count)
+	order.sort_custom(func(a, b): return GRAVE_SLOTS[a][1] > GRAVE_SLOTS[b][1])   # back rows first
+	var covered := Rect2()
+	var gate = _art("graveyard/gate", 0.5)
+	var gate_drawn := false
+	for i in order:
+		var slot: Array = GRAVE_SLOTS[i]
+		if not gate_drawn and slot[1] < 20:
+			covered = _draw_grave_gate(gate, foot, tint, covered)
+			gate_drawn = true
+		var t = _art("graveyard/" + stones[i], 0.5)
+		if t == null:
+			continue
+		var h: float = GRAVE_STONE_H * slot[2]
+		var sw: float = h * t.get_width() / t.get_height()
+		var r := Rect2(foot.x + slot[0] - sw / 2.0, foot.y - slot[1] - h, sw, h)
+		var sr: Rect2 = _r(_px_rect(r))
+		draw_texture_rect(t, sr, false, tint)
+		covered = sr if covered.size == Vector2.ZERO else covered.merge(sr)
+	if not gate_drawn:
+		covered = _draw_grave_gate(gate, foot, tint, covered)
+	return covered
+
+func _draw_grave_gate(gate, foot: Vector2, tint: Color, covered: Rect2) -> Rect2:
+	if gate == null:
+		return covered
+	var gh: float = GRAVE_GATE_W * gate.get_height() / gate.get_width()
+	var gr: Rect2 = _r(_px_rect(Rect2(foot.x - GRAVE_GATE_W / 2.0, foot.y - 2.0 - gh, GRAVE_GATE_W, gh)))
+	draw_texture_rect(gate, gr, false, tint)
+	return gr if covered.size == Vector2.ZERO else covered.merge(gr)
+
 ## Draw a texture inside a rect, keeping its aspect: "contain" (fit, aligned to the bottom)
 ## or "cover" (fill, cropping the overflow from the centre).
 func _draw_art(tex, rect: Rect2, mode: String = "contain", tint: Color = Color.WHITE) -> Rect2:
@@ -275,6 +354,11 @@ func _draw() -> void:
 				var lt = _art(pad[4], 0.5)
 				if lt != null:
 					draw_texture_rect(lt, _r(_px_rect(Rect2(pad[0] - pad[2] / 2.0, pad[1] - pad[3] / 2.0, pad[2], pad[3]))), false, tint)
+		# The gallows on the central green.
+		var gallows = _art("decor/gallows", 0.5)
+		if gallows != null:
+			var gh: float = GALLOWS_W * gallows.get_height() / gallows.get_width()
+			draw_texture_rect(gallows, _r(_px_rect(Rect2(GALLOWS_AT.x - GALLOWS_W / 2.0, GALLOWS_AT.y - gh, GALLOWS_W, gh))), false, tint)
 		# One lot under each cottage that's drawn, so no lot stands empty and no cottage lacks one.
 		var cot_lot = _art("terrain/dirt_c", 0.3)
 		if cot_lot != null:
@@ -325,8 +409,9 @@ func _draw() -> void:
 		for l in _map_buildings_on(b):
 			var LR: Rect2 = _r(_loc_rect(l))
 			var art = _art(PAPER_ART[l], 0.5) if BESPOKE and PAPER_ART.has(l) else _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
-			var drawn = _draw_art(art, LR.grow_individual(0, LR.size.y * 0.1, 0, 0), "contain", tint) if art != null else LR
-			if art == null:
+			var graves: bool = BESPOKE and l == "graveyard"   # the graveyard is drawn from its parts
+			var drawn = _draw_graveyard(w, tint) if graves else (_draw_art(art, LR.grow_individual(0, LR.size.y * 0.1, 0, 0), "contain", tint) if art != null else LR)
+			if art == null and not graves:
 				draw_rect(LR, Color(0.3, 0.26, 0.22) * tint)
 				draw_rect(LR, UITheme.color("border"), false, 1.5)
 			var here_l = g.moved and g.loc == l and not night
