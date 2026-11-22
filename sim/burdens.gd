@@ -251,6 +251,8 @@ static func evil_marked_bluff(w, n, why: String) -> bool:
 static func evil_burden_bluff(w, n, kind: String, why: String) -> bool:
 	if not n.is_evil() or not on_script(w, kind) or not known_claimants(w, n, kind).is_empty():
 		return false
+	if kind == "ill_omened" and str(w.evil_plan.get("omen_holder", "")) != "":
+		return false  # EXPERIMENT: evil knows a real one is dealt; bluff only when it isn't
 	if str(w.evil_plan.get("bluffs", {}).get(n.id, "")) == "" and not n.turned:
 		return false
 	if w.evil_plan.has("burden_bluffs") and w.evil_plan["burden_bluffs"].has(n.id):
@@ -338,9 +340,25 @@ static func omen_early_warning(w, n) -> Dictionary:
 ## gift for a night. Non-Scion Minions only; the Demon and the Scion play as their good selves.
 ## "Real" is any public claimant who isn't a teammate, since evil knows its own bluffs. Returns
 ## the claimant to push, or "".
+## EXPERIMENT (mock/omen-evil-knows, never merges): the evil team knows the Ill-Omened at the
+## deal. "" when it isn't dealt (evil then knows it isn't in play).
+static func setup_evil_knows_omen(w) -> void:
+	var holder: String = ""
+	for n in w.npcs:
+		if n.secret_mod == "ill_omened" and not n.is_evil():
+			holder = n.id
+	w.evil_plan["omen_holder"] = holder
+	w.dlog.add("evil_knows_omen", "world", holder, {"holder": holder}, "Evil knows the Ill-Omened: %s." % (holder if holder != "" else "not in play"))
+
+static func evil_known_omen(w) -> String:
+	var h: String = str(w.evil_plan.get("omen_holder", ""))
+	return h if h != "" and w.by_id.has(h) and w.by_id[h].alive and not w.by_id[h].is_evil() else ""
+
 static func omen_push_target(w, n) -> String:
 	if not n.is_evil() or n.id == w.demon_id or C.is_demon(n.role) or n.role == "scion":
 		return ""
+	if w.evil_plan.has("omen_holder"):  # EXPERIMENT: the known holder, claimed or not
+		return evil_known_omen(w)
 	for id in public_claimants(w, "ill_omened"):
 		if id != n.id and w.by_id.has(id) and w.by_id[id].alive and not _evil().is_teammate(w, n, id):
 			return id

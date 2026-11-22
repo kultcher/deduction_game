@@ -38,6 +38,7 @@ func _init() -> void:
 	_unarmed()
 	_turned()
 	_passed()
+	_evil_knows()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -48,6 +49,7 @@ func _holder(w):
 			m.secret_mod = ""
 	o.secret_mod = "ill_omened"
 	o.burden_self_known = true
+	Burdens.setup_evil_knows_omen(w)  # EXPERIMENT: evil knows the holder from the deal
 	return o
 
 func _real() -> void:
@@ -106,7 +108,9 @@ func _real() -> void:
 
 func _bluff() -> void:
 	var w = _case().w
-	_holder(w)
+	var hb = _holder(w)
+	hb.secret_mod = ""
+	w.evil_plan["omen_holder"] = ""  # EXPERIMENT: evil bluffs only when it knows none is dealt
 	var e = w.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
 	if not w.evil_plan.has("burden_bluffs"):
 		w.evil_plan["burden_bluffs"] = {}
@@ -164,3 +168,15 @@ func _passed() -> void:
 	e2.silenced = true
 	Burdens.omen_at_nomination(w2, e2)
 	_check(not w2.omen_unclaimed.has(e2.id), "a silenced nominee couldn't have claimed, so it isn't noted")
+
+## EXPERIMENT (mock/omen-evil-knows): the evil team knows the Ill-Omened from the deal.
+func _evil_knows() -> void:
+	var w = _case().w
+	var o = _holder(w)
+	_check(str(w.evil_plan.get("omen_holder", "")) == o.id and Burdens.evil_known_omen(w) == o.id, "evil knows who the Ill-Omened is")
+	var e = w.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w.evil_plan.get("bluffs", {}).get(e.id, "")) == "":
+		w.evil_plan["bluffs"][e.id] = "clerk"
+	_check(not Burdens.evil_burden_bluff(w, e, "ill_omened", "stay off the rope"), "and so never bluffs it while a real one is dealt")
+	var minion = w.npcs.filter(func(m): return m.alive and m.is_evil() and m.id != w.demon_id and not C.is_demon(m.role) and m.role != "scion")
+	_check(minion.is_empty() or Burdens.omen_push_target(w, minion[0]) == o.id, "a Minion pushes the known holder, claimed or not")
