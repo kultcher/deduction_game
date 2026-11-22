@@ -35,6 +35,11 @@ I replayed the log at its build (`ac3ec83`).
    - **Dorian:** it pulled Fenwick down by 0.11–0.17.
    - **Is it reasoning?** Partly. If Jory is honest, they're clear, and Kiran gave Jory about
      even odds. But the Demon's one fake reading did a lot of clearing for his teammate.
+   - **Lantern traced it (Nov 22): over-clearing, a fix is coming.** Jory's three counts
+     are weighed one at a time, each against Kiran's view of Jory at dawn (about 35% evil),
+     not his 80% at the day-3 meeting. Weighed alone, they clear Odette by −0.80 in all;
+     weighed with everything Kiran holds, only −0.12. Lantern will weigh one teller's
+     readings together, as same-gift claims already are, on `mock/burdens-slot`.
 3. **Friendship doesn't reach the vote: Isolde came within 0.03 of voting to hang Kiran on
    day 2 (Beadle).**
    - **Her side of it:** she trusts Kiran at 0.95. Moments earlier she'd said "I've known
@@ -54,6 +59,12 @@ I replayed the log at its build (`ac3ec83`).
      clash stopped weighing on Fenwick for Kiran and Isolde from day 2.
    - **Why it's still worth a look:** Fenwick really was evil, so Dorian ended up right. But
      a rival proven evil leaves the clash no lighter for one mind and gone for the others.
+   - **Lantern traced it (Nov 22): sound reasoning, not a bug.** Kiran's reading is
+     already counted, and alone it leaves the clash only +0.17. Most of the rest comes
+     from Dorian's own Clerk reading, "one of Isolde and Fenwick is the Medium". On its own
+     it half-clears Fenwick, who might be the Medium; once Fenwick claims Archivist he
+     can't be, and that clearing is undone. Kiran and Isolde don't hold the Clerk reading,
+     so they didn't feel the push.
 5. **Odette's grief never softened (Beadle, question).**
    - **What happened:** her trust in you fell from 0.48 to 0.32 when you voted to hang her
      friend Merrin, and stayed exactly 0.32 for the rest of the game.
@@ -127,6 +138,8 @@ A wrong belief held for a human reason, and a big but fitting swing when it brok
   from Dorian's reading). Most likely it's Merrin's private word to her ("one of Kiran and
   Nisha is the Scion"), which didn't show up among her tested items. Merrin 0.24 by the
   meeting's end. She accused Kiran.
+  - **Lantern confirmed it (Nov 22):** Merrin's private tip is most of it, about +0.67
+    of her lean on Kiran at seq 120.
 - **Day 2:** Kiran about 0.55: his Gravedigger reading counted against him, plus Jory's
   count. Nisha 0.26. She nominated Kiran and voted yes on Nisha.
 - **Day 3:** Kiran 0.26 after Isolde's Medium reading, Jory 0.22, Fenwick 0.00 throughout.
