@@ -350,19 +350,25 @@ static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
 	var target: String = str(conclusion.get("target", ""))
 	if not pj.get("ready", false) or target == "":
 		return {}
-	var Shared = preload("res://workshop/shared_ledger.gd")
 	var ask: Dictionary = conclusion.duplicate(true)
 	ask.type = "demon"
-	var after: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_after", {}), pj.get("counted_after", [])), {}, {}, {}, ask)
+	var after: Dictionary = _ask(pj, "after", ask)
 	if after.is_empty() or after.get("impossible", false):
 		return {}
 	# A listener who holds nothing before the case has no plan to ask: the prior stands.
-	var before: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_before", {}), pj.get("counted_before", [])), {}, {}, {}, ask)
+	var before: Dictionary = _ask(pj, "before", ask)
 	var share := func(ev: Dictionary, which: String) -> float:
 		var evil: float = float(ev.get("people", {}).get(target, {}).get(which, 0.0))
 		return clampf(float(ev.get(which, 0.0)) / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
 	var b: float = share.call(before, "posterior") if not (before.is_empty() or before.get("impossible", false)) else share.call(after, "prior")
 	return {"before": b, "after": share.call(after, "posterior")}
+
+## A question asked of the listener's plan before or after the case (`which`), with the doubts
+## that listener holds (ProfileJudge: derived as a refresh derives them).
+static func _ask(pj: Dictionary, which: String, conclusion: Dictionary) -> Dictionary:
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var doubt: Dictionary = pj.get("doubt_" + which, {})
+	return Shared.evaluate_question(_counted_plan(pj.get("plan_" + which, {}), pj.get("counted_" + which, [])), {}, doubt.get("pre_eval", {}), doubt.get("full", {}), conclusion.duplicate(true), doubt.get("honest", {}))
 
 ## The listener's own chance of the premise itself, before and after the case: {before, after},
 ## or {} if it can't be read. For "carries a hidden burden" (Michael, Nov 22, the shared
@@ -372,11 +378,10 @@ static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
 static func _own_question_chance(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
 	if not pj.get("ready", false) or str(conclusion.get("target", "")) == "":
 		return {}
-	var Shared = preload("res://workshop/shared_ledger.gd")
-	var after: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_after", {}), pj.get("counted_after", [])), {}, {}, {}, conclusion.duplicate(true))
+	var after: Dictionary = _ask(pj, "after", conclusion)
 	if after.is_empty() or after.get("impossible", false):
 		return {}
-	var before: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_before", {}), pj.get("counted_before", [])), {}, {}, {}, conclusion.duplicate(true))
+	var before: Dictionary = _ask(pj, "before", conclusion)
 	var b: float = float(before.get("posterior", 0.0)) if not (before.is_empty() or before.get("impossible", false)) else float(after.get("prior", 0.0))
 	return {"before": clampf(b, 0.0, 1.0), "after": clampf(float(after.get("posterior", 0.0)), 0.0, 1.0)}
 

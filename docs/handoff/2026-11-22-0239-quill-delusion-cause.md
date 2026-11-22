@@ -21,6 +21,11 @@
 3. **The juror grades "carries a hidden burden" on the chance of being Delusional** (Michael, Nov 22). Until now it graded the premise through the subject's chance of being good, like every clearing premise. Now `listener_reading` asks the listener the premise itself, before and after the case (`_own_question_chance`, beside `_demon_share`), so readings that clash count for it. The badge's top tier still isn't offered, since the premise clears. `test_juror_listener` checks it (31 checks, 0 failures).
    - **On today's judge it overshoots:** `seer_contradiction_burden` goes from no badge (0.87) to Strong (179), with the listener at 2.5% → 82% Delusional. Lantern's worked curve has one strong clash at about 13%. Today's judge skips a Delusional reader's readings, so Delusion explains any clash for free, and it has no poison explanation for others' readings. Lantern's core (the uniform draw, and poison on others' readings) should bring this down. Rerun the case when the core lands. The suite only checks the direction, so it survives the change.
 
+4. **The Test juror's listener holds the doubts a refresh holds** (Nov 22, after Lantern's core e592d23b). `ProfileJudge._evaluate` used to pass no doubt to `Shared.evaluate`, so the average listener never weighed poison on other people's readings, the core's new term. It now derives it with `SourceDoubt.derive`, and the juror's Demon-share and hidden-burden questions get the same doubts (`_ask`). `ProfileJudge.derived_doubt` turns it off for comparison, and the slate has `SLATE_NO_DERIVED_DOUBT=1`.
+   - **The full slate both ways** (48 cases, 3 seeds each): one badge changes. `impossible` goes from Damning (177) to Strong (16), because an impossible reading now has an honest explanation, poison.
+   - 25 cases move by under 1%. The Gravedigger and Dowser "0" cases lose about a tenth.
+   - `seer_contradiction_burden` goes from 179 to 148, still Strong. These deals' scripts have no Poisoner, so lying and Delusion stay the only explanations of a Seer contradicting itself.
+
 ## What I measured
 
 - **Suites:** `test_delusional_reading` gained 5 checks (12 in all, 0 failures):
