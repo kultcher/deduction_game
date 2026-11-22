@@ -644,6 +644,29 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			if names_memo[id].any(func(p): return claimants.has(p)):
 				ctx.append(id)
 		out.append({"key": "claims:" + r, "ids": ids, "ctx": ctx, "kind": "unit"})
+	# One teller's readings of one gift, read together (51795): each night's reading alone is
+	# weighed against the listener's dawn view of the teller, so three counts from a teller it
+	# has since come to suspect each clear their group in full, and the clearings add up to
+	# more than the readings say together (Jory's three Dowser counts in Kiran's eyes: -0.80 on
+	# Odette apart, -0.12 judged with all he held). Together, the readings share one doubt
+	# about the teller.
+	var tellings: Dictionary = {}
+	for id in held:
+		var c: Dictionary = by_id[id]
+		if c.kind == "report" and not placed.has(id) and str(c.get("role", "")) != "" and str(c.get("source", "")) != "":
+			var tk: String = "%s:%s" % [str(c.source), str(c.role)]
+			if not tellings.has(tk):
+				tellings[tk] = []
+			tellings[tk].append(id)
+	var teller_keys: Array = tellings.keys()
+	teller_keys.sort()
+	for tk in teller_keys:
+		var ids: Array = tellings[tk]
+		if ids.size() < 2:
+			continue
+		for id in ids:
+			placed[id] = true
+		out.append({"key": "teller:" + tk, "ids": ids, "ctx": [], "kind": "unit"})
 	for id in held:
 		if not placed.has(id):
 			out.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
