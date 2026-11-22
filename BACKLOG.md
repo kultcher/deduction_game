@@ -142,6 +142,9 @@ Lantern). Nothing is open here.
   - **Why:** the Coroner found Isolde, at trust 0.95 and suspicion 0.18 toward Kiran, pushed to
     the edge of voting yes by Michael's vote and the consensus.
   - **Next:** Beadle proposes the shape and the constants.
+  - **Lines** (Michael, Nov 22): the doubtful-defence lines for all 15 voices are approved, and
+    use "they" for the nominee. A yes-side line is added for a friend who votes yes despite the
+    bond (the "forgive me, Kiran" beat). Herald drafts it, and Michael approves the wording.
 
   [decided]
 
