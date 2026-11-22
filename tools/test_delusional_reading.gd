@@ -48,9 +48,10 @@ func _init() -> void:
 	var bystander: Dictionary = world.duplicate(true)
 	bystander.holders = 1 << 1
 	check(Solver.Roles.fit_weight(view, bystander, [card], {}, {}, true) == 0.0, "a Delusional bystander doesn't excuse a healthy Archivist")
-	# The listener's own reading keeps its check: a's own wrong reading isn't excused by
-	# a being the Delusional one (only a listener's own readings are strong alone).
-	check(Solver.Roles.fit_weight(view, world, [card], {"self": "a", "own_role": "archivist"}, {}, true) == 0.0, "a listener's own wrong reading isn't excused by their own possible delusion")
+	# Shared Delusion doubt: a listener can now be its own Delusional holder (at the deal's
+	# share, OWN_DELUSION_PRIOR), so its own wrong reading is excused in that world, the same
+	# way as anyone else's.
+	check(Solver.Roles.fit_weight(view, world, [card], {"self": "a", "own_role": "archivist"}, {}, true) > 0.0, "a listener's own wrong reading is excused in the world where they're the Delusional one")
 	var co: Dictionary = card.duplicate(true)
 	co["content_only"] = true
 	check(Solver.Roles.fit_weight(view, world, [co], {}, {}, true) == 0.0, "the content-only mask still judges the reading's content")
