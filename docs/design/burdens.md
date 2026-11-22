@@ -642,3 +642,10 @@ Relayed by Seneschal; the wording follows his message closely.
     the cost is unchanged.
   - **The omen falls for a turned holder** (Michael, Nov 21): an Ill-Omened holder turned evil
     and then hanged still poisons the town, per the script text.
+- **Ill-Omened claim timing** (Michael, Nov 22):
+  - a real holder always claims at its first nomination, unless silenced;
+  - so a claim made after an earlier nomination that went unclaimed and unsilenced is a lie,
+    and evil won't bluff it late.
+- **Experiment, not decided** (Michael, Nov 22; on a throwaway branch): "evil knows the
+  Ill-Omened". The Demon is mildly reluctant to kill the holder and mildly favours scapegoating
+  them, and evil claims a dead holder's burden.
