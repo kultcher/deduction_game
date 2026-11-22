@@ -93,6 +93,9 @@ func _live() -> void:
 	# After the tally, a voter who voted no may say why (meeting plan M2d); nobody else speaks.
 	var tally: Dictionary = w.meeting.get("results", [{}])[-1] if not w.meeting.get("results", []).is_empty() else {}
 	var speakers: Array = g.last_events.filter(func(e): return e["k"] == "speech").map(func(e): return e["speaker"])
-	_check(speakers.all(func(sp): return sp in tally.get("no", [])), "votes are counted without vote speeches; only no voters explain themselves after the tally (%s)" % str(speakers))
+	# The one yes voter who may speak: a friend of the nominee whose yes was only just (Michael,
+	# Nov 22, vote_yes_doubtful_friend), at most one.
+	var friend_yes: Array = speakers.filter(func(sp): return sp in tally.get("yes", []) and w.by_id.has(sp) and target.id in w.by_id[sp].friends)
+	_check(speakers.all(func(sp): return sp in tally.get("no", []) or sp in friend_yes) and friend_yes.size() <= 1, "votes are counted without vote speeches; only no voters explain themselves after the tally, and at most one friend who only just voted yes (%s)" % str(speakers))
 	g.new_case(4242, 10)
 	_check(g.w.npcs.all(func(x): return x.dialogue_memory.is_empty()), "new case resets delivery history")
