@@ -242,6 +242,9 @@ A blindfold test should identify a speaker by *what their sentence is trying to 
 
 ## 7. Composing a line or turn
 
+**Pronouns for other people (Michael, Nov 22):** NPC lines use "they" for anyone they speak
+about, for now. A per-NPC he/she/they table may come later; it isn't on the backlog.
+
 ### 7.1 Optional components, never mandatory filler
 
 A useful **authoring model** is:
