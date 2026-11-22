@@ -176,6 +176,9 @@ func _test_meeting(scene) -> void:
 		scene.finish_streaming()
 		mv.finish()
 	_check(g.state not in ["meeting", "nomination"], "the meeting closes")
+	# Let anything the vote left on the stage (a friend's reluctant yes, say) be heard first,
+	# so the last words below are what's on stage.
+	mv.stage.clear()
 	mv.stage.push([_speech(t.id, t.name, "You'll regret this.")])
 	scene._refresh_all()
 	_check(mv.visible and not scene.map_stage.visible, "last words keep the circle up after the meeting closes")
