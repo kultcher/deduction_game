@@ -12,7 +12,7 @@ him, Nov 21.
 | Delusional | **Hidden**: The holder of this burden does not know they carry it. Their gift does not work and gives arbitrary information. |
 | Marked | May register as evil, or as the Demon, to gifts that read them. They know. |
 | Unrequited | Loves one townsperson, who doesn't know. Visits their home at night, and is slow to suspect them. |
-| Ill-Omened | If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. |
+| Ill-Omened | If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. The evil team knows who the Ill-Omened is. (second sentence: Michael, Nov 22) |
 
 "Good person" replaces "good gift" in rules text.
 

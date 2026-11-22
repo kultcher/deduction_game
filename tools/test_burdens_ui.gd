@@ -44,7 +44,7 @@ func _rules_text() -> void:
 	_check(MainRoles.burden_heading(2) == "Burdens: 2 in play, on top of a gift", "more than one in play is counted")
 	_check(" burden " in MainRoles.setup_summary(10) and not "secret" in MainRoles.setup_summary(10), "the setup summary counts burdens")
 	_check(C.SECRET_MODS["unrequited"]["desc"] == "Loves one townsperson, who doesn't know. Visits their home at night, and is slow to suspect them.", "Unrequited's rules text is Michael's")
-	_check(C.SECRET_MODS["ill_omened"]["desc"] == "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night.", "Ill-Omened's rules text is Michael's")
+	_check(C.SECRET_MODS["ill_omened"]["desc"] == "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. The evil team knows who the Ill-Omened is.", "Ill-Omened's rules text is Michael's")
 	_check(C.SECRET_MODS["marked"]["desc"].ends_with("They know."), "Marked's rules text says its holder knows")
 
 func _claimers() -> void:

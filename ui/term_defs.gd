@@ -41,7 +41,7 @@ const MECHANICS = [
 		"tooltip": "Burden: something that weighs on a townsperson, on top of their gift. The script lists the possible burdens and how many are in play. A hidden burden's holder doesn't know they carry it."},
 	# The Ill-Omened board marker's tooltip is the burden's rules text (Michael, Nov 21).
 	{"id": "omen", "label": "Ill-Omened", "aliases": [{"text": "omen", "case_sensitive": true}, {"text": "Omen", "case_sensitive": true}],
-		"tooltip": "Ill-Omened: If hanged after claiming this burden, every good person is poisoned that night until the start of the next night."},
+		"tooltip": "Ill-Omened: If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. The evil team knows who the Ill-Omened is."},
 ]
 
 ## Mistaken (Michael, Nov 19): the honest-failure label for a reading. Its tooltip names
