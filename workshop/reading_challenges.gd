@@ -19,6 +19,13 @@ const HONEST = "impaired"
 ## whatever comes later. The UI reads these, so the wording changes in one place.
 const HONEST_LABEL = "Mistaken"
 const HONEST_TIP = "The reading was wrong, but honestly told: something fooled the gift."
+## The Mistaken call's two causes (Michael, Nov 22): that night's reading alone (poison, a
+## Marked soul, a Red Herring), or a Delusional gift, which counts against all of the
+## reader's readings. The labels are Michael's (Nov 22); the tips are drafts.
+const NIGHT_ONLY_LABEL = "Poisoned that night"
+const NIGHT_ONLY_TIP = "Something fooled the gift that night only: poison, or a misleading registration."
+const DELUSION_ALL_ALONG_LABEL = "Delusional all along"
+const DELUSION_ALL_ALONG_TIP = "Their gift has never worked: every reading of theirs in this case is doubted."
 
 static func canonical(mode) -> String:
 	return HONEST if str(mode) == "misled" else str(mode)
@@ -134,10 +141,28 @@ const RELAY_ATTRIBUTIONS = ["transmission", "original"]
 ## about the reading itself, so they belong to the original.
 const TRANSMISSION_MODES = ["lying", "impaired", "delusional"]
 
+## Whether the script can deal Delusional (the view's world options; unknown keeps it).
+static func delusion_possible(view: Dictionary) -> bool:
+	return "delusional" in view.get("world_options", {}).get("modifiers", ["delusional"])
+
+## The readings a "Delusional all along" call on `id` covers: every reading in `cards` the
+## same reader told themselves (relays aside), the called one first.
+static func reader_group(cards: Array, id: String, teller: String) -> Array:
+	var out: Array = [id]
+	for c in cards:
+		if c.get("kind", "") != "report" or c.id == id or c.get("testimony_only", false):
+			continue
+		if str(c.get("source", "")) == teller and not c.has("relay_source"):
+			out.append(c.id)
+	return out
+
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
-	if value is Dictionary and value.get("mode") == "delusional" and not value.has("group"):
-		return false  # "they're Delusional" explains a source's readings together
+	# "Delusional all along" (Michael, Nov 22): on one reading it covers all of that reader's
+	# readings in the case (assess groups them), so it needs no group, but it needs Delusional
+	# on the script.
+	if value is Dictionary and value.get("mode") == "delusional" and not delusion_possible(view):
+		return false
 	if card.has("relay_source"):
 		var attribution: String = str(value.get("attribution", "")) if value is Dictionary else ""
 		if attribution not in RELAY_ATTRIBUTIONS or (attribution == "transmission" and str(value.get("mode", "")) not in TRANSMISSION_MODES):
@@ -327,7 +352,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# test asks how far the rest of the attended evidence, against chance, says the
 		# reading (or the source's readings together) is wrong, and how well the named cause
 		# explains that.
-		var group: Array = challenge.get("group", [id])
+		var group: Array = challenge.get("group", reader_group(cards, id, teller) if challenge.mode == "delusional" else [id])
 		# A Seer's honest mistake that a Red Herring or Marked registration explains (the
 		# explicit rule above) isn't discounted: the gift worked, and its registration is
 		# already in the worlds. Otherwise it's graded like any honest mistake (the merged

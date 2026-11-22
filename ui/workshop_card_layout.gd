@@ -68,10 +68,20 @@ static func evidence_layout(m, id: String) -> Dictionary:
 			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
 				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES) \
 				or (mode == RCh.HONEST and not RCh.honest_allowed(m.model.view, card, side))
-			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": preload("res://workshop/reading_challenges.gd").canonical(node.mode) == mode, "disabled": disabled, "field": "mode:" + mode,
+			var is_on: bool = RCh.canonical(node.mode) == mode or (mode == RCh.HONEST and node.mode == "delusional")
+			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": is_on, "disabled": disabled, "field": "mode:" + mode,
 				"tip": {"lying": "The reader is lying about this result.", RCh.HONEST: RCh.HONEST_TIP, "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
 		y += 36.0
+		# Mistaken's cause (Michael, Nov 22): that night only, or Delusional all along, where
+		# the script can deal Delusional and the passing-on isn't what's challenged.
+		if (RCh.canonical(node.mode) == RCh.HONEST or node.mode == "delusional") and RCh.delusion_possible(m.model.view) and side != "transmission":
+			# One per row, as the relay's sides are: the card is too narrow for both labels.
+			for cause in [[RCh.HONEST, RCh.NIGHT_ONLY_LABEL, RCh.NIGHT_ONLY_TIP], ["delusional", RCh.DELUSION_ALL_ALONG_LABEL, RCh.DELUSION_ALL_ALONG_TIP]]:
+				var cause_on: bool = (node.mode == "delusional") == (cause[0] == "delusional")
+				els.append({"t": "chip", "rect": Rect2(16.0, y, m.WIDTH - 32.0, 26), "text": cause[1], "on": cause_on, "disabled": false, "field": "mode:" + cause[0], "tip": cause[2]})
+				y += 32.0
+			y += 4.0
 		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}
 	var answer: Dictionary = node.answers.get(card.get("id", ""), {})
 	var positive: Array = answer.get("positive", [])

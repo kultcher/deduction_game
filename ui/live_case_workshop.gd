@@ -662,13 +662,16 @@ func _refresh_case() -> void:
 			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
 			side_option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "side:" + sides[i]))
 		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
-		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
-		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
+		var RCh = preload("res://workshop/reading_challenges.gd")
+		var option = _option(case_box, [RCh.HONEST_LABEL + ": " + RCh.NIGHT_ONLY_LABEL.to_lower() if RCh.delusion_possible(board.view) else RCh.HONEST_LABEL, "Suspected lie", "Unlikely reading", RCh.HONEST_LABEL + ": " + RCh.DELUSION_ALL_ALONG_LABEL.to_lower()])
+		option.select(["impaired", "lying", "unlikely", "delusional"].find(RCh.canonical(node.mode)))
+		# "Delusional all along" (Michael, Nov 22) where the script can deal Delusional.
+		option.set_item_disabled(3, not RCh.delusion_possible(board.view) or (relay and str(node.get("attribution", "")) == "transmission"))
 		option.set_item_disabled(0, not preload("res://workshop/reading_challenges.gd").honest_allowed(board.view, _report(node.card), str(node.get("attribution", ""))))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
 			option.set_item_disabled(2, true)
-		option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
+		option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "mode:" + ["impaired", "lying", "unlikely", "delusional"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
