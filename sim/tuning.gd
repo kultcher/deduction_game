@@ -625,6 +625,11 @@ class Meeting:
 	const PUBLIC_CLAIM_DAY_SLOPE = 0.4
 	const PUBLIC_CLAIM_PRESSURE_SLOPE = 0.8
 	const PUBLIC_CLAIM_COMPOSURE_DAMP = 0.5
+	## "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC
+	## the Demonologist calls on feels, in pressure units: it adds to the "say it before the
+	## town?" decision as that much more pressure would, and lowers the bar for volunteering a
+	## night sighting by as much.
+	const CALL_ON_PRESSURE_BUMP = 0.3
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
 	const REVEAL_COST_PRIVACY_SLOPE = 0.8
 	const REVEAL_COST_BASE = 0.2

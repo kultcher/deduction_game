@@ -446,23 +446,6 @@ func _portrait(id: String) -> Texture2D:
 	return UITheme.tex("art/portraits/" + id, 0.25)
 
 ## The portrait cut to a square from the top, where the face is, so the circle mask draws a
-## circle rather than an oval (the art is taller than wide; Michael's playtest). Cached.
-static var _round_cache: Dictionary = {}
-
+## circle rather than an oval (the art is taller than wide; Michael's playtest). PortraitFx caches it.
 func _round_portrait(id: String) -> Texture2D:
-	if _round_cache.has(id):
-		return _round_cache[id]
-	var tex: Texture2D = _portrait(id)
-	if tex == null:
-		return null
-	var img: Image = tex.get_image()
-	if img == null or img.get_width() == img.get_height():
-		return tex
-	if img.is_compressed():
-		img.decompress()
-	var side: int = mini(img.get_width(), img.get_height())
-	var x0: int = (img.get_width() - side) / 2
-	var y0: int = clampi(int(img.get_height() * 0.04), 0, img.get_height() - side)
-	var out: Texture2D = ImageTexture.create_from_image(img.get_region(Rect2i(x0, y0, side, side)))
-	_round_cache[id] = out
-	return out
+	return PortraitFx.square(_portrait(id))

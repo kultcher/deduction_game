@@ -19,6 +19,7 @@ test_bot_m4
 test_buildings_tavern_town_hall
 test_burden_unrequited_walk
 test_burdens_ui
+test_call_on
 test_canvas_card_text
 test_card_wording_fixes
 test_carried_answers
@@ -85,11 +86,13 @@ test_judgement_boost
 test_juror_claims
 test_juror_listener
 test_kill_score_roles
+test_kill_wheel
 test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
 test_location_art
 test_location_solver
+test_map_graveyard
 test_map_return
 test_martyr_bluff_quiet
 test_mechanics_claims
@@ -123,11 +126,13 @@ test_outcomes
 test_own_alibi_lies
 test_own_burden_knowledge
 test_own_route_knowledge
+test_pacing
 test_peer_role_gossip
 test_place_icons
 test_player_failed_gift
 test_playtest_23973
 test_playtest_89077
+test_playtest_ui_nov22
 test_points_elsewhere
 test_poison_chance
 test_poison_outing

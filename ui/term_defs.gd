@@ -13,6 +13,8 @@ const MECHANICS = [
 		"tooltip": "Vigil: you spend the night watching one block. You only see if its residents leave home. You do not see people arrive on this block from elsewhere."},
 	{"id": "ward", "label": "Ward", "aliases": [{"text": "Ward", "case_sensitive": true}],
 		"tooltip": "Ward: once per case, you sign a door at night and the Demon cannot kill there. A stopped kill leaves a scorched sigil, which you can show the town."},
+	{"id": "call_on", "label": "Call on", "aliases": [{"text": "Call on", "case_sensitive": true}],
+		"tooltip": "Call on: ask one person at the meeting to share what they haven't said. They may still hold back, and a refusal is noted."},
 	{"id": "clemency", "label": "Clemency", "aliases": [{"text": "Clemency"}],
 		"tooltip": "Clemency: once per case, you cancel a nomination as it is made. The one you spare trusts you more; the others judge you by what they think of them."},
 	{"id": "trace", "label": "Trace", "aliases": [{"text": "Trace", "case_sensitive": true}, {"text": "Traces", "case_sensitive": true}],
@@ -75,6 +77,7 @@ const CONTROLS = [
 	["Ward", "Sign a door tonight so the Demon cannot kill there. Once per case."],
 	["Sleep", "Spend the night at home."],
 	["Present a deduction", "Put a filed case to the whole town. Once per meeting."],
+	["Call on", "Ask someone to share anything they haven't told the town: a reading, a night sighting, or something they've heard. It isn't an accusation. Once per meeting."],
 	["Take back a case", "Withdraw a filed case in public. If the town still thinks it wrong at dawn, it may cost you some of their trust."],
 	["Show the grimoire", "See who everyone truly was."],
 ]

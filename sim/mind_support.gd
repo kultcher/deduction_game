@@ -339,7 +339,7 @@ static func _speak(w, s, d, choice: Dictionary, ctx: Dictionary, out: Dictionary
 					lines.append(_mind().say_voiced(s, "support_doubt_for", "I've known %s for a long time. They wouldn't be capable of something like this... would they?" % d.name, {"target": d.name}))
 					facts.append({"kind": "opinion", "subject": [d.id], "source": s.id, "stance": "for", "doubt": true, "day": w.day, "phase": w.phase, "text": "%s speaks up for %s, though with doubt." % [s.name, d.name]})
 				else:
-					lines.append(_mind().say_voiced(s, "support_vibes_for", "I've known %s long enough. I don't believe it of them." % d.name, {"target": d.name}))
+					lines.append(_mind().say_voiced(s, "support_vibes_for", "I've known %s long enough. I can't believe them evil." % d.name, {"target": d.name}))
 					facts.append({"kind": "opinion", "subject": [d.id], "source": s.id, "stance": "for", "day": w.day, "phase": w.phase, "text": "%s speaks up for %s." % [s.name, d.name]})
 				_stance_for(w, s, d)
 			else:

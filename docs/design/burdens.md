@@ -351,6 +351,10 @@ add to sections 1 to 7, and win where they differ.
    count on its own.
 8. **Evil plays as its good self** when a real Ill-Omened is claimed. It doesn't push to hang
    them.
+   - **Revised for Minions** (Michael, Nov 21): non-Scion Minions get a bump toward hanging an
+     Ill-Omened claimant they believe is real, scaled down by their own exposure. They risk it
+     when there's little heat on them, and blend in under scrutiny. The bump's size is a new
+     constant, which Beadle proposes. See section 16.
 9. **The cost of a hanging is one general vote term,** fed by the claim, and a reasonably
    strong deterrent: about enough to cancel the player's "yes" vote bump.
    - The bump scales with trust (`PLAYER_VOTE_YES_SLOPE` and `_OFFSET` in `sim/tuning.gd`),
@@ -610,3 +614,47 @@ Relayed by Seneschal. It resolves the hold in section 14.
   - Marked may also be unplaced at 12 to 13 NPCs.
 - **Rejected:** the per-case "touched-set" hybrid. It fragments the single cached universe,
   and by days 3 to 4 it saves little.
+
+## 16. More stage-2 decisions (Michael, Nov 21, later)
+
+Relayed by Seneschal; the wording follows his message closely.
+
+- **Ill-Omened:** the cost is weighted by belief, and split when claims clash. The poison should
+  be able to fall in play; Beadle is measuring which levers make that happen.
+- **The Unrequited bluff:** a claim that explains a sighting is roughly neutral, like a claim
+  made after an evil reading (section 13).
+  - **Its own reactive bluff weight** (Michael, Nov 21): a new constant, set so that an
+    Unrequited claim made after the claimant was seen out lands roughly neutral. It's
+    provisional, to revisit after the role breakdown. Lantern is building it.
+- **Marked with four burdens on the script:** accepted for now. It's revisited after the role
+  breakdown, along with the Unrequited numbers.
+- **Impossible pairs** (the placement-rule check in section 10) also cover holders who haven't
+  claimed.
+- **Wording approved:** "carries a hidden burden", "For love (their Unrequited claim)", and
+  "love".
+- **Being lied about clears the liar:** decided (Michael, Nov 21). Firsthand means only what
+  the NPC itself read, saw or did; see `docs/belief_model.md`.
+- **Ill-Omened, evil's play** (Michael, Nov 21): non-Scion Minions get a bump toward hanging an
+  Ill-Omened claimant they believe is real, scaled down by their own exposure, so they take the
+  risk under little heat and blend in under scrutiny. This revises item 8 in section 9 for
+  Minions only. The bump's size is a new constant, which Beadle proposes.
+  - **Measured:** under the belief-weighted cost, the poison falls once in 40 passive games, so
+    the cost is unchanged.
+  - **The omen falls for a turned holder** (Michael, Nov 21): an Ill-Omened holder turned evil
+    and then hanged still poisons the town, per the script text.
+- **Ill-Omened claim timing** (Michael, Nov 22):
+  - a real holder always claims at its first nomination, unless silenced;
+  - so a claim made after an earlier nomination that went unclaimed and unsilenced is a lie,
+    and evil won't bluff it late.
+- **The evil team knows who the Ill-Omened is** (adopted, Michael, Nov 22; it goes into the
+  burden's rules text):
+  - the Demon is mildly reluctant to kill the holder, and evil mildly prefers scapegoating them;
+  - Minions push to hang the holder only once the holder already has heat, and the normal
+    cool-off after a failed vote applies. This refines the Nov 21 Minion bump;
+    - **What counts as heat** (Michael, Nov 22): evil's own planted frames count when they rest on
+      actual claims (fabricated readings, sightings, bluffs), but bare accusations don't;
+  - evil bluffs Ill-Omened only when it isn't dealt, or after the holder's death. It goes ahead
+    only 15% of the time if a Rumormonger has shown the burden in play, and never if the dead
+    holder had already claimed it publicly.
+  - **Measured** (40 passive games): the holder is framed more and killed less, and the poison
+    falls a little more often. Good wins are unchanged.

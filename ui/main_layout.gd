@@ -83,6 +83,8 @@ static func build(m) -> void:
 			["Card list sidebar", m.MoreItem.SIDEBAR], ["Write dev log", m.MoreItem.LOG], ["Case Workshop", m.MoreItem.WORKSHOP], [m.DailyGuess.MENU_ENTRY, m.MoreItem.SUSPICIONS]]:
 		mp.add_item(it[0], it[1])
 	mp.add_check_item("Reduced motion", m.MoreItem.REDUCED_MOTION)
+	mp.add_separator()
+	mp.add_item(m.EXIT_GAME, m.MoreItem.EXIT)
 	mp.id_pressed.connect(func(i):
 		if i == m.MoreItem.REDUCED_MOTION:
 			mp.set_item_checked(mp.get_item_index(i), not m.reduced_motion)

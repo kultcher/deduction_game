@@ -63,6 +63,11 @@ func _draw() -> void:
 			draw_style_box(plaque, pr)
 		else:
 			draw_rect(pr, UITheme.color("paper"))
+		# Your guess tints the card faintly: blue for good, red for evil (Michael, Nov 22). The
+		# roster only; the profile window keeps its own look.
+		var lean: String = guess_lean(g.guesses.get(n.id, {}).get("guess", "?"))
+		if lean != "" and not sel:
+			draw_rect(pr.grow(-4), GUESS_TINT[lean])
 		var badge = _portraits[n.id]
 		badge.position = r.position + Vector2(2, 2)
 		badge.size = Vector2(ROW_H - 4, ROW_H - 4)
@@ -74,6 +79,8 @@ func _draw() -> void:
 		var claim = _claimed(n)
 		var relayed = _relayed_claim(n) if not (n.claim_public or n.max_tier >= 3 or n.claimed_role == "none") else {}
 		var gs: String = g.guesses.get(n.id, {}).get("guess", "?")
+		if gs == "good":
+			gs = "?"   # a plain "good" guess shows as the tint alone, with no stamp
 		var slot_count = int(claim != "") + int(gs != "?")
 		var slots_x = pr.end.x - 20 - slot_count * (slot + 4)
 		var text_w = maxf(0, slots_x - tx - (8 if slot_count > 0 else 0))
@@ -95,6 +102,18 @@ func _draw() -> void:
 			var gr = Rect2(slots_x, cy, slot, slot)
 			_role_mark(gs, gr, Color(1, 1, 1, 0.75), sel)
 			draw_string(_font, Vector2(gr.end.x - 6, gr.end.y + 2), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UITheme.color("red"))
+
+const GUESS_TINT = {"good": Color(0.35, 0.55, 0.95, 0.16), "evil": Color(0.9, 0.25, 0.2, 0.16)}
+
+## "good", "evil" or "" for a guess: a gift guess counts as good, a Minion or Demon as evil.
+static func guess_lean(gs: String) -> String:
+	if gs == "good":
+		return "good"
+	if gs == "evil" or C.is_demon(gs) or C.is_minion(gs):
+		return "evil"
+	if C.ROLES.has(gs):
+		return "good"
+	return ""
 
 func _fit_text(text: String, width: float, font_size: int) -> String:
 	if width <= 0:
