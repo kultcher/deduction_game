@@ -815,12 +815,12 @@ class Evil:
 	## usual exposure cost. Sized so that on a close vote a Minion under about the median
 	## scrutiny votes yes, and under heavy scrutiny keeps cover.
 	const OMEN_PUSH_STAKES = 0.35
-	## EXPERIMENT (mock/omen-evil-knows, never merges): evil knows the Ill-Omened. A mild pull
+	## The evil team knows the Ill-Omened (Michael, Nov 22; burdens prototype). A mild pull
 	## away from killing them (a Seer's claim is worth 4 to the Demon, a spent first-night
 	## gift 0), and toward making them the scapegoat.
 	const OMEN_KNOWN_KILL_PENALTY = -1.5
 	const OMEN_KNOWN_SCAPEGOAT_BONUS = 0.4
-	## EXPERIMENT: the chance evil still claims a dead holder's Ill-Omened when a Rumormonger
+	## The chance evil still claims a dead holder's Ill-Omened when a Rumormonger
 	## reading has shown it in play.
 	const OMEN_DEAD_BLUFF_RUMOR_CHANCE = 0.15
 	const DEMON_CAUTION_FLOOR = 0.45
