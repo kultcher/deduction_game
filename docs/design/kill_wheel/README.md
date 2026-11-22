@@ -17,4 +17,6 @@ The stills were taken before two fixes in #530. They show the faded slices' gold
 still visible, and the red flash covering only the wheel's square. In the clips the rings
 fade away and the flash covers the whole screen.
 
+The clips were re-recorded after Michael's note: the portraits now turn with the wheel.
+
 Recorded with `tools/kill_wheel_capture.gd` at 1920×1080, scaled to 1280 wide.
