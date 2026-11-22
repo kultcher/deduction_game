@@ -238,9 +238,13 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
 		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
 		var agree: Dictionary = load("res://sim/social.gd").readings_agree_record(v, nominee)
-		if not accepted and not lie and agree.is_empty():
+		var doubt: bool = _doubtful_friend(v, nominee, parts_map.get(vid, {}))
+		if not accepted and not lie and agree.is_empty() and not doubt:
 			continue
 		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie) if (accepted or lie) else ""
+		# A friend who came near to voting yes defends them, but with doubt (Michael, Nov 22).
+		if doubt and agree.is_empty() and key in ["", "vote_no_reluctant", "vote_no_short_of_rope"]:
+			key = "vote_no_doubtful_friend"
 		# Their readings confirm what I know (Michael, Nov 19): the reason, ahead of the
 		# generic ones; a card for the player (res.resistance_facts).
 		if not agree.is_empty() and key in ["", "vote_no_reluctant", "vote_no_short_of_rope"]:
@@ -269,6 +273,14 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 
 
 ## Which reason a no-voter gives, from the parts their vote actually had.
+## A friend of the nominee who voted no, but came within the close margin of a yes (Michael,
+## Nov 22: "I've known Kiran for a long time... would he?").
+static func _doubtful_friend(v, nominee: String, vp: Dictionary) -> bool:
+	if not (nominee in v.friends) or vp.is_empty() or bool(vp.get("yes", false)):
+		return false
+	var margin: float = float(vp.get("margin", -99.0))
+	return margin < 0.0 and margin > -Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN
+
 static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: bool = false) -> String:
 	var parts: Dictionary = vp.get("parts", {})
 	if v.is_evil() and bool(vp.get("yes", false)):
@@ -310,6 +322,9 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 		"vote_no_lie_not_rope":
 			return say_voiced(v, key, "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name,
 				{"nominee": t.name})
+		"vote_no_doubtful_friend":
+			# Placeholder wording until Herald voices the key (Michael's example, Nov 22).
+			return say_voiced(v, key, "I've known %s a long time. They'd never be capable of something like this... would they?" % t.name, {"nominee": t.name})
 		"vote_no_distrust_nominator":
 			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],
 				{"nominee": t.name, "nominator": nom_name})

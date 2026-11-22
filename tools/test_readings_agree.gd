@@ -27,6 +27,7 @@ func _init() -> void:
 	_opinion()
 	_vote()
 	_playtest_51795()
+	_doubtful_friend()
 	print("Readings agree: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -120,3 +121,20 @@ func _playtest_51795() -> void:
 	c.claimed_role = "archivist"
 	c.info_log = []
 	_check(MindPodium.options(w, c)["gift"] == "readings", "a claimant who never told a reading of its gift can be pressed for one")
+
+## A friend of the nominee who came near to voting yes defends them with doubt (Michael, Nov 22).
+func _doubtful_friend() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var f = goods[0]
+	var t = goods[1]
+	f.workshop_state["confirmed_readings"] = {}
+	if not (t.id in f.friends):
+		f.friends.append(t.id)
+	var line := func(margin: float) -> String:
+		var res: Dictionary = {"nominee": t.id, "no": [f.id], "yes": [], "voter_parts": {f.id: {"parts": {}, "margin": margin, "yes": false}}, "threshold": 6, "count": 0, "by": goods[2].id}
+		return " ".join(PackedStringArray(MindVote.vote_resistance_lines(w, res).map(func(x): return str(x.get("statement", x.get("text", ""))))))
+	_check("would they?" in line.call(-0.03), "a friend just short of a yes defends them with doubt (%s)" % line.call(-0.03))
+	_check(not ("would they?" in line.call(-0.6)), "not a friend far from a yes")
+	f.friends.erase(t.id)
+	_check(not ("would they?" in line.call(-0.03)), "nor someone who isn't their friend")
