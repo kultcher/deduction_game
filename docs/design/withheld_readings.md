@@ -52,19 +52,16 @@ now and then, never as a matter of course, so the threads stay the player's to p
 - **The gap:** in meetings, people sometimes don't speak up about their latest readings, just
   because of how the meeting flows. That mirrors real BotC. Today the player can only press
   someone through a nomination.
-- **The new action:** the player gets one of these per meeting, outside a nomination. It's a
+- **The new action, "Call on"** (name approved by Michael, Nov 22): the player gets one per
+  meeting (confirmed), outside a nomination. It's a
   request for information, not an accusation. The NPC is prompted to share anything it hasn't
   shared yet. It can still withhold, if it's stubborn or has a good reason.
 - **The cost:**
   - **asking** moves no suspicion by itself;
   - **refusing** moves some, and makes a card for circumstantial use only.
-- **Its name** needs to be softer than "Press", which the nomination already uses (Michael
-  suggested "Inquiry"). Drafts, Michael's to choose:
-  - **"Call on"**, as in calling on someone to speak at a meeting (Vicar's recommendation:
-    it's of the period and plainly a request);
-  - "Inquire";
-  - "Ask to share";
-  - "Invite to speak".
+- **What it covers** (Michael, Nov 22): readings not yet shared, night sightings, and even
+  secondhand information the NPC hasn't passed on.
+- **How the NPC decides:** the normal disclosure rules, with a light pressure bump.
 
 ## 6. Who builds what
 
@@ -77,8 +74,6 @@ now and then, never as a matter of course, so the threads stay the player's to p
 
 ## 7. Open
 
-1. Whether "one per meeting" for the player's action is right. It's read here from Michael's
-   "a single Press action".
-2. Whether it covers every unshared reading or only first-night gifts. This note assumes every
-   gift with readings not yet shared, with first-night gifts as the clearest case.
-3. The action's name (section 5).
+Nothing open on the shape. The name ("Call on"), the limit (one per meeting) and the scope
+(readings, night sightings, secondhand information) are settled (Michael, Nov 22). The size of
+the pressure bump is the builder's to propose.

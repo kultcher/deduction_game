@@ -646,6 +646,13 @@ Relayed by Seneschal; the wording follows his message closely.
   - a real holder always claims at its first nomination, unless silenced;
   - so a claim made after an earlier nomination that went unclaimed and unsilenced is a lie,
     and evil won't bluff it late.
-- **Experiment, not decided** (Michael, Nov 22; on a throwaway branch): "evil knows the
-  Ill-Omened". The Demon is mildly reluctant to kill the holder and mildly favours scapegoating
-  them, and evil claims a dead holder's burden.
+- **The evil team knows who the Ill-Omened is** (adopted, Michael, Nov 22; it goes into the
+  burden's rules text):
+  - the Demon is mildly reluctant to kill the holder, and evil mildly prefers scapegoating them;
+  - Minions push to hang the holder only once the holder already has heat, and the normal
+    cool-off after a failed vote applies. This refines the Nov 21 Minion bump;
+  - evil bluffs Ill-Omened only when it isn't dealt, or after the holder's death. It goes ahead
+    only 15% of the time if a Rumormonger has shown the burden in play, and never if the dead
+    holder had already claimed it publicly.
+  - **Measured** (40 passive games): the holder is framed more and killed less, and the poison
+    falls a little more often. Good wins are unchanged.
