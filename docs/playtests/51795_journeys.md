@@ -165,6 +165,64 @@ A wrong belief held for a human reason, and a big but fitting swing when it brok
 - **Your case:** "I'd already talked myself into that same worry." That's a partial stance,
   and the case added little, as it should when he was already there.
 
+## Why the town settled on Jory early (Michael's follow-up)
+
+**Two things did it: a real contradiction in his readings, then elimination when Nisha
+died.**
+
+**Jory's three Dowser counts**, all fabricated, though one happened to be true:
+- "0 evil among Odette, Fenwick, Lian": **false**, because Fenwick is evil. It clears
+  Odette and Lian, who were good.
+- "1 evil among Odette, Kiran, Isolde, Dorian": **false**, because all four are good.
+- "0 evil among Odette and Lian": **true**.
+
+**Day 2: a contradiction (Dorian and Kiran).**
+- **The chain:** the Archivist clash made Fenwick likely evil. Jory's first count put
+  Fenwick in a group with no evil in it. So, in their minds, the count was wrong and Jory
+  was lying or poisoned.
+- **Dorian:** reached 0.27 on Jory. Taking away Jory's readings, or the two Archivist
+  claims, each halves it.
+- **Kiran:** reached 0.21. Jory's readings add +0.11 and Dorian's Clerk reading +0.08. The
+  Clerk reading backs Isolde's Medium claim, which narrows who the day-2 "1 evil among
+  four" could be.
+- **Isolde and Odette:** stayed low (0.15 and 0.02).
+
+**Night 2: elimination.**
+- **The jump:** all four rose at once, with nothing new said: Kiran 0.21 to 0.42, Isolde
+  0.15 to 0.39, Dorian 0.27 to 0.41, Odette 0.02 to 0.22.
+- **What caused it:** the Demon killed Nisha. She'd been a top suspect for several of them
+  (Isolde 0.34, Odette 0.41, Dorian 0.20, Kiran 0.18). With her out of the pool, her share
+  went to whoever nothing had cleared.
+- **Why that was Jory:** almost everyone else was cleared by someone's reading or a
+  confirmed claim:
+  - Isolde and Dorian by their matching Medium and Clerk;
+  - Kiran by Edda's confession;
+  - Lian by the Martyr reading;
+  - Odette and Fenwick by Jory's own counts.
+
+  Nobody's reading cleared Jory. His fake clears, by clearing everyone else, left himself
+  as what remained.
+- **What I ruled out:** the stored lean from the day before barely moved it. Clearing it
+  changes these numbers by 0.00–0.07. Removing the death items or Nisha's claim doesn't
+  move it either. The death works by taking her out of the pool of candidates, not as
+  something heard.
+
+**Day 3:** the meeting added about 0.10 more for Kiran and Dorian (his third count). The
+town went in with Jory as everyone's top suspect except Odette's.
+
+This fits the pillars: explainable in hindsight, and reached by reasoning a player could
+follow (contradiction, then elimination). Being as sure as Kiran or Dorian (about 0.5) by
+day 3, roughly when you were, isn't out-deducing the player. It's worth watching whether
+elimination after a demon kill is often this sharp.
+
+**A method note.** The probes take out only what a mind has *heard*. They can't remove:
+- **its own readings and anything told to it privately:** those are kept separately, which
+  is likely where Merrin's private tip to Odette sits;
+- **the lean it carries over from the day before.**
+
+So "nothing heard moves it" can still mean its own knowledge, a private telling, or
+elimination is doing the work.
+
 ## What wasn't checked
 
 - **The other good townsfolk:** Nisha, Lian and Edda.
