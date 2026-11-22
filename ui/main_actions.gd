@@ -126,7 +126,8 @@ static func refresh(m) -> void:
 			# Call on someone to share what they haven't said (withheld readings, Michael, Nov 22).
 			var call = m._button(m.actions, "Call on…", func(): pass)
 			call.disabled = GameMeeting.called_on_today(m.g)
-			call.tooltip_text = GameMeeting.CALLED_ALREADY if call.disabled else "Ask someone to share anything they haven't told the town: a reading, a night sighting, or something they've heard. It isn't an accusation. Once per meeting."
+			if call.disabled:
+				call.tooltip_text = GameMeeting.CALLED_ALREADY
 			call.pressed.connect(func(): Pickers.people(m, call, "Call on whom?", func(id): m._run("call " + id), func(n): return GameMeeting.call_on_rejection(m.g, n) == ""))
 			# Take back a filed case in public (BACKLOG "Believable public revisions", Nov 18).
 			if m.g.board.any(Pickers.withdrawable):

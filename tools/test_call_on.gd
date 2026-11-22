@@ -82,6 +82,8 @@ func _run() -> void:
 	MainActions.refresh(scene)
 	btn = _button(scene, "Call on…")
 	check(btn != null and btn.disabled and btn.tooltip_text == GameMeeting.CALLED_ALREADY, "once spent, it's greyed and says why")
+	var terms = preload("res://ui/text_terms.gd").new()
+	check(terms.find_matches("Call on is once per meeting.").any(func(r): return str(r.get("id", "")) == "mechanic:call_on"), "Call on is a glossary term (Michael's wording)")
 	scene.queue_free()
 	print("Call on: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
