@@ -248,6 +248,11 @@ func build(dont_ask: Callable) -> void:
 	off.name = "DontAsk"
 	off.text = DONT_ASK
 	off.flat = true
+	# A flat button takes the theme's dark paper ink; this one sits on the dark panel (Michael's playtest).
+	for k in ["font_color", "font_focus_color"]:
+		off.add_theme_color_override(k, UITheme.color("text"))
+	for k in ["font_hover_color", "font_pressed_color"]:
+		off.add_theme_color_override(k, UITheme.color("accent"))
 	off.pressed.connect(func():
 		if dont_ask.is_valid():
 			dont_ask.call()
@@ -277,9 +282,24 @@ func _circle(i: int) -> Dictionary:
 	face.ignore_texture_size = true
 	face.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	face.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+	face.size_flags_horizontal = Control.SIZE_SHRINK_CENTER   # square, not stretched to the column (ovals)
 	face.material = PortraitFx.material(true)
 	PortraitFx.hover_lift(face)
 	face.pressed.connect(func(): _open_picker(i, face))
+	# An empty circle has no portrait to draw, so it shows a ring to click (Michael's playtest:
+	# a fresh window showed nothing where the circles should be).
+	var ring = Panel.new()
+	ring.name = "EmptyRing"
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.05)
+	sb.border_color = UITheme.color("accent")
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(PORTRAIT_SIZE / 2)
+	sb.anti_aliasing = true
+	ring.add_theme_stylebox_override("panel", sb)
+	face.add_child(ring)
 	root.add_child(face)
 	var name_label = Label.new()
 	name_label.name = "Name"
@@ -293,13 +313,18 @@ func _circle(i: int) -> Dictionary:
 		types.add_item(C.role_name(t))
 		types.set_item_metadata(types.item_count - 1, t)
 	types.item_selected.connect(func(idx): _pick_type(i, str(types.get_item_metadata(idx))))
+	if _default_type(_slots[i]) != "":
+		# One Demon type on the script: it's given, so the button shows it and doesn't open.
+		types.select(1)
+		types.disabled = true
 	root.add_child(types)
 	return {"root": root, "face": face, "name": name_label, "types": types}
 
 func _refresh_circle(i: int) -> void:
 	var c: Dictionary = _circles[i]
 	var id: String = str(picks[i].get("id", ""))
-	c.face.texture_normal = _portrait(id) if id != "" else null
+	c.face.texture_normal = _round_portrait(id) if id != "" else null
+	c.face.get_node("EmptyRing").visible = id == ""
 	c.face.tooltip_text = PICK_DEMON if _slots[i].role == "demon" else PICK_MINION
 	if i == 0 and _demon_frozen():
 		c.face.disabled = true
@@ -311,6 +336,8 @@ func _refresh_circle(i: int) -> void:
 	if _note != null:
 		_note.visible = picks.any(func(p): return p.get("from_profile", false))
 	var t: String = str(picks[i].get("type", ""))
+	if t == "":
+		t = _default_type(_slots[i])   # a given Demon type shows even before a pick
 	for k in range(c.types.item_count):
 		if str(c.types.get_item_metadata(k)) == t:
 			c.types.select(k)
@@ -417,3 +444,25 @@ func _finish(confirmed: bool) -> void:
 
 func _portrait(id: String) -> Texture2D:
 	return UITheme.tex("art/portraits/" + id, 0.25)
+
+## The portrait cut to a square from the top, where the face is, so the circle mask draws a
+## circle rather than an oval (the art is taller than wide; Michael's playtest). Cached.
+static var _round_cache: Dictionary = {}
+
+func _round_portrait(id: String) -> Texture2D:
+	if _round_cache.has(id):
+		return _round_cache[id]
+	var tex: Texture2D = _portrait(id)
+	if tex == null:
+		return null
+	var img: Image = tex.get_image()
+	if img == null or img.get_width() == img.get_height():
+		return tex
+	if img.is_compressed():
+		img.decompress()
+	var side: int = mini(img.get_width(), img.get_height())
+	var x0: int = (img.get_width() - side) / 2
+	var y0: int = clampi(int(img.get_height() * 0.04), 0, img.get_height() - side)
+	var out: Texture2D = ImageTexture.create_from_image(img.get_region(Rect2i(x0, y0, side, side)))
+	_round_cache[id] = out
+	return out
