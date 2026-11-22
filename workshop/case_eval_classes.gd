@@ -107,6 +107,11 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	# The listener's own readings (known) are read in its worlds as the Delusional holder too
 	# (shared Delusion doubt, Michael, Nov 22): its holding splits the classes, as any teller's.
 	var own_tellers: int = Solver.Roles.relay_mediums(Solver.person_ids(view), known) & 0xFFFF if Domain.live(view) and not known.is_empty() else 0
+	# An argued "X is the Delusional" premise (case_data.delusion_odds) weighs X's holder
+	# worlds on the after side (CaseEval.delusion_odds_fits), so X's holding splits the
+	# classes as a teller's does. The odds themselves act after compile; the mask keys it.
+	if Domain.live(view):
+		own_tellers |= delusion_odds_mask(view, case_data)
 	if own_tellers != 0:
 		key_input.append(["own_tellers", own_tellers])
 	var key = hash(key_input)
@@ -533,6 +538,44 @@ static func own_delusion_weight(view: Dictionary, prior: float) -> float:
 	return float(_own_delusion_weight_cache[key])
 
 ## Whether `me` is the world's Delusional holder (CaseEvalKernel.ListenerDeluded).
+## case_data.delusion_odds = {person id: odds factor > 0}: the argued premise that a person is
+## the Delusional. The people it names (bitmask over Solver.person_ids), skipping factor 1.
+static func delusion_odds_mask(view: Dictionary, case_data: Dictionary) -> int:
+	var odds: Dictionary = case_data.get("delusion_odds", {})
+	var m: int = 0
+	for pid in odds:
+		var pi: int = Solver.person_index(view, str(pid))
+		if pi >= 0 and pi < 16 and float(odds[pid]) > 0.0 and not is_equal_approx(float(odds[pid]), 1.0):
+			m |= 1 << pi
+	return m
+
+## The after side's per-class role fits with case_data.delusion_odds applied: each class whose
+## worlds have that person as the Delusional holder is multiplied by the factor. The before side
+## is left alone, so the argued premise is what moves belief. It composes with the shared
+## Delusion core: the listener's own-prior weight (own counts) and the uniform draw are unchanged.
+## Classes split by the person's holding (delusion_odds_mask in compile), so the rep decides.
+static func delusion_odds_fits(view: Dictionary, cc: Dictionary, case_data: Dictionary, fits: PackedFloat64Array) -> PackedFloat64Array:
+	var odds: Dictionary = case_data.get("delusion_odds", {})
+	if odds.is_empty() or not Domain.live(view):
+		return fits
+	var factors: Array = []
+	for pid in odds:
+		var pi: int = Solver.person_index(view, str(pid))
+		var f: float = float(odds[pid])
+		if pi >= 0 and pi < 16 and f > 0.0 and not is_equal_approx(f, 1.0):
+			factors.append([pi, f])
+	if factors.is_empty():
+		return fits
+	var out: PackedFloat64Array = fits.duplicate() # Never modify a cached role table.
+	var universe: Array = Solver.universe(view)
+	var rep: PackedInt32Array = cc.rep
+	for c in range(out.size()):
+		var w: Dictionary = universe[rep[c]]
+		for e in factors:
+			if _listener_deluded(w, int(e[0])):
+				out[c] *= float(e[1])
+	return out
+
 static func _listener_deluded(w: Dictionary, me: int) -> bool:
 	return int(w.get("marked", -1)) != me and str(w.get("modifier", "")) == "delusional" and (int(w.get("holders", 0)) & (1 << me)) != 0
 
