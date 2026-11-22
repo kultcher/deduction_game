@@ -111,6 +111,16 @@ func _run() -> void:
 	var final_plan: Array = scene._pacing_plan([{"k": "narration", "text": "You sleep."}, {"k": "headline", "kind": "ending", "text": "Defeat"}])
 	check(final_plan.any(func(x): return x.type == "wheel" and x.victim == v.id and x.kill), "a game-ending kill still gets its wheel, though no dawn comes")
 	check(scene._pacing_plan([{"k": "headline", "kind": "phase", "text": "Afternoon"}]).is_empty(), "an ordinary phase change plays nothing")
+	# Codex on #537: the condemned's last words finish on the courtroom stage before it opens.
+	var stage = scene.meeting_view.stage
+	stage.queue.append({"speaker": v.id, "name": v.name, "text": "Remember me kindly.", "expression": "", "log": {}})
+	scene._open_pacing_when_settled(PacingPlans.execution(g2.w, v.id), [])
+	await process_frame
+	check(scene.get_node_or_null("Pacing") == null, "while last words are still on the stage, the hanging waits")
+	stage.queue.clear()
+	scene.meeting_view.settled.emit()
+	await process_frame
+	check(scene.get_node_or_null("Pacing") != null, "and it plays once the stage has settled")
 	scene.queue_free()
 	print("Pacing: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

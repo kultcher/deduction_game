@@ -126,6 +126,14 @@ func _consume_headlines() -> void:
 			headlines.enqueue(event)
 		return
 	pacing_open = true
+	# The courtroom may still be showing the condemned's last words: the sequence waits for
+	# them (Codex on #537). Deferred, so the meeting view has the events first.
+	call_deferred("_open_pacing_when_settled", plan, rest)
+
+func _open_pacing_when_settled(plan: Array, rest: Array) -> void:
+	if meeting_view != null and meeting_view.presenting():
+		meeting_view.settled.connect(func(): _open_pacing_when_settled(plan, rest), CONNECT_ONE_SHOT)
+		return
 	PacingOverlay.open(self, g.w, plan, reduced_motion, func():
 		pacing_open = false
 		for event in rest:
