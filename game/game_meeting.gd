@@ -19,6 +19,7 @@ const Deduction = preload("res://sim/deduction.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const MindSupport = preload("res://sim/mind_support.gd")
 const GamePresentation = preload("res://game/game_presentation.gd")
+const MindCallOn = preload("res://sim/mind_call_on.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -94,6 +95,8 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 			GamePresentation._present_deduction(g, rest)
 		"nominate", "nom":
 			_player_nomination(g, rest)
+		"call":
+			call_on(g, rest)
 		"declare":
 			var err: String = Declaration.declare(g, rest)
 			if err != "":
@@ -113,8 +116,38 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 				return
 			_close_meeting(g)
 		_:
-			g._err("At the meeting: present <deduction#> (once) | nominate <name> | declare walker|hexer | wait | done")
+			g._err("At the meeting: present <deduction#> (once) | call <name> (once) | nominate <name> | declare walker|hexer | wait | done")
 
+
+## Why the Demonologist can't call on `n` now, or "" (docs/design/withheld_readings.md):
+## once per meeting, someone living who can speak.
+const CALLED_ALREADY = "You've called on someone already at this meeting."
+
+static func called_on_today(g) -> bool:
+	return str(g.w.meeting.get("called_on", "")) != ""
+
+static func call_on_rejection(g, n) -> String:
+	if called_on_today(g):
+		return CALLED_ALREADY
+	if n == null:
+		return "Call on whom?"
+	if n.silenced:
+		return "%s's voice has been stolen; they can't answer." % n.name
+	return ""
+
+## 'call <name>': ask one person to share anything they haven't told the town (a reading, a
+## night sighting, something they heard). Not an accusation. What they say is MindCallOn's.
+static func call_on(g, rest: String) -> void:
+	var n = g.find_npc(rest)
+	var why: String = call_on_rejection(g, n)
+	if why != "":
+		g._err(why)
+		return
+	g.w.meeting["called_on"] = n.id
+	g._narr("You call on %s to share anything they haven't yet told the town." % n.name)
+	var res: Dictionary = MindCallOn.respond(g.w, n)
+	g._lines(res.get("lines", []))
+	GameBoard._facts(g, res.get("facts", []))
 
 ## The player's nomination (meeting plan M2a). 'nominate <name>' rests on the on-deck case
 ## (your latest filed case accusing them) when there is one; 'nominate <name> #N' picks

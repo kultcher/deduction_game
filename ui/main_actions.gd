@@ -123,6 +123,12 @@ static func refresh(m) -> void:
 			if not m.g.presented_today:
 				m._button(m.actions, "Present a deduction to everyone…", func(): Pickers.card(m, "Present a deduction to the meeting",
 					func(c): return c["kind"] == "deduction", func(num, _x): m._run("present %d" % num), false))
+			# Call on someone to share what they haven't said (withheld readings, Michael, Nov 22).
+			var call = m._button(m.actions, "Call on…", func(): pass)
+			call.disabled = GameMeeting.called_on_today(m.g)
+			if call.disabled:
+				call.tooltip_text = GameMeeting.CALLED_ALREADY
+			call.pressed.connect(func(): Pickers.people(m, call, "Call on whom?", func(id): m._run("call " + id), func(n): return GameMeeting.call_on_rejection(m.g, n) == ""))
 			# Take back a filed case in public (BACKLOG "Believable public revisions", Nov 18).
 			if m.g.board.any(Pickers.withdrawable):
 				m._button(m.actions, "Take back a case…", func(): Pickers.card(m, "Take back a case in public",
