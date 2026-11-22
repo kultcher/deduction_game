@@ -95,6 +95,13 @@ const ROLE_CONTENT_FIXED = ["archivist", "clerk", "executor", "gravedigger", "re
 	"nightwatch", "warden", "veteran", "seer"]
 
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
+	# The player's own word "X holds secret S" (SharedLedger._add_player_words) names X
+	# because the player is arguing about X, so when the player is wrong it still lands on
+	# X: its chance of arising is 1, and the word is worth the player's credibility alone
+	# (1 / error on the odds), not a boost from how rarely the secret would be named by
+	# chance. Michael, Nov 22 (option b').
+	if card.get("player_word", false):
+		return 1.0
 	var role_id: String = str(card.get("role", ""))
 	if role_id in ROLE_CONTENT_FIXED:
 		return _chance_content_fixed(view, card)
