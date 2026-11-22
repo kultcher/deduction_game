@@ -108,6 +108,14 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
 		parts["prefers_block"] = Tuning.Meeting.VOTE_PREFERS_BLOCK_OFFSET
 	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
+	# Strong trust in the nominee blunts the social push to hang them (Michael, Nov 22): the
+	# town's consensus and the Demonologist's yes count for less, not the evidence.
+	var t_nom: float = float(v.npc_trust.get(nominee, 0.5))
+	if t_nom > Tuning.Meeting.VOTE_TRUST_DAMP_START:
+		var damp: float = Tuning.Meeting.VOTE_TRUST_DAMP_MAX * minf(1.0, (t_nom - Tuning.Meeting.VOTE_TRUST_DAMP_START) / (1.0 - Tuning.Meeting.VOTE_TRUST_DAMP_START))
+		var social: float = maxf(0.0, float(parts.get("town_pressure", 0.0))) + maxf(0.0, float(parts.get("player_votes_yes", 0.0)))
+		if social > 0.0:
+			parts["trusts_nominee"] = -damp * social
 	var omen_cost: float = Burdens.omen_vote_cost(w, nominee, v)  # a claimed Ill-Omened (burdens prototype)
 	if omen_cost != 0.0:
 		parts["ill_omened_cost"] = omen_cost

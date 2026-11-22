@@ -701,6 +701,11 @@ class Meeting:
 	## a quarter it backfires, as a low-credibility yes does.
 	const PLAYER_VOTE_NO_SLOPE = 0.12
 	const PLAYER_VOTE_NO_OFFSET = -0.03
+	## Strong trust in the nominee blunts the social push to hang them (Michael, Nov 22): above
+	## this trust, the town's consensus pressure and the player's yes count for less, rising
+	## linearly to VOTE_TRUST_DAMP_MAX off at full trust. Suspicion from evidence isn't damped.
+	const VOTE_TRUST_DAMP_START = 0.75
+	const VOTE_TRUST_DAMP_MAX = 0.6
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
 	const VOTE_PREFERS_BLOCK_OFFSET = -0.4
