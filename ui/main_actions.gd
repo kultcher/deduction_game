@@ -8,6 +8,7 @@ const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const Pickers = preload("res://ui/main_pickers.gd")
 
 ## The approach's choices: in the VN's controls once the approacher is speaking.
@@ -161,9 +162,15 @@ static func refresh(m) -> void:
 				# Option (b), Michael, Nov 19: one filed case about the nominee, judged as at the podium.
 				var nominee: String = nm["nominee"]
 				var cases: Array = GameMeeting.nomination_cases(m.g, nominee)
-				var put = m._button(m.actions, "Present a case about them…", func(): Pickers.card(m, "Present a case about %s" % w.by_id[nominee].name,
-					func(c): return GameMeeting.nomination_case_rejection(m.g, c, nominee) == "", func(num, _x): m._run("case %d" % num), false))
-				put.disabled = cases.is_empty()
+				var put = m._button(m.actions, "Present a case about them…", func():
+					if cases.is_empty():
+						# No filed case yet: open the Workshop with "<nominee> is evil" ready, as the
+						# nomination menu does (Michael's playtest, Nov 22: it was greyed out).
+						m._open_live_workshop()
+						LiveWorkshopFields.prefill_premise(m.case_view.workshop.editor, nominee, "evil")
+						return
+					Pickers.card(m, "Present a case about %s" % w.by_id[nominee].name,
+						func(c): return GameMeeting.nomination_case_rejection(m.g, c, nominee) == "", func(num, _x): m._run("case %d" % num), false))
 				put.tooltip_text = "Put one filed case about them to the town before the vote. It doesn't use your Present." if not cases.is_empty() else "You have no filed case about them. Build one in the Workshop."
 			if w.tools["clemency"] > 0 and nm["by"] != "player" and nm.get("supporters_done", false):
 				m._button(m.actions, "Invoke Clemency (once per case)", func(): m._run("clemency"))
