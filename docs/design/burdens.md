@@ -651,6 +651,8 @@ Relayed by Seneschal; the wording follows his message closely.
   - the Demon is mildly reluctant to kill the holder, and evil mildly prefers scapegoating them;
   - Minions push to hang the holder only once the holder already has heat, and the normal
     cool-off after a failed vote applies. This refines the Nov 21 Minion bump;
+    - **What counts as heat** (Michael, Nov 22): evil's own planted frames count when they rest on
+      actual claims (fabricated readings, sightings, bluffs), but bare accusations don't;
   - evil bluffs Ill-Omened only when it isn't dealt, or after the holder's death. It goes ahead
     only 15% of the time if a Rumormonger has shown the burden in play, and never if the dead
     holder had already claimed it publicly.

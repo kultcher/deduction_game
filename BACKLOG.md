@@ -28,13 +28,14 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. Withheld readings: asking for what someone hasn't said `[decided: direction]`
-    2. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
-    3. A gift-holder seeks protection before revealing `[decided: direction]`
-    4. \*The Gravedigger in a reluctant town `[decided]`
-    5. Caught out and pressed again: what's left `[decided]`
-    6. Good NPCs lie tactically `[open]`
-    7. \*Rapport and Warden-credit leftovers `[decided: direction]`
+    1. A friend's doubtful defence `[decided]`
+    2. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    3. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
+    4. A gift-holder seeks protection before revealing `[decided: direction]`
+    5. \*The Gravedigger in a reluctant town `[decided]`
+    6. Caught out and pressed again: what's left `[decided]`
+    7. Good NPCs lie tactically `[open]`
+    8. \*Rapport and Warden-credit leftovers `[decided: direction]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -126,6 +127,13 @@ Lantern). Nothing is open here.
   [decided]
 
 ### NPC behaviour
+
+- **A friend's doubtful defence** (Michael, Nov 22). When a friend of the nominee is close to
+  voting yes, it voices a doubtful defence: "I've known Kiran for a long time. He wouldn't be
+  capable of something like this... would he?" (Michael's line, approved). It's a new voice tier.
+  It replaces the proposal "a same-day defence holds back the vote", which Michael declined.
+  Grief not fading stays as intended (Oct 30). Owners: Beadle (the trigger), Herald (the lines
+  for each voice). [decided]
 
 - **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
   Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
@@ -330,6 +338,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     nudges Poisoner suspicion toward whoever was seen on its block, its own teammate
     included. Smarter evil could aim it (voice the doubt when an innocent was near) or avoid
     it (stay quiet when a teammate was). Owner Beadle.
+
+  - **Fewer bare accusations** (Michael, Nov 22): evil should make roughly 10% fewer accusations
+    with no evidence behind them, since they still read a little obvious.
 
   [deferred]
 
