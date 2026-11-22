@@ -337,7 +337,7 @@ static func omen_push_target(w, n) -> String:
 	if not n.is_evil() or n.id == w.demon_id or C.is_demon(n.role) or n.role == "scion":
 		return ""
 	for id in public_claimants(w, "ill_omened"):
-		if w.by_id.has(id) and w.by_id[id].alive and not _evil().is_teammate(w, n, id):
+		if id != n.id and w.by_id.has(id) and w.by_id[id].alive and not _evil().is_teammate(w, n, id):
 			return id
 	return ""
 

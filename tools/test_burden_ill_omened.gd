@@ -85,6 +85,9 @@ func _real() -> void:
 	w.burden_claims["ill_omened:public"] = pub2
 	_check(Burdens.omen_push_target(w, minions[0]) == o.id, "a teammate's bluffed claim is never pushed")
 	pub2.erase(mate.id)
+	pub2.push_front(minions[0].id)
+	_check(Burdens.omen_push_target(w, minions[0]) == o.id, "nor its own bluffed claim: it never pushes itself")
+	pub2.erase(minions[0].id)
 	w.meeting["block"] = ""
 	w.meeting["block_count"] = 0
 	_check(Evil.evil_vote(w, minions[0], o.id, 0), "a Minion's evil self wants the real claimant hanged")
