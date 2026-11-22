@@ -96,6 +96,10 @@ const CASES = {
 	# The Dowser's "0" (reading_interpretation.md 2.2; Michael watches whether it clears too hard).
 	"dowser_zero_good": "The real Dowser's \"0 evil\" among G and two other good, day 2, argued \"G is good\" (subject G)",
 	"dowser_zero_bluff": "A Minion's Dowser bluff \"0 evil\" among S (the Demon) and two good + its Dowser claim, argued \"S is good\"",
+	# Shared Delusion doubt (Michael, Nov 22): a reader's own readings that clash, argued as
+	# Delusion two ways. The framed reader's correction is lie_seer_reversed.
+	"seer_contradiction": "The real Seer G's \"yes\" on A and B, night 1, then \"no\" on A and B, night 2, argued \"G's readings don't fit together: Delusional\"",
+	"seer_contradiction_burden": "The same cards, argued \"G carries a hidden burden: Delusional\"",
 	"seer_once": "The real Seer's \"yes\" on S and G + its claim, alone (the control for seer_dowser_zero)",
 	"seer_dowser_zero": "The real Seer's \"yes\" on S and G + the real Dowser's \"0 evil\" among G and two good, argued \"S is evil\"",
 	"unrequited_walk": "A sighting of U on their beloved's block, night 1 + U's Unrequited claim (real, day 1), argued \"U is evil\" (subject U)",
@@ -407,6 +411,22 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			var a_wit = min_ev if innocent else goods[0]
 			cited.append(_add(g, _sight(a_wit, s, other, 1)))
 			sources += [a_wit]
+		"seer_contradiction", "seer_contradiction_burden":
+			_add_burden(w, "delusional")
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			var a = pool[0]
+			var b = pool[1]
+			var names: String = "%s or %s" % [a.name, b.name]
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "text": "%s's Seer (night 1): %s is the Demon" % [seer.name, names]}))
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": false}, "text": "%s's Seer (night 2): neither %s is the Demon" % [seer.name, names]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+			s = seer
+			premise = "inconsistent:delusional" if base == "seer_contradiction" else "secret_mod:delusional"
 		"seer_once":
 			var seer = _holder(goods, "seer", [])
 			if seer == null:
@@ -633,7 +653,11 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
 	model.marked_answers = false
-	var p_id: String = model.add_premise(s.id, premise, Vector2(400, 40))
+	# "type:detail" sets the premise's cause ("inconsistent") or burden ("secret_mod").
+	var premise_parts: PackedStringArray = premise.split(":")
+	var p_id: String = model.add_premise(s.id, premise_parts[0], Vector2(400, 40))
+	if premise_parts.size() > 1:
+		model.nodes[p_id].conclusion["cause" if premise_parts[0] == "inconsistent" else "mod"] = premise_parts[1]
 	for num in cited:
 		for id in model.nodes:
 			var nd = model.nodes[id]
