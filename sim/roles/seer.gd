@@ -64,7 +64,8 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 ## - It looks for the Demon, not just for evil: anyone its own "no" readings cleared of being
 ##   the Demon goes to the back, however evil it thinks them (Lantern's interim stand-in, Nov 21,
 ##   until the town holds a belief about who is the Demon).
-## - After a "yes" not yet narrowed down, a focused Seer re-checks one of the two beside either
+## - After a "yes" not yet narrowed down, with its top suspect one of the two (Michael, Nov 22),
+##   a focused Seer re-checks that suspect beside either
 ##   someone fresh (its likeliest Demon among those it hasn't looked at) or someone it trusts
 ##   as good (someone it has cleared, or failing that its least suspected), on a coin flip
 ##   (Michael, Nov 21).
@@ -145,8 +146,8 @@ func pick_targets(w, n, mind):
 
 
 ## The latest "yes" not yet narrowed down: neither of the two cleared since, neither in a
-## second "yes". Returns [one of the two, a partner, why], or [] if there's none. The one
-## re-checked is the likelier Demon. The partner, on a coin flip (Michael, Nov 21), is someone
+## second "yes". Returns [its top suspect, a partner, why], or [] if there's none or its top
+## suspect isn't one of the two. The partner, on a coin flip (Michael, Nov 21), is someone
 ## fresh (its likeliest Demon among those unchecked) or someone it trusts as good (one its own
 ## readings cleared, else its least suspected), avoiding a pair it has already looked at.
 func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary, checked: Dictionary = {}) -> Array:
@@ -162,10 +163,11 @@ func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictio
 		break
 	if open.is_empty():
 		return []
-	var cands: Array = ranked.filter(func(m): return m.id in open)
-	if cands.is_empty():
+	# Only when its top suspect is in that "yes" (Michael, Nov 22): otherwise it reads its top
+	# suspect, rather than spending a night on the other of the two.
+	if ranked.is_empty() or not (ranked[0].id in open):
 		return []
-	var target = cands[0]
+	var target = ranked[0]
 	var fresh: Array = ranked.filter(func(m): return not (m.id in open) and not checked.has(m.id))
 	if not fresh.is_empty() and w.decision_roll(n, "seer_confirm_beside_fresh", 0.5, {"fresh": fresh.size()}):
 		return [target, fresh[0], "someone fresh"]
