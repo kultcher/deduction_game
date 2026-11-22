@@ -30,6 +30,8 @@ the effects (the X, the shakes, the wheel), where they land in a UI scene.
 - **A second Demon kill** gets its own spin, introduced by "...and the fiend was not finished."
   (approved, Nov 22).
 - **The wheel is for the Demon's kill only** (Nov 22).
+- **The wheel's look is approved** (Nov 22). The portraits rotate with the wheel; they don't
+  stay upright.
 - **A warded save:** the fakeout lands on the warded person, followed by "Your ward held"
   (Nov 22).
 
