@@ -1,6 +1,8 @@
 ## The night's kill as a wheel of fortune (Michael, Nov 22).
 ##   - The wheel: a red rim with spokes and a hub, and a slice for each living person, in
 ##     their colour, with their portrait. A small dagger sits on the right rim, pointing in.
+##     The portraits turn with the wheel (Michael, Nov 22); the victim's lands upright, level
+##     with the dagger.
 ##   - The spin: the wheel spins and slows until the victim's slice stops under the dagger.
 ##   - Isolating: everything else fades, and the victim's slice and the dagger glide to the
 ##     centre, a little larger.
@@ -298,7 +300,6 @@ func _apply() -> void:
 		s.position = c
 		s.rotation = rot + i * step
 		s.scale = frame.scale
-		s.face.rotation = -s.rotation
 		s.modulate.a = frame.modulate.a
 
 	# The victim's slice: on the wheel, then gliding to the middle, upright, larger.
@@ -310,7 +311,6 @@ func _apply() -> void:
 		v.position = on_wheel_pos.lerp(focus_pos, iso)
 		v.rotation = (rot + victim_index * step) * (1.0 - iso)
 		v.scale = Vector2.ONE * focus_scale * (frame.scale.x if iso < 1.0 else 1.0)
-		v.face.rotation = -v.rotation
 		v.modulate.a = appear
 	# Where the portrait's centre is, on screen, and its radius there.
 	var face_c: Vector2 = (v.position + Vector2(r * PORTRAIT_AT, 0.0).rotated(v.rotation) * v.scale.x) if v != null else mid

@@ -89,6 +89,8 @@ func _run() -> void:
 			others_gone = false
 	_check(others_gone, "only the victim's slice is left")
 	_check(w.slices[w.victim_index].name == "Slice_greta", "the slice left is the victim's")
+	_check(w.slices.all(func(s): return s.face.rotation == 0.0), "the portraits turn with the wheel, not counter to it (Michael)")
+	_check(is_zero_approx(w.slices[w.victim_index].rotation), "and the victim's ends upright")
 	_check(w.focus_centre().distance_to(w.size / 2.0) < 2.0, "the victim ends in the middle")
 
 	# The wheel stops with the victim under the dagger, for any town size and victim.
