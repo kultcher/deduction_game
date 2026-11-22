@@ -116,6 +116,17 @@ func _init() -> void:
 	check(w._circles.size() == ss.size(), "it shows one circle per slot (got %d)" % w._circles.size())
 	check(w.find_child("FadeLine", true, false) == null, "there's no line on the fade (Michael)")
 	check(w._circles[0].name.text == g.w.by_id[people[8]].name, "the Demon circle shows the locked guess's name")
+	# Michael's playtest (Nov 22): empty circles drew nothing, the "Don't ask" text didn't read on
+	# the dark panel, and a single Demon type still opened a one-item dropdown.
+	check(not w._circles[0].face.get_node("EmptyRing").visible, "a filled circle hides its empty ring")
+	var empties: Array = range(w.picks.size()).filter(func(k): return str(w.picks[k].get("id", "")) == "")
+	if not empties.is_empty():
+		check(w._circles[empties[0]].face.get_node("EmptyRing").visible, "an empty circle shows a ring to click")
+	var dont = w.find_child("DontAsk", true, false)
+	check(dont != null and dont.get_theme_color("font_color") == preload("res://ui/theme.gd").color("text"), "\"Don't ask again\" reads in light text on the dark panel")
+	if sc.demons.size() == 1:
+		var tb: OptionButton = w._circles[0].types
+		check(tb.disabled and tb.get_item_text(tb.selected) == C.role_name(sc.demons[0]), "one Demon type: the button shows it and doesn't open")
 	w._open_picker(0, w._circles[0].face)
 	check(w._picker != null and w._picker.find_child("Pick_" + people[4], true, false) != null, "the picker lists the cast's portraits")
 	w._pick(0, people[4])
