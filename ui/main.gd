@@ -152,15 +152,20 @@ func _pacing_plan(events: Array) -> Array:
 		if card.kind == "martyr":
 			return PacingPlans.execution(g.w, str(card.get("saved", "")), {"martyr": card.get("martyr", ""), "saved": card.get("saved", "")})
 		return PacingPlans.execution(g.w, str(card.subject[0]))
-	if "dawn" in kinds and g.w.day >= 2:
+	# A night: the next dawn, or a night whose kill ended the game (no dawn comes then: the
+	# night returns before the morning report; Codex on #537).
+	var dawned: bool = "dawn" in kinds and g.w.day >= 2
+	var night_ended: bool = g.w.game_over and "ending" in kinds and g.w.deaths_last_night.any(func(id): return g.w.by_id.has(id) and str(g.w.by_id[id].death_cause) == "demon")
+	if dawned or night_ended:
 		var result: Array = []
 		for e in events:
-			if e.k == "header":
+			if e.k == "header" or (e.k == "headline" and str(e.get("kind", "")) == "ending"):
 				break
 			if e.k == "narration":
 				result.append(str(e.text))
+		var night_no: int = g.w.day - 1 if dawned else g.w.day
 		var before: Array = g.w.npcs.filter(func(n): return n.alive or n.id in g.w.deaths_last_night).map(func(n): return n.id)
-		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, str(g.ward_log.get(g.w.day - 1, "")))
+		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, str(g.ward_log.get(night_no, "")))
 	return []
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()

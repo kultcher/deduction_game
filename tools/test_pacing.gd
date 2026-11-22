@@ -94,5 +94,23 @@ func _run() -> void:
 	check(ended.size() == 2, "Skip or Esc ends the whole sequence")
 	await process_frame
 	check(host.get_child_count() == 0, "and the overlay is gone")
+	# Codex on #537: a kill that ends the game brings no dawn, but it still plays (then the reveal).
+	var scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	await process_frame
+	var g2 = Game.new()
+	g2.detailed_logging = false
+	g2.new_case(692, 10)
+	scene.g = g2
+	var v = g2.w.npcs[4]
+	v.alive = false
+	v.death_cause = "demon"
+	g2.w.deaths_last_night = [v.id]
+	g2.w.game_over = true
+	var final_plan: Array = scene._pacing_plan([{"k": "narration", "text": "You sleep."}, {"k": "headline", "kind": "ending", "text": "Defeat"}])
+	check(final_plan.any(func(x): return x.type == "wheel" and x.victim == v.id and x.kill), "a game-ending kill still gets its wheel, though no dawn comes")
+	check(scene._pacing_plan([{"k": "headline", "kind": "phase", "text": "Afternoon"}]).is_empty(), "an ordinary phase change plays nothing")
+	scene.queue_free()
 	print("Pacing: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
