@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["I hated to believe {argument}, truly I did, but I can't pretend it doesn't weigh on me now.", "I tried to put {argument} out of my mind, yet I fear you were closer to the truth than I wanted to admit."],
 	"private_reveal": "I pray I'm not putting myself in harm's way by saying so, truly, but I trust you: I'm the {role}.",
 	"private_reveal_early": "You've been gentle with me from the start, so I'll be brave and tell you early: I'm the {role}.",
-	"public_claim": "Please hear me gently, everyone—I only held back out of fear, but I am the {role}.",
+	"public_claim": "Please hear me gently, everyone. I am the {role}.",
 	"own_night_lie": "And forgive me for what I said before—I truly was out {nights}, only I was too frightened to admit why.",
 	"opinion_clear": "I can't believe {subject} would ever hurt anyone.",
 	"vote_resist_readings_agree": "Please, not {nominee}. Their readings agree with what I know.",

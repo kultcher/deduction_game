@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["I tested {argument} against the remaining possibilities. It eliminates more alternatives than I first calculated.", "My earlier rejection of {argument} rested on a weak assumption. The link holds."],
 	"private_reveal": "You need a reliable anchor for your board, so I'll give you one: I am the {role}.",
 	"private_reveal_early": "Giving you one clean anchor on day one sharpens every premise after it: I am the {role}.",
-	"public_claim": "To eliminate an unnecessary unknown from the town's reasoning: I am the {role}.",
+	"public_claim": "One less question for the town to puzzle over: I am the {role}.",
 	"own_night_lie": "Amend your ledger for {nights} accordingly: I was out on my gift's work, and withheld that until my claim was on the table.",
 	"opinion_clear": "Nothing I've observed supports the hypothesis that {subject} is evil.",
 	"vote_resist_readings_agree": "I won't vote to hang {nominee}: their readings are in keeping with what I know.",
