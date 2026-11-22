@@ -310,7 +310,12 @@ static func omen_at_nomination(w, n) -> Dictionary:
 	if n.silenced:
 		return {}
 	var real: bool = holds_known(n, "ill_omened")
-	if not real and not (n.is_evil() and (claimed_by(w, n) == "ill_omened" or evil_burden_bluff(w, n, "ill_omened", "stay off the rope"))):
+	# A real holder always claims at its first nomination (Michael, Nov 21), so someone already
+	# nominated once without claiming can't be the Ill-Omened, and evil won't bluff it now.
+	var passed: bool = w.omen_unclaimed.has(n.id)
+	if not real and not (n.is_evil() and (claimed_by(w, n) == "ill_omened" or (not passed and evil_burden_bluff(w, n, "ill_omened", "stay off the rope")))):
+		if not passed:
+			w.omen_unclaimed[n.id] = w.day
 		return {}
 	w.omen_restated[n.id] = w.day
 	return claim(w, n, "ill_omened", true, "nominated for hanging", "town", {"at_nomination": true})

@@ -83,6 +83,7 @@ var initial_secret_holders: Array = [] # Good townsfolk dealt a secret modifier 
 var burden_holder_id: String = ""       # the burden's holder ("" if none); secret_mod stays the source of truth
 var burden_claims: Dictionary = {}  # burden kind -> who has claimed it, in order (burdens prototype)
 var omen_restated: Dictionary = {} # id -> day it restated Ill-Omened as the nominee (burdens prototype)
+var omen_unclaimed: Dictionary = {} # id -> day it was first nominated, able to speak, without claiming Ill-Omened
 var omen_nights: Array = []        # the Ill-Omened's fallen omens: {executed, day, night} (burdens prototype)
 var burden_told: Dictionary = {}    # "owner|listener" -> {day, phase} of the owner's first private telling (burdens prototype)
 var town_hall_uses_left: int = Tuning.Setup.TOWN_HALL_USES_PER_CASE

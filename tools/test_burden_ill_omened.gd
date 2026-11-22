@@ -37,6 +37,7 @@ func _init() -> void:
 	_bluff()
 	_unarmed()
 	_turned()
+	_passed()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -140,3 +141,26 @@ func _turned() -> void:
 	w.execute(o.id, {})
 	var goods: Array = w.npcs.filter(func(m): return m.alive and not m.is_evil())
 	_check(goods.all(func(m): return m.omen_poisoned_day == w.day) and _logged(w, "omen_poison").size() == 1, "hanged, the omen still falls on every good person")
+
+## A real holder always claims at its first nomination (Michael, Nov 21), so evil, once
+## nominated without claiming, never bluffs Ill-Omened later.
+func _passed() -> void:
+	var w = _case().w
+	_holder(w)
+	var e = w.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if not w.evil_plan.has("burden_bluffs"):
+		w.evil_plan["burden_bluffs"] = {}
+	if str(w.evil_plan.get("bluffs", {}).get(e.id, "")) == "":
+		w.evil_plan["bluffs"][e.id] = "clerk"
+	w.evil_plan["burden_bluffs"][e.id] = "marked"  # not set on the omen at its first nomination
+	_check(Burdens.omen_at_nomination(w, e).is_empty() and w.omen_unclaimed.has(e.id), "evil nominated without claiming the omen: noted")
+	w.evil_plan["burden_bluffs"][e.id] = "ill_omened"
+	w.day += 1
+	_check(Burdens.omen_at_nomination(w, e).is_empty(), "nominated again, it won't bluff Ill-Omened now")
+	var w2 = _case().w
+	var o = _holder(w2)
+	_check(not Burdens.omen_at_nomination(w2, o).is_empty() and not w2.omen_unclaimed.has(o.id), "a real holder claims at its first nomination")
+	var e2 = w2.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	e2.silenced = true
+	Burdens.omen_at_nomination(w2, e2)
+	_check(not w2.omen_unclaimed.has(e2.id), "a silenced nominee couldn't have claimed, so it isn't noted")
