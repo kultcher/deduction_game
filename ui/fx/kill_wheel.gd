@@ -123,8 +123,9 @@ func skip_to_end() -> void:
 		return
 	t = _plan.end
 	_apply()
-	_emit_due()
+	# Stopped before the signals go out: a `finished` handler may start the next one (Codex).
 	playing = false
+	_emit_due()
 
 
 func advance(delta: float) -> void:
@@ -132,9 +133,9 @@ func advance(delta: float) -> void:
 		return
 	t = minf(t + delta, _plan.end)
 	_apply()
-	_emit_due()
 	if t >= _plan.end:
 		playing = false
+	_emit_due()
 
 
 func _process(delta: float) -> void:
@@ -148,6 +149,7 @@ func _notification(what: int) -> void:
 
 
 func _emit_due() -> void:
+	var plan: Dictionary = _plan
 	for k in ["landed", "strike", "end"]:
 		if t >= _plan[k] and not _emitted.has(k):
 			_emitted[k] = true
@@ -155,6 +157,8 @@ func _emit_due() -> void:
 				"landed": landed.emit()
 				"strike": struck.emit()
 				"end": finished.emit()
+			if not is_same(plan, _plan):
+				return   # a handler started the next one; its signals are its own
 
 
 # --- Building ---------------------------------------------------------------------------

@@ -38,6 +38,7 @@ var _jolting: bool = false
 static func play(portrait: Control, reduced: bool = false) -> Control:
 	var old = portrait.get_node_or_null("ExecutionMark")
 	if old != null:
+		old.restore_transform()   # mid-jolt, the portrait gets its own scale and turn back first (Codex)
 		portrait.remove_child(old)
 		old.queue_free()
 	var m = load("res://ui/fx/execution_mark.gd").new()
@@ -74,6 +75,14 @@ func start(portrait: Control) -> void:
 	_apply()
 
 
+## Puts back the portrait's own scale and rotation if the jolt has them changed.
+func restore_transform() -> void:
+	if _jolting and target != null:
+		target.rotation = _base_rotation
+		target.scale = _base_scale
+		_jolting = false
+
+
 func ends_at() -> float:
 	return _plan.get("end", 0.0)
 
@@ -86,8 +95,9 @@ func skip_to_end() -> void:
 		return
 	t = _plan.end
 	_apply()
-	_emit_due()
+	# Stopped before the signals go out: a `finished` handler may start the next one (Codex).
 	playing = false
+	_emit_due()
 
 
 func advance(delta: float) -> void:
@@ -95,9 +105,9 @@ func advance(delta: float) -> void:
 		return
 	t = minf(t + delta, _plan.end)
 	_apply()
-	_emit_due()
 	if t >= _plan.end:
 		playing = false
+	_emit_due()
 
 
 func _process(delta: float) -> void:
@@ -105,6 +115,7 @@ func _process(delta: float) -> void:
 
 
 func _emit_due() -> void:
+	var plan: Dictionary = _plan
 	for k in ["landed", "end"]:
 		if t >= _plan[k] and not _emitted.has(k):
 			_emitted[k] = true
@@ -112,6 +123,8 @@ func _emit_due() -> void:
 				landed.emit()
 			else:
 				finished.emit()
+			if not is_same(plan, _plan):
+				return   # a handler started the next one; its signals are its own
 
 
 static func _u(tt: float, span: Array) -> float:

@@ -153,6 +153,21 @@ func _run() -> void:
 	w.struck.disconnect(on_s)
 	w.finished.disconnect(on_f)
 
+	# A `finished` handler that starts the next kill: the next one plays (Codex).
+	var chained = {"started": false}
+	var chain = func():
+		if not chained.started:
+			chained.started = true
+			w.play({"people": _people(9), "victim": "bart", "kill": true, "start_angle": w.end_angle()})
+	w.finished.connect(chain)
+	w.play({"people": _people(10), "victim": "lian", "kill": true})
+	w.skip_to_end()
+	w.finished.disconnect(chain)
+	_check(chained.started and w.playing and w.t == 0.0, "a finished handler that starts the next kill leaves it playing")
+	w.advance(0.5)
+	_check(w.t > 0.4, "and it runs")
+	w.skip_to_end()
+
 	# Reduced motion.
 	w.reduced_motion = true
 	w.play({"people": _people(10), "victim": "greta", "kill": true})
@@ -202,6 +217,15 @@ func _run() -> void:
 	_check(is_zero_approx(face.rotation) and face.scale.is_equal_approx(Vector2.ONE * 1.07), "and gets its own scale and rotation back")
 	_check(m.cross.visible and m.cross.scale.is_equal_approx(Vector2.ONE), "the blue X has landed at its size")
 	_check(is_equal_approx(float(face.material.get_shader_parameter("grey")), 1.0), "the portrait is grey")
+	# Replacing a mark mid-jolt leaves the portrait its own scale and turn (Codex).
+	var mj = ExecutionMark.play(face)
+	mj.set_process(false)
+	mj.advance(0.55)
+	var jolting_now = face.rotation != 0.0 or not face.scale.is_equal_approx(Vector2.ONE * 1.07)
+	var m_after = ExecutionMark.play(face)
+	m_after.set_process(false)
+	m_after.skip_to_end()
+	_check(jolting_now and is_zero_approx(face.rotation) and face.scale.is_equal_approx(Vector2.ONE * 1.07), "replacing a mark mid-jolt gives the portrait its own scale and turn back")
 	var m2 = ExecutionMark.play(face)
 	_check(face.get_children().filter(func(c): return c.name == "ExecutionMark" and not c.is_queued_for_deletion()).size() == 1, "marking again replaces the mark")
 	m2.skip_to_end()

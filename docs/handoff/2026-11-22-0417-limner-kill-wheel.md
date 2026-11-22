@@ -62,7 +62,7 @@
   - **The ring now fades with the portrait's alpha.** It was drawn at full alpha even
     when the portrait faded. Nothing changes at full alpha, so the daily window looks the
     same.
-- **`tools/test_kill_wheel.gd`:** 38 checks, under 1 s. Added to `tools/ci_fast_suites.txt`.
+- **`tools/test_kill_wheel.gd`:** 41 checks, under 1 s. Added to `tools/ci_fast_suites.txt`.
   - **Signals:** they fire once each and in order, and a skip sends each once.
   - **Landing:** the wheel stops with the victim under the dagger, for 3, 7 and 10 people
     and every victim, after more than two turns. A second spin starts where the first
@@ -73,6 +73,9 @@
   - **The fakeout:** it leaves no X, and the dagger ends off screen.
   - **Reduced motion:** no wheel and no shake, and quicker.
   - **Resizing:** it lays out again.
+  - **Chaining (Codex):** a `finished` handler that starts the next kill leaves it
+    playing, and replacing an execution mark mid-jolt gives the portrait its own scale
+    and turn back.
   - **The execution mark:** its signals, the jolt and the portrait's scale given back, the
     grey, replacing a mark, and its reduced-motion path.
 - **`tools/kill_wheel_capture.gd`:** records a kill (Greta), the fakeout (Kiran) and an
@@ -88,7 +91,7 @@
 
 ## Measured
 
-- **Suites:** `test_kill_wheel` 38/38, `test_daily_guess` and `test_reveal_card` pass,
+- **Suites:** `test_kill_wheel` 41/41, `test_daily_guess` and `test_reveal_card` pass,
   through the runner.
 - **Golden:** not captured. No game logic changed.
 - **Clips:** normal and reduced, at 1920×1080 under xvfb, sent to Michael and Herald.
