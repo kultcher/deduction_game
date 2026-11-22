@@ -195,7 +195,9 @@ func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
 
-enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS, REDUCED_MOTION }
+enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS, REDUCED_MOTION, EXIT }
+## The More menu's last entry (Michael, Nov 22).
+const EXIT_GAME = "Exit Game"
 
 func _on_more(i: int) -> void:
 	match i:
@@ -215,6 +217,8 @@ func _on_more(i: int) -> void:
 			open_daily_guess(Callable())
 		MoreItem.REDUCED_MOTION:
 			reduced_motion = not reduced_motion
+		MoreItem.EXIT:
+			get_tree().quit()
 
 ## The daily evil-team guess (ui/daily_guess.gd). `then(confirmed)` runs once it closes.
 func open_daily_guess(then: Callable) -> void:
