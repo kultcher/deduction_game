@@ -82,6 +82,18 @@ func _run() -> void:
 	MainActions.refresh(scene)
 	btn = _button(scene, "Call on…")
 	check(btn != null and btn.disabled and btn.tooltip_text == GameMeeting.CALLED_ALREADY, "once spent, it's greyed and says why")
+	# Michael's per-voice set (Nov 22): every voice says each withheld-readings line in its own
+	# words, with its slots filled.
+	var keys: Array = ["call_on_share", "call_on_nothing", "withheld_defer_friend", "withheld_defer_burden",
+		"withheld_defer_distrust", "withheld_deflect", "ask_reading_private", "press_withheld"]
+	var slots: Dictionary = {"asker": "Demonologist", "role": "Archivist", "target": "Agnes", "when": "the first day"}
+	var missing: Array = []
+	for vid in preload("res://sim/dialogue_voices.gd").VOICES.keys():
+		for k in keys:
+			var line: String = preload("res://sim/dialogue.gd").voice_line(vid, k, "", slots)
+			if line == "" or "{" in line:
+				missing.append("%s/%s" % [vid, k])
+	check(missing.is_empty(), "every voice has all eight withheld-readings lines, slots filled %s" % [missing])
 	var terms = preload("res://ui/text_terms.gd").new()
 	check(terms.find_matches("Call on is once per meeting.").any(func(r): return str(r.get("id", "")) == "mechanic:call_on"), "Call on is a glossary term (Michael's wording)")
 	scene.queue_free()
