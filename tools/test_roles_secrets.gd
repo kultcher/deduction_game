@@ -250,6 +250,34 @@ func _test_burden_claim() -> void:
 	_check(lamp_u == 0 and lamp_other > 0, "a good claimed Lamplighter is never an unclaimed Unrequited holder (%d worlds), but may hold another burden (%d)" % [lamp_u, lamp_other])
 	_check(rumor_any == 0, "a good claimed Rumormonger holds no burden at all (%d worlds)" % rumor_any)
 	_check(seer_u > 0, "a good claimed Seer may still hold Unrequited unclaimed (%d worlds)" % seer_u)
+	# A missed forced trigger (Michael, Nov 22): a real Ill-Omened always claims when nominated,
+	# so one nominated earlier who said nothing then, unsilenced, can't hold it when they claim
+	# it later; read from the public record only (nominations, silencings).
+	var om_view: Dictionary = view.duplicate(true)
+	var nom: Callable = func(day: int) -> Dictionary:
+		return {"kind": "nomination", "subjects": [people[5].id], "by": people[6].id, "at": {"day": day, "phase": "evening"}}
+	var om_late: Dictionary = claim.call(5, "ill_omened", "om1")
+	om_late.observed_at = {"day": 3, "phase": "evening"}
+	var om_post = func(events: Array) -> float:
+		om_view["timeline"] = {"events": events, "executions": {}, "deaths": {}, "death_ticks": {}}
+		om_view["cards"] = [om_late]
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "evil", "target": people[5].id, "at": "Original alignment"}
+		cs.cards = [om_late.id]
+		return float(CaseEval.evaluate(om_view, cs).posterior)
+	var om_none: float = om_post.call([nom.call(3)])
+	var om_missed: float = om_post.call([nom.call(2), nom.call(3)])
+	var hush: Dictionary = {"kind": "silenced", "subjects": [people[5].id], "by": "", "at": {"day": 2, "phase": "evening"}}
+	var om_silenced: float = om_post.call([nom.call(2), hush, nom.call(3)])
+	# (Being silenced is evidence of its own, the Breathstealer's, so compare like with like.)
+	var om_hushed_only: float = om_post.call([hush, nom.call(3)])
+	print("Ill-Omened claim on day 3: %.3f evil; nominated on day 2 without claiming %.3f; silenced that day %.3f (%.3f silenced, not nominated)" % [om_none, om_missed, om_silenced, om_hushed_only])
+	_check(om_missed > 0.999 and om_none < 0.9, "a claim after a missed nomination can't come from a real holder or any good claimant (%.3f, against %.3f)" % [om_missed, om_none])
+	_check(absf(om_silenced - om_hushed_only) < 1e-9, "a nomination while silenced says nothing (%.3f against %.3f)" % [om_silenced, om_hushed_only])
+	var at_nom: Dictionary = om_late.duplicate(true)
+	at_nom.observed_at = {"day": 2, "phase": "evening"}
+	om_view["timeline"] = {"events": [nom.call(2), nom.call(3)], "executions": {}, "deaths": {}, "death_ticks": {}}
+	_check(not RC.missed_forced_trigger(om_view, at_nom, [at_nom]), "a claim made at that very nomination isn't a missed trigger")
 	RC.burden_claims_bind = was_bind
 
 

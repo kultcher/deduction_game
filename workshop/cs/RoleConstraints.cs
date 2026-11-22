@@ -66,6 +66,9 @@ internal static class RoleConstraintsKernel
     /// A reading inside a hanged Ill-Omened claimant's window (burdens prototype); header[14]
     /// holds those claimants.
     public const int FlagOmenWindow = 1 << 18;
+    /// A burden claim after a missed forced trigger (role_constraints.gd missed_forced_trigger;
+    /// Michael, Nov 22): the claimant let the trigger pass unclaimed, so they don't hold it.
+    public const int FlagMissedTrigger = 1 << 19;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     // A KindSecretClaim card's burden (slot 19; role_constraints.gd): the world modifier code
@@ -737,6 +740,21 @@ internal static class RoleConstraintsKernel
                     int claimTick = cardInts[off + 12];
                     claimantEvil = claimantEvil || (worldConverted == claimant && hasCurse && claimTick >= curseFrom && claimTick < curseUntil);
                 }
+                int burdenMod = burden - 1;
+                bool holds = burdenMod == WorldEntry.ModMarked
+                    ? world.Marked == claimant
+                    : world.EffectiveModifier == burdenMod && (world.Holders & (1 << claimant)) != 0;
+                if ((flags & FlagMissedTrigger) != 0)
+                {
+                    // A missed forced trigger: a real holder would have claimed it then, turned
+                    // or not, so they don't hold it; and a good claimant can't claim a burden
+                    // they don't hold. Only an evil non-holder is left.
+                    if (holds || !claimantEvil)
+                    {
+                        return 0.0;
+                    }
+                    continue;
+                }
                 if (claimantEvil)
                 {
                     continue;
@@ -754,10 +772,6 @@ internal static class RoleConstraintsKernel
                         return 0.0;
                     }
                 }
-                int burdenMod = burden - 1;
-                bool holds = burdenMod == WorldEntry.ModMarked
-                    ? world.Marked == claimant
-                    : world.EffectiveModifier == burdenMod && (world.Holders & (1 << claimant)) != 0;
                 if (!holds)
                 {
                     return 0.0;

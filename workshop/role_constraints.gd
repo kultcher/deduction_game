@@ -28,6 +28,8 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 		cache.clear()
 		cache_epoch = ep
 	var input = [view.people, _hard_timeline(view), view.get("chronology", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
+	# A missed forced trigger reads nominations, which the hard timeline leaves out.
+	input.append(missed_triggers(view, cards))
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 2048:
@@ -373,6 +375,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			# A claimed burden (docs/design/burdens.md): which world field the claim names.
 			card_ints[off + 19] = burden_code(card)
 			card_ints[off + 13] = forbidding_claim_tick(card, live_cards)
+			if missed_forced_trigger(view, card, live_cards):
+				flags |= (1 << 19) # RoleConstraints.FlagMissedTrigger
 		if kind_code == 2:
 			# Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal never
 			# puts on this claimed role, as modifier-code bits; a good claimant can't hold one.
@@ -685,11 +689,53 @@ static func burden_code(card: Dictionary) -> int:
 		return 0
 	return int(BURDEN_CODES.get(str(card.get("data", {}).get("secret_kind", "")), 0))
 
+## A burden claim after a missed forced trigger (Michael, Nov 22; ScriptDef.FORCED_CLAIM_TRIGGERS):
+## the claimant was nominated earlier, unsilenced, and didn't claim the burden then, so they
+## can't be its real holder. Read only from the public record (nominations, silencings) and
+## the claimant's tellings. Sets FlagMissedTrigger on the claim card.
 ## Impossible pairs (Michael, Nov 21): the deal never puts some burdens on some gifts
 ## (ScriptDef.PLACEMENT_RULES: Unrequited never on a night-walking gift, the Rumormonger never
 ## a burden's lone holder), so a good person can't truly claim both. The statement time of the
 ## claimant's earliest own role claim that the placement table rules out alongside this burden
 ## claim, or -1. Read from the table, not a list of roles.
+## The ids of the burden claims among `cards` that missed a forced trigger, for cache keys:
+## the flag reads nominations, a soft event the keys' timelines leave out.
+static func missed_triggers(view: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	for c in cards:
+		if missed_forced_trigger(view, c, cards):
+			out.append(str(c.get("id", "")))
+	return out
+
+static func missed_forced_trigger(view: Dictionary, card: Dictionary, cards: Array) -> bool:
+	if burden_code(card) == 0:
+		return false
+	var kind: String = str(card.data.secret_kind)
+	if str(ScriptDef.FORCED_CLAIM_TRIGGERS.get(kind, "")) != "nominated":
+		return false
+	var who: String = str(card.get("source", ""))
+	# The claimant's first telling of this burden, among every card the listener holds.
+	var first: int = _first_told_tick(card)
+	for c in view.get("cards", []) + cards:
+		if burden_code(c) == burden_code(card) and str(c.get("source", "")) == who:
+			first = mini(first, _first_told_tick(c))
+	# The public record only: nominations, and who was silenced that day (a silenced nominee
+	# can't speak, so its silence says nothing).
+	var events: Array = view.get("timeline", {}).get("events", [])
+	var silenced: Dictionary = {}
+	for e in events:
+		if str(e.get("kind", "")) == "silenced" and who in e.get("subjects", []):
+			silenced[int(e.get("at", {}).get("day", -1))] = true
+	for e in events:
+		if str(e.get("kind", "")) != "nomination" or not who in e.get("subjects", []):
+			continue
+		var day: int = int(e.get("at", {}).get("day", -1))
+		if day < 0 or silenced.has(day):
+			continue
+		if day * 4 + 2 < first:  # nominated (the evening meeting) before ever claiming it
+			return true
+	return false
+
 static func forbidding_claim_tick(card: Dictionary, cards: Array) -> int:
 	if burden_code(card) == 0:
 		return -1

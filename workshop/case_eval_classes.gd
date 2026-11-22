@@ -874,7 +874,8 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 			tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
 		# A claimed burden's weight reads the listener's other cards (its timing), so it keys too.
 		base_fit_ref = [u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards,
-			Solver.Roles.burden_claim_factors(view, role_cards) if live else []]
+			Solver.Roles.burden_claim_factors(view, role_cards) if live else [],
+			Solver.Roles.missed_triggers(view, role_cards) if live else []]  # reads nominations, a soft event
 	var base_fit_key: int = hash(base_fit_ref)
 	var neutral_ref: Array = [base_fit_ref, "neutral"]
 	var neutral_key: int = hash(neutral_ref)

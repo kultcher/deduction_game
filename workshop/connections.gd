@@ -391,7 +391,7 @@ static func _mix_key(view: Dictionary, listener: Dictionary, cards: Array) -> in
 	# judged ones, so it is keyed itself (Argon on #507).
 	var burden: int = 0
 	if cards.any(func(c): return Solver.Roles.burden_code(c) > 0):
-		burden = hash(Solver.Roles.burden_claim_factors(view, cards))
+		burden = hash([Solver.Roles.burden_claim_factors(view, cards), Solver.Roles.missed_triggers(view, cards)])
 	if not cards.any(func(c): return str(c.get("kind", "")) == "report" and str(c.get("role", "")) in ["nightwatch", "lamplighter"]):
 		return burden
 	var mixed: Array = []

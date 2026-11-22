@@ -65,6 +65,12 @@ const DEAL_RULES = [
 const JINXES = []
 ## Deal-level placement of the one secret (World._assign_secret_mod). `except` lists the
 ## secrets the rule skips; `not_on_flag` names a RoleDef flag the holder's role must not have.
+## Burdens whose claim the design forces at a trigger (Michael, Nov 22): a real holder always
+## claims then, so one who let the trigger pass in silence can't be a real holder when they
+## claim it later (RoleConstraints.missed_forced_trigger). "nominated": the Ill-Omened, who
+## always cites the omen when nominated (Burdens.omen_at_nomination), unless silenced.
+const FORCED_CLAIM_TRIGGERS = {"ill_omened": "nominated"}
+
 const PLACEMENT_RULES = [
 	{"except": ["lovers"], "not_on_flag": "cannot_hold_solo_secret",
 		"why": "the Rumormonger's gift can't name its own holder, so it never holds a secret alone"},
