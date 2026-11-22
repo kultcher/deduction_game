@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["About {argument}: I dismissed that. Might deserve another look.", "Might have been too quick about {argument}. I'm thinking again."],
 	"private_reveal": "You've proved steady enough. I'm the {role}.",
 	"private_reveal_early": "Better you know from the start so we don't waste daylight. I'm the {role}.",
-	"public_claim": "No sense hiding it longer. I am the {role}.",
+	"public_claim": "No sense hiding it. I am the {role}.",
 	"own_night_lie": "Aye, I was out {nights}. Lied to keep my work quiet. Now you know.",
 	"opinion_clear": "{subject}'s not one of them.",
 	"vote_resist_readings_agree": "Not voting to hang {nominee}. Their readings square with what I know.",

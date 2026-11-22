@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["I kept overthinking {argument} after you left. I think I dismissed it too quickly.", "About {argument}—I was so busy arguing with how it sounded that I missed your point. You might be right."],
 	"private_reveal": "Okay, look—I've been going back and forth on whether to say this, but I trust you. I'm the {role}.",
 	"private_reveal_early": "Honestly, keeping secrets on day one is already stressing me out, so I'll just tell you: I'm the {role}!",
-	"public_claim": "I know everyone's going to read into my timing here, sorry, but I can't hold it back anymore: I am the {role}.",
+	"public_claim": "I know everyone's going to read into this, sorry, but here it is: I am the {role}.",
 	"own_night_lie": "Which means—yes, I was out {nights}, and I know I said I was home! Sorry, I wasn't lying to be wicked, I just couldn't explain the gift yet!",
 	"opinion_clear": "I really don't think {subject} is one of them—for whatever my opinion's worth.",
 	"vote_resist_readings_agree": "I can't hang {nominee}, sorry! Their readings match what I know.",

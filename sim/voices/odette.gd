@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["Irritatingly enough, {argument} makes more sense the second time I look at it.", "I dismissed {argument} too briskly. Upon reflection, you may actually have a point."],
 	"private_reveal": "Against my better instincts, I find myself trusting you. I'm the {role}.",
 	"private_reveal_early": "Let's spare ourselves three days of coy circling and get straight to it: I'm the {role}.",
-	"public_claim": "Since we are doing public confessions today, let's get mine over with: I am the {role}.",
+	"public_claim": "Are we doing public confessions tonight? Let's get mine over with: I am the {role}.",
 	"own_night_lie": "So yes, I was out {nights}, contrary to my earlier story. I wasn't about to hand you my itinerary before you knew my gift.",
 	"opinion_clear": "I don't take {subject} for one of the wicked, which is more than I'd say for most.",
 	"vote_resist_readings_agree": "I shan't hang {nominee}; their readings agree with what I know, tiresome as that is.",

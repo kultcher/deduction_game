@@ -38,7 +38,7 @@ const LINES = {
 	"reconsideration": ["I must admit, {argument} has a certain elegance I missed the first time around.", "You know, I laughed off {argument} earlier, but the math is starting to amuse me less."],
 	"private_reveal": "It seems you've earned a peek at my hand, Demonologist. I am the {role}.",
 	"private_reveal_early": "Tell you what, Demonologist, call it an opening courtesy on day one: I'm the {role}.",
-	"public_claim": "Since secrets are going out of fashion this evening, allow me to oblige: I am the {role}.",
+	"public_claim": "Since we're laying our cards on the table, allow me to oblige: I am the {role}.",
 	"own_night_lie": "Which explains my little fiction about {nights}—I was out, of course, though a gentleman never surrenders his alibi before his role.",
 	"opinion_clear": "Strange as it sounds coming from me, I don't take {subject} for one of the wicked.",
 	"vote_resist_readings_agree": "I'm not staking a rope on {nominee}: their readings hold up against what I know.",
