@@ -32,7 +32,6 @@ test_caught_out_ladder
 test_codex_fixes
 test_confessed_night
 test_connections
-test_connections_cache
 test_connections_cases
 test_connections_core
 test_connections_pairings
@@ -47,6 +46,7 @@ test_daytime_defence_lines
 test_defence_grounds
 test_defence_repeats
 test_delusional_reading
+test_demon_candidates
 test_demon_types
 test_demon_when_hanged
 test_dialogue
@@ -241,4 +241,3 @@ test_workshop_vote_and_alibi
 test_workshop_votes
 test_workshop_why
 test_would_vote
-test_demon_candidates
