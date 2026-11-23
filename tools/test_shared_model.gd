@@ -384,7 +384,7 @@ func _test_multi_day_smoke() -> void:
 	# Seeds that reach Day 4 (a finished game has no refresh after its last event, so the
 	# idempotence check needs a live one); the list moves with balance changes.
 	var reached: int = 0
-	for sd in [37291, 42, 54875, 900, 1001, 1002, 1003, 1004, 1005, 1006]:
+	for sd in [37291, 42, 54875, 900, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1011]:
 		if reached >= 4:
 			break
 		var g = Game.new()
