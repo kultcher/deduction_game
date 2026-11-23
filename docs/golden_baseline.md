@@ -47,8 +47,10 @@ only by two intended 2c fixes:
 ### Current baseline (Nov 23, the Seer looks for the likeliest Demon): `baseline_ebea777`
 
 `tools/golden/baseline_ebea777/` is the capture from `claude/beadle-seer-demon-candidates` at `ebea777`:
-`baseline_14f5b7d` plus the Seer ranking its picks by Lantern's DemonCandidates (its suspicion times the
-judgement's chance each is the Demon if evil). It supersedes `baseline_14f5b7d`.
+`baseline_14f5b7d` plus the Seer ranking its picks by Lantern's DemonCandidates. It supersedes
+`baseline_14f5b7d`. The final version of #549 (`fc89740`: its belief model's evil chance times the
+judgement's chance each is the Demon if evil, and the trusted partner by evil order) captures
+byte-identical to it, so the name stays.
 - **Divergence from `baseline_14f5b7d`:** seed 900 only, at record 52 (day 2). Greta, the Seer, reads the
   same pair, but names Odette before Kiran, since the new ranking puts Odette higher. That flips the
   wording of the reading ("I looked at Odette and Kiran: neither is the Demon") in her ledger, the board
