@@ -17,8 +17,8 @@ const MAX_DEMONS = 4
 const DEFAULT_NAME = "Default"
 const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
-## Burdens prototype (mock/burdens-slot, Michael Nov 20-21): the first slate lists only
-## Delusional (hidden) and Marked (known); the Lovers and Sleepwalker 1.0 are retired.
+## Burdens (Michael, Nov 20-22; docs/design/burdens.md): Delusional (hidden), Marked,
+## Unrequited and Ill-Omened (known); the Lovers and Sleepwalker 1.0 are retired.
 const DEFAULT_SECRETS = ["delusional", "marked", "unrequited", "ill_omened"]
 ## Burdens whose holder doesn't know they carry it. At most one per script.
 const HIDDEN_SECRETS = ["delusional"]

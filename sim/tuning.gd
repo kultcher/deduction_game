@@ -966,7 +966,7 @@ class Evil:
 	const POISON_NOISE = 1.5
 
 
-# ---------------------------------------------------------------- 8b. Burdens (prototype; mock/burdens-slot)
+# ---------------------------------------------------------------- 8b. Burdens (docs/design/burdens.md)
 class Burden:
 	## Marked's disclosure (Michael, Nov 20): announced at the first meeting, shared privately
 	## (the share scaling with trust), or held until nominated or named in an evil reading.

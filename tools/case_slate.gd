@@ -72,7 +72,7 @@ const CASES = {
 	"lie_seer_innocent": "The real Seer's \"no\" on two innocents, called a lie on a Minion's \"yes\" (subject: the real Seer)",
 	"lie_gravedigger_innocent": "The real Gravedigger's reading of the hanged innocent, called a lie on a Minion's \"a Minion\"",
 	"lie_seer_reversed_innocent": "The real Seer's \"yes\" on the Demon and an innocent, called a lie on a Minion's \"no\"",
-	# Burdens prototype (Quill, mock/burdens-slot): "I've carried the mark since birth" against a
+	# Burdens (Quill, Nov 21): "I've carried the mark since birth" against a
 	# reading that calls its holder evil, argued as "is Marked". The rescue is true (a good,
 	# Marked townsperson M); the bluff is the Demon's, against the real Seer's true "yes".
 	"marked_rescue": "The real Seer's \"yes\" on a Marked good townsperson M and another + M's Marked claim, argued \"M is Marked\" (subject M)",
