@@ -11,6 +11,7 @@ const C = preload("res://sim/content.gd")
 const Caches = preload("res://workshop/caches.gd")
 const History = preload("res://workshop/live_history.gd")
 const DemonCandidates = preload("res://workshop/demon_candidates.gd")
+const OwnGiftDoubt = preload("res://workshop/own_gift_doubt.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -92,4 +93,35 @@ func _init() -> void:
 	check(float(own[g].evil) > 0.6, "the Gravedigger's own reading makes the hanged person likely evil (%.3f)" % own[g].evil)
 	check(float(own[g].given_evil) < 0.1 and float(own[g].given_evil) < 0.2 * float(own[by].given_evil),
 		"and they sit near 0 as the Demon, far below a bystander (%.4f against %.3f)" % [own[g].given_evil, own[by].given_evil])
+
+	# demon_chances_of_npc (#549): the NPC's own evil chance (the refresh's posterior, staged
+	# with its inputs) times P(Demon | evil). {} with nothing staged.
+	var npc := Object.new()
+	check(DemonCandidates.demon_chances_of_npc(npc).is_empty(), "demon_chances_of_npc is {} with no refresh staged")
+	var v2: Dictionary = _view([_claim(seer, "seer"), yes])
+	var held: Array = v2.cards.map(func(c): return c.id)
+	Caches.clear_all()
+	var joint: Dictionary = DemonCandidates.of(v2, lis, held)
+	var posterior: Dictionary = {}
+	for pid in joint:
+		posterior[pid] = float(joint[pid].evil)
+	posterior[a] = 0.8  # a belief that differs from the joint's own P(evil)
+	OwnGiftDoubt.stage(npc, v2, lis, held, posterior)
+	var dc: Dictionary = DemonCandidates.demon_chances_of_npc(npc)
+	var ratio: Dictionary = DemonCandidates.given_evil_of_npc(npc)
+	var raw: Dictionary = {}
+	var raw_sum: float = 0.0
+	for pid in ratio:
+		raw[pid] = float(ratio[pid]) * float(posterior[pid])
+		raw_sum += float(raw[pid])
+	var products: bool = not dc.is_empty() and dc.size() == ratio.size() and raw_sum > 0.0
+	var sum_dc: float = 0.0
+	for pid in dc:
+		products = products and absf(float(dc[pid]) - float(raw[pid]) / raw_sum) < 1e-9
+		sum_dc += float(dc[pid])
+	check(products, "demon_chances_of_npc is the posterior evil chance times P(Demon | evil), scaled to one Demon (raw sum %.4f)" % raw_sum)
+	print("demon_chances_of_npc: %s %.3f, %s %.3f, %s %.3f; sum %.4f" % [a, dc.get(a, -1.0), b, dc.get(b, -1.0), by, dc.get(by, -1.0), sum_dc])
+	check(absf(sum_dc - 1.0) < 1e-6, "and its chances sum to 1 over the town (%.4f)" % sum_dc)
+	check(float(dc[a]) > float(dc[b]) and float(dc[b]) > float(dc[by]), "the order follows the raw products: the believed-likelier evil of the pair first, the bystander last")
+	npc.free()
 	_done()
