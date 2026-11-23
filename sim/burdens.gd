@@ -311,7 +311,9 @@ static func _omen_words(w, n, rival: Array, at_nomination: bool) -> Dictionary:
 static func omen_at_nomination(w, n) -> Dictionary:
 	if n.silenced:
 		return {}
-	var real: bool = holds_known(n, "ill_omened")
+	# A holder turned evil before it ever claimed is still the real one (Codex on #547): it claims
+	# at its first nomination too, and its hanging still brings the omen (on_executed).
+	var real: bool = holds_known(n, "ill_omened") or (bool(n.turned) and n.secret_mod == "ill_omened" and bool(n.burden_self_known))
 	# A real holder always claims at its first nomination (Michael, Nov 21), so someone already
 	# nominated once without claiming can't be the Ill-Omened, and evil won't bluff it now.
 	var passed: bool = w.omen_unclaimed.has(n.id)
