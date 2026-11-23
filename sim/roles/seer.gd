@@ -74,7 +74,7 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 ##   as far as sight can tell, so it spends its sight on two fresh people instead.
 func pick_targets(w, n, mind):
 	var by_demon: Array = demon_ranked(w, n, mind)
-	var judged: bool = n.has_meta(load("res://workshop/own_gift_doubt.gd").META)
+	var judged: bool = not load("res://workshop/demon_candidates.gd").demon_chances_of_npc(n).is_empty()
 	var ranked: Array = by_demon.filter(func(m): return not n.cleared.has(m.id)) + by_demon.filter(func(m): return n.cleared.has(m.id))
 	var asked: Array = mind.requested_targets(w, n, "seer")
 	if not asked.is_empty():
@@ -102,7 +102,7 @@ func pick_targets(w, n, mind):
 				if e["data"]["yes"]:
 					yes_on[pid] = yes_on.get(pid, 0) + 1
 	var fresh: Array = ranked.filter(func(m): return not checked.has(m.id))
-	var narrow: Array = _narrowing_pick(w, n, ranked, seen_pairs, yes_on, checked)
+	var narrow: Array = _narrowing_pick(w, n, ranked, seen_pairs, yes_on, checked, mind.ranked_suspects(w, n))
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
@@ -146,25 +146,25 @@ func pick_targets(w, n, mind):
 	return ids
 
 
-## The living others, likeliest Demon first: its suspicion of each (its chance they're evil)
-## times the joint judgement's chance they're the Demon if evil (Lantern's DemonCandidates,
-## from its last belief refresh; reading_interpretation.md section 2.1). It looks for the Demon,
-## not just for evil: a Minion it's sure of, whom its own readings put outside the Demon's
-## seat, ranks below someone it only half suspects. With nothing staged (no refresh yet), its
-## suspicion alone. Ties keep the suspicion order.
+## The living others, likeliest Demon first, by its chance each is the Demon (Lantern's
+## DemonCandidates.demon_chances_of_npc: its belief model's evil chance for each, times the joint
+## judgement's chance they're the Demon if evil, from its last refresh; reading_interpretation.md
+## section 2.1). It looks for the Demon, not just for evil: a Minion it's sure of, whom its own
+## readings put outside the Demon's seat, ranks below someone it only half suspects. With
+## nothing staged (no refresh yet), its suspicion alone. Ties keep the suspicion order.
 func demon_ranked(w, n, mind) -> Array:
 	var by_susp: Array = mind.ranked_suspects(w, n)
-	var cands: Dictionary = load("res://workshop/demon_candidates.gd").given_evil_of_npc(n)
-	if cands.is_empty():
+	var chances: Dictionary = load("res://workshop/demon_candidates.gd").demon_chances_of_npc(n)
+	if chances.is_empty():
 		return by_susp
 	var order: Dictionary = {}
-	var score: Dictionary = {}
 	for i in range(by_susp.size()):
-		var m = by_susp[i]
-		order[m.id] = i
-		score[m.id] = mind.susp(n, m.id) * float(cands.get(m.id, 0.0))
+		order[by_susp[i].id] = i
 	var out: Array = by_susp.duplicate()
-	out.sort_custom(func(a, b): return score[a.id] > score[b.id] or (score[a.id] == score[b.id] and order[a.id] < order[b.id]))
+	out.sort_custom(func(a, b):
+		var da: float = float(chances.get(a.id, 0.0))
+		var db: float = float(chances.get(b.id, 0.0))
+		return da > db or (da == db and order[a.id] < order[b.id]))
 	return out
 
 
@@ -173,7 +173,7 @@ func demon_ranked(w, n, mind) -> Array:
 ## suspect isn't one of the two. The partner, on a coin flip (Michael, Nov 21), is someone
 ## fresh (its likeliest Demon among those unchecked) or someone it trusts as good (one its own
 ## readings cleared, else its least suspected), avoiding a pair it has already looked at.
-func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary, checked: Dictionary = {}) -> Array:
+func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary, checked: Dictionary = {}, by_evil: Array = []) -> Array:
 	var open: Array = []
 	for i in range(n.info_log.size() - 1, -1, -1):
 		var e: Dictionary = n.info_log[i]
@@ -194,7 +194,9 @@ func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictio
 	var fresh: Array = ranked.filter(func(m): return not (m.id in open) and not checked.has(m.id))
 	if not fresh.is_empty() and w.decision_roll(n, "seer_confirm_beside_fresh", 0.5, {"fresh": fresh.size()}):
 		return [target, fresh[0], "someone fresh"]
-	var trusted: Array = ranked.filter(func(m): return not (m.id in open))
+	# Trusted as good: the least suspected of evil, not the least likely Demon (Codex on #549),
+	# so a Minion it's sure of is never its "trusted" partner.
+	var trusted: Array = (by_evil if not by_evil.is_empty() else ranked).filter(func(m): return not (m.id in open))
 	trusted.reverse()
 	var cleared_first: Array = trusted.filter(func(m): return n.cleared.has(m.id)) + trusted.filter(func(m): return not n.cleared.has(m.id))
 	for m in cleared_first:
