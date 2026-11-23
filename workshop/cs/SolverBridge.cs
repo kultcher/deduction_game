@@ -395,6 +395,17 @@ public partial class SolverBridge : RefCounted
         int[] cardInts) =>
         RoleConstraintsKernel.FitsTable(packedWorlds, headerInts, publicRolesInts, forcedLampIndices, cardInts);
 
+    public static double[] RoleMarkedCountWeightsByHandle(
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int[] cardSpecs,
+        int[] blockMasks,
+        double markedEvilChance) =>
+        RoleConstraintsKernel.MarkedCountWeights(
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            cardSpecs, blockMasks, markedEvilChance);
+
     public static double[] RoleBluffWeightsSimple(long[] packedWorlds, int[] declaredBits, double bluffWeight) =>
         RoleConstraintsKernel.BluffWeightsSimple(packedWorlds, declaredBits, bluffWeight);
 
