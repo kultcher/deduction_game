@@ -9,6 +9,21 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+## Built, Nov 23, 2026 (closed by Claude-Beadle)
+
+- **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
+  nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
+  I can tell you what they were"), which also gives a cautious town a reason to act.
+  Michael (Nov 17): as a hidden motive only. A good Gravedigger with nothing to read leans
+  a little more toward nominating and voting to hang, but never says so: these are real
+  people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
+  for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
+  - **Approved (Michael, Nov 20, later):** `GRAVEDIGGER.nothing_to_read_lean` = 0.08. The
+    lean is **permanent** for a good Gravedigger: it doesn't wear off.
+  - **Built:** Beadle, PR #413 (`claude/beadle-gravedigger-lean`), merged. The value is
+    `Tuning.Roles.GRAVEDIGGER.hanging_lean` (0.08; renamed from `nothing_to_read_lean`), and the
+    vote part is logged as `gravedigger_wants_hanging`. The item was left open by mistake.
+
 ## Built, Nov 22, 2026 (closed by Claude-Vicar)
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
