@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, the Seer looks for the likeliest Demon): `baseline_ebea777`
+### Current baseline (Nov 23, lazy Delusion exposure): `baseline_1bf8a4b`
+
+`tools/golden/baseline_1bf8a4b/` is the Linux CI capture from `argon/lazy-delusion-exposure` at `1bf8a4b`
+(main at `f9ec1258`, #552). `WorkshopOwnership.delusion_exposed` is now `false` in play, so
+`_stage_own_gift_doubt` no longer runs an eager `OwnGiftDoubt.delusion_of_npc` judgement on every
+good NPC refresh; callers read Delusion chances lazily through `OwnGiftDoubt.delusion_of_npc(n)`.
+- **Divergence from `baseline_ebea777`:** every seed from record 1 (`step -1`), only in those two
+  retired `workshop_state` fields (`own_delusion` and `delusion_of` erased). With
+  `--tol 0 --ignore own_delusion,delusion_of`, all five seeds are identical (104, 296, 265, 177 and
+  320 records): no belief, vote, nomination, dialogue line, RNG state or execution moves.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings as `baseline_ebea777`.
+- **Stability:** verified by CI's second Linux capture diffing against `baseline_1bf8a4b` at `--tol 0`.
+
+### Earlier baseline (Nov 23, the Seer looks for the likeliest Demon): `baseline_ebea777`
 
 `tools/golden/baseline_ebea777/` is the capture from `claude/beadle-seer-demon-candidates` at `ebea777`:
 `baseline_14f5b7d` plus the Seer ranking its picks by Lantern's DemonCandidates. It supersedes
