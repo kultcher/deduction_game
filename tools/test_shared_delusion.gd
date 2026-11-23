@@ -247,24 +247,27 @@ func _case_odds(me: String, p: Array) -> void:
 	var cc_b: Dictionary = CaseEval.compile(view, view.cards, {"conclusion": {"type": "evil", "target": named}})
 	check(cc_a.input != cc_b.input, "(odds) the compile key includes delusion_odds' people")
 
-## In play: a good gifted NPC's refresh leaves its own chance and each reader's in workshop_state.
+## In play: a good gifted NPC's refresh stages its own chance and each reader's for lazy read.
 func _exposed() -> void:
 	var found: Dictionary = Seeds.search(3, func(g):
 		for n in g.w.living_good():
-			if float(n.workshop_state.get("own_delusion", 0.0)) > 0.0 and not n.workshop_state.get("delusion_of", {}).is_empty():
+			var dl_n: Dictionary = OwnGiftDoubt.delusion_of_npc(n)
+			if float(dl_n.get("own", -1.0)) > 0.0 and not dl_n.get("of", {}).is_empty():
 				return {"id": n.id}
 		return {}, 7, Seeds.SEEDS_FROM, 10)
-	check(not found.is_empty(), "found a good NPC at a day-3 meeting with own_delusion and delusion_of set")
+	check(not found.is_empty(), "found a good NPC at a day-3 meeting with lazy own_delusion and delusion_of")
 	if found.is_empty():
 		return
 	var n = found.g.w.by_id[found.id]
-	var own: float = float(n.workshop_state.own_delusion)
-	var of: Dictionary = n.workshop_state.get("delusion_of", {})
+	var st: Dictionary = n.get_meta("own_gift_doubt")
+	st.erase("delusion")
+	var t0: int = Time.get_ticks_usec()
+	var dl: Dictionary = OwnGiftDoubt.delusion_of_npc(n)
+	print("one delusion judgement: %d ms" % int((Time.get_ticks_usec() - t0) / 1000))
+	var own: float = float(dl.own)
+	var of: Dictionary = dl.get("of", {})
 	print("seed %d: %s (%s) own_delusion %.3f, delusion_of %s" % [int(found.seed), n.id, n.role, own, str(of)])
 	check(own >= 0.0 and own <= 1.0 and of.values().all(func(x): return float(x) >= 0.0 and float(x) <= 1.0), "the chances are chances")
-	var st: Dictionary = n.get_meta("own_gift_doubt")
-	var t0: int = Time.get_ticks_usec()
 	var again: Dictionary = OwnGiftDoubt.delusion(st.view, st.listener, st.held)
-	print("one delusion judgement: %d ms" % int((Time.get_ticks_usec() - t0) / 1000))
 	check(absf(float(again.own) - own) < 1e-9, "asked again, the judge gives the same own chance (%.4f)" % float(again.own))
-	check(absf(float(OwnGiftDoubt.delusion_of_npc(n).own) - own) < 1e-9, "the lazy accessor gives what the refresh stored")
+	check(absf(float(OwnGiftDoubt.delusion_of_npc(n).own) - own) < 1e-9, "the lazy accessor returns the cached judgement")
