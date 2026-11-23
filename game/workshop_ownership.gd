@@ -324,8 +324,8 @@ static func _visibility(n, facts: Array) -> String:
 	return "shared_private"
 
 
-## Measurement switch (on in play): workshop_state.own_delusion and delusion_of each refresh.
-static var delusion_exposed: bool = true
+## Measurement switch (off in play): workshop_state.own_delusion and delusion_of each refresh.
+static var delusion_exposed: bool = false
 
 ## Keeps what OwnGiftDoubt needs to answer, for this refresh: every card the connections
 ## refresh held, and the doubt-adjusted view and listener the evaluation started from
