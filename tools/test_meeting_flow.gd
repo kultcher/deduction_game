@@ -899,15 +899,16 @@ func _test_case_98933_polish_fixes() -> void:
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
 	var reasons: Array = Mind.MindNomination.case_against(w, hollis, odette.id)
-	# Superseded by purge phase 2a: reasons now come from the shared model's attribution,
-	# and only for people the shared model actually suspects. This synthetic fixture (legacy
-	# apply_info, no poisoning explanation ruled out) leaves Odette below Hollis's average,
-	# so she has no reasons at all. The realistic version of this case is covered in
-	# tools/test_legacy_purge_phase2a.gd ("case_against surfaces Hollis's private
-	# Gravedigger reading against Odette via leave-one-out").
+	# Reasons come from the shared model's attribution, and only for people it suspects.
+	# Since teller grouping (Nov 22) Hollis does suspect Odette here, but in this synthetic
+	# fixture (legacy apply_info) his own Gravedigger reading isn't what moves her: leaving it
+	# out raises her chance (0.60 -> 0.64), so the attribution rightly doesn't credit it. The
+	# realistic case, where it is the reading that bites, is covered in
+	# tools/test_meeting_reasons.gd ("case_against surfaces Hollis's private Gravedigger
+	# reading against Odette via leave-one-out"). Here: a suspected Odette gets a reason.
 	var odette_req: float = float(hollis.workshop_state.get("requested", {}).get(odette.id, 0.0))
-	_check(odette_req <= 0.0 or reasons.any(func(rr): return rr["kind"] == "private" and rr["entry"] == gd_entry),
-		"case_against cites Hollis's private Gravedigger reading whenever the shared model suspects Odette (%s)" % str(reasons))
+	_check(odette_req <= 0.0 or not reasons.is_empty(),
+		"case_against gives a reason whenever the shared model suspects Odette (%s)" % str(reasons))
 
 	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves unprepared_refreshes at 0.
 	g.unprepared_refreshes.clear()
