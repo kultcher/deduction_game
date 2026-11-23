@@ -115,9 +115,11 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 		text = omen["text"]
 	elif kind == "unrequited" and w.by_id.has(str(extra.get("beloved", ""))):
 		var bl = w.by_id[str(extra["beloved"])]
-		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if not bl.alive else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
+		# The grave only if the beloved was dead by the night it answers for (Codex on #548).
+		var grave: bool = not _alive_on_night(bl, int(extra["day"])) if extra.has("day") else not bl.alive
+		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if grave else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
 		# Michael's Nov 21 lines (Herald): the door, or the grave once the beloved is dead.
-		line = _mind().say_voiced(n, "burden_unrequited_grave" if not bl.alive else "burden_unrequited_reveal", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me, "beloved": bl.name})
+		line = _mind().say_voiced(n, "burden_unrequited_grave" if grave else "burden_unrequited_reveal", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me, "beloved": bl.name})
 		text = "%s admitted they have an unrequited love for %s." % [n.name, bl.name]
 	elif not rival.is_empty() and not n.is_evil():
 		# The real holder answers a claim already made: one of them is lying.
@@ -513,47 +515,63 @@ static func withholds_for_beloved(w, n, entry: Dictionary) -> bool:
 	return true
 
 ## Evil's Unrequited bluff (§9 item 12), pressed with a sighting of itself on `block` on night
-## `nd`: a beloved whose home fits. It answers only a sighting on the claimed beloved's block
-## (their grave on Chapel Hill once they're dead) or one on its own block, "leaving home". It
-## never answers a sighting that puts it on some other block. Once claimed, the same beloved
-## must fit every later sighting. The shared reactive draw decides. {} if it doesn't.
+## `nd`: a beloved who explains that night. The beloved must fit by the judge's own visit rule
+## (workshop/cs/LiveActivity.cs ComputeUnrequitedProfiles): the walk from home to the
+## beloved's block, to Chapel Hill if they were dead by that night, and no walk at all for one
+## who shares its home. Every block it could be seen on that night must lie on that walk: the
+## sighting it's shown and where it really went (another witness may have seen that), so the
+## claim never makes the contradiction a judge would see (Michael, Nov 23). Once claimed, the
+## same beloved must fit every later sighting. The shared reactive draw decides. {} if it doesn't.
 static func evil_unrequited_bluff(w, n, nd: int, block: String) -> Dictionary:
 	if not n.is_evil() or block == "" or not on_script(w, "unrequited"):
 		return {}
 	if not w.evil_plan.has("unrequited_beloved"):
 		w.evil_plan["unrequited_beloved"] = {}
 	var mine: String = str(w.evil_plan["unrequited_beloved"].get(n.id, ""))
-	var pick: String = mine
+	var pick: String = unrequited_bluff_beloved(w, n, nd, block, mine)
 	if pick == "":
-		var fits: Array = []
-		for m in w.npcs:
-			if m == n:
-				continue
-			if block == n.home_block and m.alive:
-				fits.append(m)
-			elif m.alive and m.home_block == block:
-				fits.append(m)
-			elif not m.alive and block == "hill":
-				fits.append(m)
-		if fits.is_empty():
-			return {}
-		# The cover a good-looking beloved gives: a good one, if it can (never a teammate it
-		# might drag down with it).
-		var goods: Array = fits.filter(func(m): return not m.is_evil())
-		var pool: Array = goods if not goods.is_empty() else fits
-		pool.sort_custom(func(a, b): return a.id < b.id)
-		var r := RandomNumberGenerator.new()
-		r.seed = hash([w.seed_value, n.id, "unrequited_beloved", nd, block])
-		pick = pool[r.randi_range(0, pool.size() - 1)].id
-	var b = w.by_id[pick]
-	var fit: bool = (block == "hill" and not b.alive) or (b.alive and (block == b.home_block or block == n.home_block))
-	if not fit:
 		return {}
 	if mine == "" and not evil_burden_bluff(w, n, "unrequited", "explain being out on %s on night %d" % [C.block_name(block), nd]):
 		return {}
 	w.evil_plan["unrequited_beloved"][n.id] = pick
 	return claim(w, n, "unrequited", false, "caught out on %s on night %d" % [C.block_name(block), nd], "player",
 		{"beloved": pick, "block": block, "day": nd, "phase": C.NIGHT})
+
+## Whom evil would name for a sighting on `block` on night `nd` ("" if no one fits): `mine`
+## if it has already claimed a beloved, else one drawn among those who fit, a good one if it
+## can (never a teammate it might drag down with it). No side effects.
+static func unrequited_bluff_beloved(w, n, nd: int, block: String, mine: String = "") -> String:
+	var seen: Array = [block]
+	var where: String = str(n.history.get(w.time_key(nd, C.NIGHT), ""))
+	if where.begins_with("night:"):
+		for b in [n.home_block, w.loc_block(where)]:
+			if not (b in seen):
+				seen.append(b)
+	if mine != "":
+		return mine if w.by_id.has(mine) and _visit_fits(w, n, w.by_id[mine], nd, seen) else ""
+	var fits: Array = w.npcs.filter(func(m): return m != n and (m.alive or not _alive_on_night(m, nd)) and _visit_fits(w, n, m, nd, seen))
+	if fits.is_empty():
+		return ""
+	var goods: Array = fits.filter(func(m): return not m.is_evil())
+	var pool: Array = goods if not goods.is_empty() else fits
+	pool.sort_custom(func(a, b): return a.id < b.id)
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([w.seed_value, n.id, "unrequited_beloved", nd, block])
+	return pool[r.randi_range(0, pool.size() - 1)].id
+
+## Whether every block in `seen` lies on a visit to `b` on night `nd`, by the judge's rule.
+static func _visit_fits(w, n, b, nd: int, seen: Array) -> bool:
+	var dest: String = b.home_block if _alive_on_night(b, nd) else "hill"
+	if dest == n.home_block:
+		return false  # no walk: a sighting out of doors doesn't fit
+	return seen.all(func(x): return x == n.home_block or x == dest)
+
+## Alive through night `nd`, as the judge's timeline counts it (workshop/live_history.gd): a
+## Demon's victim was alive for the night it died; a hanged soul was dead by that evening.
+static func _alive_on_night(m, nd: int) -> bool:
+	if m.alive or int(m.death_day) < 0:
+		return m.alive
+	return nd <= int(m.death_day) if str(m.death_cause) == "demon" else nd < int(m.death_day)
 
 ## The reveal's trust cost (Michael, Nov 21, option a): those who hear it lose trust in the
 ## Unrequited, by the secret-spread amount (SECRET_SPREAD_BASE + SECRET_SPREAD_PRIVACY x its
