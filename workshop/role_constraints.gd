@@ -6,6 +6,7 @@ const Activity = preload("res://workshop/live_activity.gd")
 const History = preload("res://workshop/live_history.gd")
 const Chronology = preload("res://workshop/chronology.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 static var cache: Dictionary = {}
 static var cache_epoch: int = -1
 static var reuse = true
@@ -27,6 +28,8 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 		cache.clear()
 		cache_epoch = ep
 	var input = [view.people, _hard_timeline(view), view.get("chronology", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
+	# A missed forced trigger reads nominations, which the hard timeline leaves out.
+	input.append(missed_triggers(view, cards))
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
 		if cache.size() >= 2048:
@@ -37,11 +40,30 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 			"input": input.duplicate(true),
 			"slot": slot,
 			"populated": false,
-			"seer": seer_flag(cards),
+			"marked_mask": marked_mask(ids, cards),
 			"mediums": relay_mediums(ids, cards),
-			"walkers": sleepwalk_claimants(ids, cards),
 		}
 	return cache[key]
+
+## The people whose hanged Ill-Omened claim may have poisoned this reading (LiveAssessment
+## tags it with "omen_claimants"), as a bit mask over ids.
+static func omen_mask(ids: Array, card: Dictionary) -> int:
+	var m: int = 0
+	for c in card.get("omen_claimants", []):
+		var i: int = ids.find(str(c))
+		if i >= 0:
+			m |= 1 << i
+	return m
+
+## The burdens a secret_claim card can name, as RoleConstraints.cs reads them (slot 19: the
+## world modifier code plus one). A good claimant's claim holds in the world (they know their
+## own burden); an evil one's may be a bluff. Two claims to the one burden dealt can't both be
+## honest.
+const BURDEN_CODES: Dictionary = {"delusional": 1, "marked": 2, "ill_omened": 3, "unrequited": 4}
+## A world where the claimant is evil is weighed by how likely evil is to make that claim
+## against a real holder, by whether it answers an evil reading (burden_claim_factors; Michael,
+## Nov 21). The switch is for measuring it against claims as context.
+static var burden_claims_bind: bool = true
 
 # Fixed role slots matching workshop/cs/RoleConstraints.cs:
 const _FIXED_ROLES = {
@@ -81,7 +103,7 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 		var bridge = SolverBackend._bridge()
 		if bool(entry.populated):
 			var packed_w: int = SolverBackend.pack_world(world)
-			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), bool(entry.seer), int(entry.mediums), int(entry.walkers))
+			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), int(entry.marked_mask), int(entry.mediums))
 			if not hit.is_empty():
 				return hit[0]
 		var res: PackedFloat64Array = _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -125,7 +147,7 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 		if u_handle >= 0:
 			SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, bool(entry.seer), int(entry.mediums), int(entry.walkers))
+		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, int(entry.marked_mask), int(entry.mediums))
 		if not hit.is_empty():
 			return hit
 	var res: PackedFloat64Array = _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -214,9 +236,11 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		pub_roles[pr_pos + 1] = _intern_role(role_map, str(pub_roles_dict[person]))
 		pr_pos += 2
 
-	var seer_on: bool = seer_flag(cards)
+	var marked_m: int = marked_mask(ids, cards)
 	var mediums_mask: int = relay_mediums(ids, cards)
-	var walkers_mask: int = sleepwalk_claimants(ids, cards)
+	var omen_all: int = 0
+	for oc in cards:
+		omen_all |= omen_mask(ids, oc)
 
 	var header := PackedInt32Array([
 		ids.size(),
@@ -231,9 +255,10 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		1 if routes_avail else 0,
 		1 if routes_okay else 0,
 		1 if use_coarse_memo else 0,
-		1 if seer_on else 0,
+		marked_m,
 		mediums_mask,
-		walkers_mask,
+		omen_all,  # the hanged Ill-Omened claimants whose windows cover these cards
+		view.get("script_minions", []).size(),  # the Seer's Scion odds (0: unknown script)
 	])
 
 	var events: Array = view.get("timeline", {}).get("events", [])
@@ -273,6 +298,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			flags |= (1 << 2)
 		if bool(card.get("content_only", false)):
 			flags |= (1 << 16) # RoleConstraints.FlagContentOnly
+		if omen_mask(ids, card) != 0:
+			flags |= (1 << 18) # RoleConstraints.FlagOmenWindow
 
 		var src_str: String = str(card.get("source", ""))
 		var src_idx: int = ids.find(src_str)
@@ -307,9 +334,6 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		card_ints[off + 9] = c_night
 		var data: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
 		card_ints[off + 10] = int(data.get("night", -1))
-
-		if kind_code == 3 and data.get("secret_kind", "") == "sleepwalker":
-			flags |= (1 << 11)
 
 		if kind_code == 1 and not quoted:
 			if role_str == "martyr":
@@ -346,8 +370,18 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 							vet_mask |= (1 << d_i)
 				card_ints[off + 11] = vet_mask
 
-		if kind_code == 1 or kind_code == 2:
+		if kind_code == 1 or kind_code == 2 or kind_code == 3:
 			card_ints[off + 12] = Chronology.tick(Chronology.statement_time(card))
+		if kind_code == 3:
+			# A claimed burden (docs/design/burdens.md): which world field the claim names.
+			card_ints[off + 19] = burden_code(card)
+			card_ints[off + 13] = forbidding_claim_tick(card, live_cards)
+			if missed_forced_trigger(view, card, live_cards):
+				flags |= (1 << 19) # RoleConstraints.FlagMissedTrigger
+		if kind_code == 2:
+			# Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal never
+			# puts on this claimed role, as modifier-code bits; a good claimant can't hold one.
+			card_ints[off + 13] = forbidden_burdens(card)
 
 		if kind_code == 4: # totem
 			var t_cands: int = 0
@@ -467,6 +501,13 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				elif reg == "marked":
 					reg_code = 3
 				card_ints[off + 19] = reg_code
+				# A reading from before a Scion rose reads the Demon of its night (reading-note
+				# gap 1, Nov 21): the hangings after it that a succession could follow, latest
+				# first, as (hanged, alive mask) in slots 20-23 (Gravedigger's Scion mask).
+				var later: Array = _seer_later_hangings(view, ids, c_night)
+				for k in range(2):
+					card_ints[off + 20 + 2 * k] = int(later[k][0]) if k < later.size() else -1
+					card_ints[off + 21 + 2 * k] = int(later[k][1]) if k < later.size() else 0
 
 		card_ints[off + 1] = flags
 
@@ -476,56 +517,55 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		return SolverBackend._bridge().RoleFitsWeightsMemoByHandle(memo_slot, u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 	return SolverBackend._bridge().RoleFitsWeightsByHandle(u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 
-static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
+static func coarse_mask(people: int, world: Dictionary, marked_m: int, mediums: int) -> int:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var packed: int = SolverBackend.pack_world(world)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.coarse_mask", pack_u)
-	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums, walkers))
+	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, marked_m, mediums))
 	return cs_val
 
-static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
+static func coarse_masks(people: int, universe: Array, marked_m: int, mediums: int, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
 	if not SolverBackend.profiling_enabled:
-		return _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
+		return _coarse_masks_dispatch(people, universe, marked_m, mediums, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
+	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, marked_m, mediums, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
+static func _coarse_masks_dispatch(people: int, universe: Array, marked_m: int, mediums: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
 	var fallback: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 	if u_handle >= 0:
 		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums, walkers)
+	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, marked_m, mediums)
 	return cs_out
 
-static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
+static func _coarse_mask_gd(people: int, world: Dictionary, marked_m: int, mediums: int) -> int:
 	var n: int = people + 1
-	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
+	var mk: int = int(world.marked)
+	var m_val: int = (mk + 1) if (marked_m != 0 and mk >= 0 and (marked_m & (1 << mk)) != 0) else 0
+	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + m_val
 	if mediums != 0:
-		var deluded: int = int(world.get("holders", 0)) & mediums if world.get("modifier", "marked") == "delusional" else 0
-		mask = mask * (1 << people) + deluded
-	if walkers != 0:
-		var asleep: int = int(world.get("holders", 0)) & walkers if world.get("modifier", "marked") == "sleepwalker" else 0
-		mask = mask * (1 << people) + asleep
+		var mod: int = SolverBackend.modifier_code(world) if world.has("modifier") else 1
+		var tellers: int = mediums & 0xFFFF
+		var claimants: int = (mediums >> 16) & 0xFFFF
+		var held: int = int(world.get("holders", 0)) & ((tellers | claimants) if mod == 0 else (0 if mod == 1 else claimants))
+		mask = (mask * (1 << people) + held) * 5 + ((mod + 1) if held != 0 else 0)
 	if world.has("converted"):
 		mask = mask * n + int(world.converted) + 1
 	return mask
 
-static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
-	var bits: int = 0
-	for card in cards:
-		if card.get("kind", "") == "secret_claim" and card.get("data", {}).get("secret_kind", "") == "sleepwalker" and not card.get("quoted", false):
-			var i: int = ids.find(card.get("subject", ""))
-			if i >= 0:
-				bits |= 1 << i
-	return bits
-
-## The people whose being the Delusional holder changes the role check, so the coarse
-## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of every
-## reading (in play a Delusional teller's reading content isn't checked; Codex, #183).
+## The people whose holding a burden changes the role check, so the coarse memo key
+## (coarse_mask) must tell them apart. Low 16 bits: Medium relayers and the teller of every
+## reading, who matter only as the Delusional (in play a Delusional teller's reading content
+## isn't checked; Codex, #183). High 16 bits: whoever claims a burden other than Marked (their
+## claim is checked in good worlds) and the hanged Ill-Omened claimants (the omen window),
+## who matter for any burden but Marked (Argon, Nov 21).
+## Impossible pairs (forbidden_burdens) are handled as a 1-bit kill state rather than here.
 static func relay_mediums(ids: Array, cards: Array) -> int:
+	assert(ids.size() <= 15, "relay_mediums packs two masks into a signed 32-bit int")
 	var bits: int = 0
+	var claim_bits: int = 0
 	for card in cards:
 		if card.get("quoted", false):
 			continue
@@ -533,12 +573,20 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			var medium: int = ids.find(card.relay_source)
 			if medium >= 0:
 				bits |= 1 << medium
-		# Independent of the relay: a relayed reading needs its teller in the key too.
+		# Independent of the relay: a relayed reading needs its teller in the key too, and so
+		# does whoever claims to be the Delusional (their claim is checked in good worlds).
+		for c in card.get("omen_claimants", []):
+			var oi: int = ids.find(str(c))
+			if oi >= 0:
+				claim_bits |= 1 << oi
+		var teller: int = ids.find(str(card.get("source", "")))
+		if teller < 0:
+			continue
 		if card.get("kind", "") == "report":
-			var teller: int = ids.find(str(card.get("source", "")))
-			if teller >= 0:
-				bits |= 1 << teller
-	return bits
+			bits |= 1 << teller
+		elif burden_code(card) > 0 and str(card.data.secret_kind) != "marked":
+			claim_bits |= 1 << teller
+	return bits | (claim_bits << 16)
 
 static func _live_cards(cards: Array) -> Array:
 	return cards.filter(func(card): return not card.get("testimony_only", false))
@@ -550,8 +598,324 @@ static func _routing_cards(cards: Array) -> Array:
 			out.append({"kind": "claim", "source": card.relay_source, "role": "medium", "inferred": true})
 	return out
 
+## Per-person bitmask of people whose Marked status is read by RoleConstraints on `cards`.
+## Replaces the global seer_flag boolean so CoarseMask only splits on people actually named
+## by an evil-detecting reading or Marked claim (shrinking the x8 Marked multiplier to x(k+1)).
+static func marked_mask(ids: Array, cards: Array) -> int:
+	var mask: int = 0
+	for c in cards:
+		if c.get("quoted", false) or c.get("testimony_only", false):
+			continue
+		var kind: String = str(c.get("kind", ""))
+		var data: Dictionary = c.get("data", {}) if c.get("data") is Dictionary else {}
+		if kind == "secret_claim":
+			if burden_claims_bind and not c.get("content_only", false) and str(data.get("secret_kind", "")) == "marked":
+				var si: int = ids.find(str(c.get("source", "")))
+				if si >= 0:
+					mask |= 1 << si
+			continue
+		if kind != "report":
+			continue
+		var role: String = str(c.get("role", ""))
+		if role == "seer":
+			for person in data.get("pair", []):
+				var pi: int = ids.find(str(person))
+				if pi >= 0:
+					mask |= 1 << pi
+		elif role == "martyr" or role == "executor" or role == "registrar":
+			var ti: int = ids.find(str(data.get("target", "")))
+			if ti >= 0:
+				mask |= 1 << ti
+		else:
+			var rdef = C.role_def(role)
+			if rdef != null and rdef.shape == "ROLE_IN_GROUP" and rdef.marked_registers:
+				if rdef.role_group_key == "pair":
+					for person in data.get("pair", []):
+						var pi: int = ids.find(str(person))
+						if pi >= 0:
+							mask |= 1 << pi
+				else:
+					var gi: int = ids.find(str(data.get(rdef.role_group_key, "")))
+					if gi >= 0:
+						mask |= 1 << gi
+	return mask
+
 static func seer_flag(cards: Array) -> bool:
-	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"] and not c.get("quoted", false))
+	# Counting readings a Marked person sways read world.marked too (Solver.marked_counts).
+	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar", "dowser", "hearthwitch", "surveyor", "magistrate"]
+		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
+
+## Packs [source, relayer, stmt_tick, forbidden_bits] quads for every claim card with
+## forbidden_burdens != 0 so CaseEvalKernel can key impossible pairs as a single bit.
+static func forbidden_specs(ids: Array, cards: Array) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for card in cards:
+		var fb: int = forbidden_burdens(card)
+		if fb == 0:
+			continue
+		var src: int = ids.find(str(card.get("source", "")))
+		var rel: int = ids.find(str(card.relay_source)) if card.has("relay_source") else -1
+		var tick: int = Chronology.tick(Chronology.statement_time(card))
+		out.append(src)
+		out.append(rel)
+		out.append(tick)
+		out.append(fb)
+	return out
+
+## Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal's placement
+## table never puts on this card's claimed role (ScriptDef.placement_allows), as bits of the
+## world's modifier code (1 << burden_code - 1), for an unquoted own role claim; 0 otherwise.
+## The role check makes a world impossible where its claimant, good when they claimed the
+## role, holds one of them. Read from the table, not a list of roles.
+static func forbidden_burdens(card: Dictionary) -> int:
+	if not burden_claims_bind or str(card.get("kind", "")) != "claim" or card.get("quoted", false) or card.get("content_only", false) \
+			or card.get("inferred", false) or card.get("testimony_only", false):
+		return 0
+	var role: String = str(card.get("role", ""))
+	if role == "":
+		return 0
+	var bits: int = 0
+	for kind in BURDEN_CODES:
+		if not ScriptDef.placement_allows(kind, role):
+			bits |= 1 << (int(BURDEN_CODES[kind]) - 1)
+	return bits
+
+## A claimed burden this card's claimant must hold if good (0 for none, or the switch off).
+## Only a person's own claim binds: someone retelling another's burden is not claiming it.
+static func burden_code(card: Dictionary) -> int:
+	if not burden_claims_bind or card.get("kind", "") != "secret_claim" or card.get("quoted", false) or card.get("content_only", false):
+		return 0
+	var subject = card.get("subject", "")
+	if str(subject[0] if subject is Array and not subject.is_empty() else subject) != str(card.get("source", "")):
+		return 0
+	return int(BURDEN_CODES.get(str(card.get("data", {}).get("secret_kind", "")), 0))
+
+## A burden claim after a missed forced trigger (Michael, Nov 22; ScriptDef.FORCED_CLAIM_TRIGGERS):
+## the claimant was nominated earlier, unsilenced, and didn't claim the burden then, so they
+## can't be its real holder. Read only from the public record (nominations, silencings) and
+## the claimant's tellings. Sets FlagMissedTrigger on the claim card.
+## Impossible pairs (Michael, Nov 21): the deal never puts some burdens on some gifts
+## (ScriptDef.PLACEMENT_RULES: Unrequited never on a night-walking gift, the Rumormonger never
+## a burden's lone holder), so a good person can't truly claim both. The statement time of the
+## claimant's earliest own role claim that the placement table rules out alongside this burden
+## claim, or -1. Read from the table, not a list of roles.
+## The ids of the burden claims among `cards` that missed a forced trigger, for cache keys:
+## the flag reads nominations, a soft event the keys' timelines leave out.
+static func missed_triggers(view: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	for c in cards:
+		if missed_forced_trigger(view, c, cards):
+			out.append(str(c.get("id", "")))
+	return out
+
+static func missed_forced_trigger(view: Dictionary, card: Dictionary, cards: Array) -> bool:
+	if burden_code(card) == 0:
+		return false
+	var kind: String = str(card.data.secret_kind)
+	if str(ScriptDef.FORCED_CLAIM_TRIGGERS.get(kind, "")) != "nominated":
+		return false
+	var who: String = str(card.get("source", ""))
+	# The claimant's first telling of this burden, among every card the listener holds.
+	var first: int = _first_told_tick(card)
+	for c in view.get("cards", []) + cards:
+		if burden_code(c) == burden_code(card) and str(c.get("source", "")) == who:
+			first = mini(first, _first_told_tick(c))
+	# The public record only: nominations, and who was silenced that day (a silenced nominee
+	# can't speak, so its silence says nothing).
+	var events: Array = view.get("timeline", {}).get("events", [])
+	var silenced: Dictionary = {}
+	for e in events:
+		if str(e.get("kind", "")) == "silenced" and who in e.get("subjects", []):
+			silenced[int(e.get("at", {}).get("day", -1))] = true
+	for e in events:
+		if str(e.get("kind", "")) != "nomination" or not who in e.get("subjects", []):
+			continue
+		var day: int = int(e.get("at", {}).get("day", -1))
+		if day < 0 or silenced.has(day):
+			continue
+		if day * 4 + 2 < first:  # nominated (the evening meeting) before ever claiming it
+			return true
+	return false
+
+static func forbidding_claim_tick(card: Dictionary, cards: Array) -> int:
+	if burden_code(card) == 0:
+		return -1
+	var kind: String = str(card.data.secret_kind)
+	var src: String = str(card.get("source", ""))
+	var out: int = -1
+	for c in cards:
+		if str(c.get("kind", "")) != "claim" or c.get("quoted", false) or c.get("content_only", false) or c.get("inferred", false) \
+				or c.get("testimony_only", false) or str(c.get("source", "")) != src:
+			continue
+		var role: String = str(c.get("role", ""))
+		if role == "" or ScriptDef.placement_allows(kind, role):
+			continue
+		var t: int = Chronology.tick(Chronology.statement_time(c))
+		out = t if out < 0 else mini(out, t)
+	return out
+
+## Measurement switch: when >= 0, every claimed burden takes this factor instead.
+static var burden_factor_override: float = -1.0
+static var _names_evil_cache: Dictionary = {}
+
+## Whether an unquoted reading card points at `who` being evil: over the deal's worlds, its
+## content holds more often where `who` is evil than where they're good and hold no burden
+## (a Seer's yes in a pair with them, a Dowser count over a group with them). General: read
+## off the judge, no list of gifts.
+static func names_evil(view: Dictionary, card: Dictionary, who: int) -> bool:
+	if card.get("kind", "") != "report" or card.get("quoted", false) or ids_of(view).find(str(card.get("source", ""))) == who:
+		return false
+	var Solver = load("res://workshop/solver.gd")
+	var key: String = str([Solver._universe_key(view), str(card.get("id", "")), who])
+	if _names_evil_cache.has(key):
+		return bool(_names_evil_cache[key])
+	var worlds: Array = Solver.universe(view)
+	var table: PackedByteArray = Solver.reading_holds_table(view, card)
+	var e_n := 0
+	var e_h := 0
+	var g_n := 0
+	var g_h := 0
+	for i in range(mini(worlds.size(), table.size())):
+		var w: Dictionary = worlds[i]
+		if int(w.evil) & (1 << who):
+			e_n += 1
+			e_h += int(table[i])
+		elif int(w.get("marked", -1)) != who and not (int(w.get("holders", 0)) & (1 << who)):
+			g_n += 1
+			g_h += int(table[i])
+		if _names_evil_cache.size() > 4096:
+			_names_evil_cache.clear()
+	var evil_rate: float = float(e_h) / float(e_n) if e_n > 0 else 0.0
+	var good_rate: float = float(g_h) / float(g_n) if g_n > 0 else 0.0
+	var out: bool = evil_rate > good_rate * 1.05 + 1e-9
+	_names_evil_cache[key] = out
+	return out
+
+static var _burden_share_cache: Dictionary = {}
+
+## The share of the deal's worlds with `who` good in which they hold burden `kind`.
+static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
+	# Over the worlds the listener can't rule out: what it knows of its own burden narrows who
+	# else can hold one (CaseEval._own_burden_ok), and a neutral claim must stay neutral there.
+	var ob: Dictionary = view.get("own_burden", {})
+	var me: int = ids_of(view).find(str(ob.get("self", ""))) if not ob.is_empty() else -1
+	# Domain.worlds is symmetric across players, so the share only depends on whether the
+	# listener knows its own burden, whether it is the claimant, and its known burden kind.
+	# Its own Delusional worlds carry their prior's weight (shared Delusion doubt, Nov 22), as
+	# in the judge's sums, so a neutral claim stays neutral against them too.
+	var classes = preload("res://workshop/case_eval_classes.gd")
+	var dw: float = classes.own_delusion_weight(view, classes.own_delusion_prior(view, {})) if me >= 0 else 1.0
+	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), kind, me >= 0, me == who, str(ob.get("kind", "")) if me >= 0 else "", dw])
+	if not _burden_share_cache.has(ckey):
+		var good: float = 0.0
+		var held: float = 0.0
+		for w in Domain.worlds(view):
+			if int(w.evil) & (1 << who):
+				continue
+			# Only a good listener knows its own burden, so these are worlds where it's good.
+			if me >= 0 and ((int(w.evil) & (1 << me)) or not classes._own_burden_ok(ob, me, w)):
+				continue
+			var wt: float = dw if me >= 0 and classes._listener_deluded(w, me) else 1.0
+			good += wt
+			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):
+				held += wt
+		_burden_share_cache[ckey] = held / good if good > 0.0 else 1.0
+	return float(_burden_share_cache[ckey])
+
+static func ids_of(view: Dictionary) -> Array:
+	return view.people.map(func(p): return p.id)
+
+## When `card` was first said: the time it was observed (a relay or a later retelling keeps
+## the first telling's time), else when it was reported.
+static func _first_told_tick(card: Dictionary) -> int:
+	return Chronology.tick(card.observed_at) if card.get("observed_at") is Dictionary else Chronology.tick(Chronology.statement_time(card))
+
+## When a reading could first have been told: the morning after a night reading, else when it
+## was observed. Not when this listener learned it, which can be later than the claim it
+## prompted (a reading heard second-hand on day 3 still answered a day-2 claim).
+static func _reading_known_tick(card: Dictionary) -> int:
+	var obs = card.get("observed_at")
+	if not obs is Dictionary:
+		return Chronology.tick(Chronology.statement_time(card))
+	if str(obs.get("phase", "")) == "night":
+		return Chronology.tick({"day": int(obs.get("day", 0)) + 1, "phase": "morning"})
+	return Chronology.tick(obs)
+
+## Whether `r` is evidence already against the claimant that the claimed burden explains
+## (Michael, Nov 21: "a burden claim that explains evidence already against the claimant takes
+## the reactive weight"): a reading that names them evil, for any burden; and, for a burden
+## whose claim explains its claimant's night walks (LiveActivity.claim_walks: Unrequited), a
+## sighting of them out at night told by someone else. Dated as a reading is
+## (_reading_known_tick: the morning after a night).
+static func explains_against(view: Dictionary, claim: Dictionary, r: Dictionary, who: int) -> bool:
+	if names_evil(view, r, who):
+		return true
+	if not Activity.claim_walks(claim) or str(r.get("kind", "")) != "sighting" or r.get("quoted", false) or int(r.get("night", -1)) < 0:
+		return false
+	var me: String = str(view.people[who].id) if who >= 0 and who < view.people.size() else ""
+	return me != "" and str(r.get("source", "")) != me and me in r.get("subjects", [r.get("subject", "")])
+
+## For each claimed burden, [who, factor, statement tick]: the factor weighs a world where the
+## claimant was evil when they spoke. It's how much likelier an evil player is to make the
+## claim than a real holder, measured (Tuning.Workshop.BURDEN_BLUFF_*), by whether the claim
+## answers an evil reading: one the listener holds that names the claimant evil and could have
+## been told no later than the claimant first told of the burden (_reading_known_tick). An earlier telling (to a friend, to
+## the player) dates the claim, so a later public claim with it isn't counted as reactive
+## (Michael, Nov 21). The judge can't tell a faked earlier telling from a real one.
+static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	var ids: Array = ids_of(view)
+	var held: Array = view.get("cards", [])
+	var seen: Dictionary = {}
+	for card in cards:
+		var code: int = burden_code(card)
+		var who: int = ids.find(str(card.get("source", "")))
+		if code == 0 or who < 0 or seen.has("%d:%d" % [who, code]):
+			continue
+		seen["%d:%d" % [who, code]] = true
+		var kind: String = str(card.data.secret_kind)
+		var first: int = _first_told_tick(card)
+		for c in held + cards:
+			if burden_code(c) == code and str(c.get("source", "")) == ids[who]:
+				first = mini(first, _first_told_tick(c))
+		var reactive: bool = false
+		var by_reading: bool = false
+		for r in held + cards:
+			if _reading_known_tick(r) <= first and explains_against(view, card, r, who):
+				reactive = true
+				if names_evil(view, r, who):
+					by_reading = true
+					break
+		# A claim that answers only a sighting (Unrequited explaining a walk) has its own
+		# weight, set so it lands about where the sighting left the claimant (Michael, Nov 21:
+		# provisional, until a sweep can measure how often evil bluffs it).
+		var factor: float = Tuning.Workshop.BURDEN_BLUFF_UNREQUITED_SIGHTED if reactive and not by_reading \
+			else (Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED)
+		if not reactive and factor < 0.0:
+			factor = _deal_share(view, who, kind)
+		out.append([who, factor if burden_factor_override < 0.0 else burden_factor_override, Chronology.tick(Chronology.statement_time(card)), reactive])
+	return out
+
+## The hangings after a Seer reading's night that a Scion's rise could follow: [hanged index,
+## alive-before mask], latest first (at most two are packed).
+static func _seer_later_hangings(view: Dictionary, ids: Array, night: int) -> Array:
+	var out: Array = []
+	var minions: Array = view.get("script_minions", [])
+	if night < 0 or not view.has("timeline") or not (minions.is_empty() or "scion" in minions):
+		return out  # no Scion on the script: no succession (Solver.hanged_context)
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	var days: Array = execs.keys().map(func(d): return int(d))
+	days.sort()
+	days.reverse()
+	for day in days:
+		if day <= night:
+			continue
+		for target in execs[str(day)]:
+			var idx: int = ids.find(str(target))
+			var mask: int = _scion_exec_alive_demon_mask(view, ids, str(target))
+			if idx >= 0 and mask != 0:
+				out.append([idx, mask])
+	return out
 
 static func _scion_exec_alive_demon_mask(view: Dictionary, ids: Array, target_id: String) -> int:
 	if target_id == "" or not view.has("timeline"):
@@ -642,7 +1006,8 @@ static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u
 	var ids: Array = view.people.map(func(p): return p.id)
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	var has_hw: bool = cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"])
-	if not has_curse and not has_hw:
+	var burdens: Array = burden_claim_factors(view, cards)
+	if not has_curse and not has_hw and burdens.is_empty():
 		var declared := PackedInt32Array()
 		var seen: Dictionary = {}
 		for card in cards:
@@ -685,6 +1050,16 @@ static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u
 		curse_until = int(curse.get("until", 0))
 	var pack_u2: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.bluff_weights_temporal", pack_u2)
+	if not burdens.is_empty():
+		var factors := PackedFloat64Array()
+		for d in range(d_count):
+			factors.append(lerpf(1.0, BLUFF_WEIGHT, h_weights[d]))
+		for b in burdens:
+			who.append(int(b[0]))
+			factors.append(float(b[1]))
+			stmt_ticks.append(int(b[2]))
+		return SolverBackend._bridge().RoleBluffWeightsFactorsByHandle(
+			u_handle, sub_indices, fallback_worlds, who, factors, stmt_ticks, has_curse, curse_from, curse_until)
 	return SolverBackend._bridge().RoleBluffWeightsTemporalByHandle(
 		u_handle, sub_indices, fallback_worlds, who, h_weights, stmt_ticks, has_curse, curse_from, curse_until, BLUFF_WEIGHT
 	)

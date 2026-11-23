@@ -26,6 +26,16 @@ func _world(sd: int = 54875):
 	g.w.begin_meeting()
 	return g.w
 
+## A deal (searched from `from`, not one named seed) with a good NPC holding a reading it hasn't
+## told the town: [w, holder], or [null, null].
+func _holder_case(from: int = 54875) -> Array:
+	for sd in range(from, from + 40):
+		var w = _world(sd)
+		var h = _holder(w)
+		if h != null:
+			return [w, h]
+	return [null, null]
+
 ## A good NPC with a reading it hasn't told the town.
 func _holder(w):
 	for m in w.living_good():
@@ -52,8 +62,9 @@ func _init() -> void:
 		var r0: Dictionary = MindCallOn.respond(w, q[0])
 		_check(r0["outcome"] == "nothing" and not r0["lie"], "with nothing unshared, it says it has told the town all it knows")
 	# Already out with the gift: it shares what's new.
-	var w1 = _world()
-	var h1 = _holder(w1)
+	var c1: Array = _holder_case()
+	var w1 = c1[0]
+	var h1 = c1[1]
 	_check(h1 != null, "a good NPC holds an unshared reading")
 	if h1 != null:
 		h1.claim_public = true
@@ -139,8 +150,9 @@ func _init() -> void:
 	_check(r5["outcome"] == "shared" or (r5["outcome"] == "nothing" and r5["lie"]), "evil holding a bluff back says it has nothing, and it's logged as a lie (%s)" % r5["outcome"])
 	_check(r5["outcome"] != "nothing" or w5.dlog.entries.any(func(x): return x["type"] == "think" and x["actor"] == ev.id and x.get("data", {}).get("lie", false)), "with its reason")
 	# The push is light: it appears in the claim decision as "called_on".
-	var w6 = _world()
-	var h6 = _holder(w6)
+	var c6: Array = _holder_case()
+	var w6 = c6[0]
+	var h6 = c6[1]
 	if h6 != null:
 		_hold_back(h6)
 		MindCallOn.respond(w6, h6)

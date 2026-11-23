@@ -34,7 +34,7 @@ func _run() -> void:
 	var teller = g.w.npcs.filter(func(n): return n != target and n != listener)[0]
 	var out = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Seen out on night 1"})
 	var confession = {"kind": "secret", "source": target.id, "subject": [target.id], "owner": target.id,
-		"secret_kind": "debt", "day": 1, "phase": 3, "block": "market", "text": "A confessed private errand"}
+		"secret_kind": "unrequited", "day": 1, "phase": 3, "block": "market", "text": "A confessed night visit (Unrequited)"}
 	var number = GameBoard.add_card(g, confession)
 	var out_id: String = Live.Evidence.normalize_card(g.board[out - 1]).id
 	var secret_id: String = Live.Evidence.normalize_card(g.board[number - 1]).id
@@ -67,15 +67,7 @@ func _run() -> void:
 	duplicate.cards.append(Live.Evidence.normalize_card(g.board[second - 1]).id)
 	var dupe = Live.Assess.prepare(Live.snapshot(g, duplicate, listener.id))
 	check(CaseEval.evaluate(dupe.view, dupe.case, dupe.listener).people == result.people, "retellings do not create independent private-errand awards")
-	var lover = confession.duplicate(true)
-	lover.secret_kind = "lover"
-	lover["mod"] = "lovers"
-	var lover_number = GameBoard.add_card(g, lover)
-	var lover_case = value.duplicate(true)
-	lover_case.cards = [out_id, Live.Evidence.normalize_card(g.board[lover_number - 1]).id]
-	lover_case.citations = {}
-	var lover_context = Live.Assess.prepare(Live.snapshot(g, lover_case, listener.id))
-	check(CaseEval.evaluate(lover_context.view, lover_context.case, lover_context.listener).people == result.people, "a claimed lover story supplies an errand alternative without asserting the Lovers modifier")
+	# (The Lovers' errand alternative retired with the Lovers: burdens rework.)
 	var new_out = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 2, "phase": 3, "block": "market", "text": "Seen out on night 2"})
 	var later = value.duplicate(true)
 	later.cards = [Live.Evidence.normalize_card(g.board[new_out - 1]).id]
@@ -85,7 +77,12 @@ func _run() -> void:
 	var later_effect = CaseEval.evaluate(later_plain.view, later_plain.case, later_plain.listener)
 	later.cards.append(secret_id)
 	var later_context = Live.Assess.prepare(Live.snapshot(g, later, listener.id))
-	check(CaseEval.evaluate(later_context.view, later_context.case, later_context.listener).people == later_effect.people, "a night-1 confession cannot change night-2 activity likelihoods")
+	# Unrequited is a standing burden (burdens prototype, Michael, Nov 21): a good claimant holds
+	# it, and a holder visits the beloved on most nights, so the confession explains a night-2
+	# outing too (LiveActivityKernel.UnrequitedLikelihood), not only the night it was dated.
+	var later_with: Dictionary = CaseEval.evaluate(later_context.view, later_context.case, later_context.listener).people
+	check(later_with[target.id].posterior < later_effect.people[target.id].posterior,
+		"an Unrequited confession explains a night-2 outing too (%.3f against %.3f)" % [later_with[target.id].posterior, later_effect.people[target.id].posterior])
 	var wrong = value.duplicate(true)
 	wrong.citations = {target.id + ":2": secret_id}
 	check(not Live.Assess.prepare(Live.snapshot(g, wrong, listener.id)).ready, "an inapplicable night citation is rejected explicitly")

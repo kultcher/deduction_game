@@ -45,23 +45,59 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	check(is_equal_approx(Connections.join_bar({"insight": 0.0}), 0.8) and is_equal_approx(Connections.join_bar({"insight": 1.0}), 0.1) and is_equal_approx(Connections.join_bar({}), 0.45),
 		"an item joins the core at 0.8 for the dullest listener, 0.1 for the sharpest, 0.45 with no Insight given")
-	check(Connections.seed_wrong_sightings, "a wrong sighting of the listener is firsthand knowledge in play")
+	# Off in play since #506 (Lantern, Nov 21): seeding pulled the sighting's whole movement item
+	# into the core. The mechanism is still checked below, with the switch on.
+	check(not Connections.seed_wrong_sightings, "a wrong sighting of the listener doesn't seed the core in play")
+	check(Connections.seed_own_sightings, "the listener's own sightings and vigils seed the core in play (Michael, Nov 22)")
+	Connections.seed_wrong_sightings = true
 	_firsthand()
+	_own_sightings()
 	_tests_and_members()
 	_arithmetic()
 	_combine()
-	_states(900, 7, 3, 99)
+	# A game whose cores have members and a card that arrives late in the day: searched for
+	# (seed 900 had one until the burdens prototype's deal), so play changes don't break it.
+	var found_arrival := false
+	for sd in range(900, 910):
+		if _states(sd, 7, 3, 99, false) > 0:
+			found_arrival = true
+			print("late arrival found at seed %d" % sd)
+			break
+	check(found_arrival, "some game in seeds 900-909 has cores with members and a late arrival tried")
 	_states(902, 10, 3, 3)
 	_wrong_sighting()
 	_baseline_has_no_cards()
 	_in_game(900, 7, 3)
 	Connections.force_row = ""
-	Connections.seed_wrong_sightings = true
+	Connections.seed_wrong_sightings = false
 	print("Connections core: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 
 # ------------------------------------------------------------ the rules, on hand-made cards
+
+func _own_sightings() -> void:
+	var by_id: Dictionary = _cards()
+	by_id["my_sight"] = {"id": "my_sight", "kind": "sighting", "source": "me", "subject": "x", "subjects": ["x"], "night": 2}
+	by_id["my_vigil"] = {"id": "my_vigil", "kind": "vigil", "source": "me", "subject": "y", "subjects": ["y"], "night": 1}
+	by_id["quoted_sight"] = {"id": "quoted_sight", "kind": "sighting", "source": "me", "subject": "z", "subjects": ["z"], "night": 1, "quoted": true}
+	by_id["relayed_sight"] = {"id": "relayed_sight", "kind": "sighting", "source": "me", "subject": "z", "subjects": ["z"], "night": 3, "relay_source": "y"}
+	var listener: Dictionary = {"id": "me", "knowledge": {"own_outings": {"1": false, "2": false, "3": true}}}
+	var held: Array = by_id.keys()
+	var first: Array = Connections.firsthand(by_id, held, listener)
+	check(first == ["my_sight", "my_vigil", "own", "saw_me_home", "watch"], "firsthand: its own sighting and vigil count like its own readings (%s)" % str(first))
+	check("quoted_sight" not in first and "relayed_sight" not in first and "saw_x" not in first, "not a quoted or relayed sighting, nor someone else's sighting")
+	Connections.seed_own_sightings = false
+	check("my_sight" not in Connections.firsthand(by_id, held, listener), "with the option off, its own sighting doesn't seed")
+	Connections.seed_own_sightings = true
+	var none: Array = Connections.items(by_id, held, people_of(), "none")
+	var keys: Array = Connections.seed_keys(none, first)
+	check("night:1" in keys and "night:2" in keys, "the nights holding its own sighting and vigil seed the core (%s)" % str(keys))
+
+
+func people_of() -> Array:
+	return ["me", "x", "y", "z"]
+
 
 func _cards() -> Dictionary:
 	return {
@@ -267,15 +303,22 @@ func _same(a: Dictionary, b: Dictionary) -> bool:
 	return a.size() == b.size()
 
 
-func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, npcs)
-	_play(g, day)
+func _states(seed_v: int, npcs: int, day: int, most: int, need_arrival: bool = true) -> int:
+	# From seed_v on, the first game that reaches the meeting (seed 900 ends on day 2 since the
+	# burdens deal moved its game; tools/fixture_seeds.gd practice).
+	var g = null
+	for s_try in range(seed_v, seed_v + 10):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s_try, npcs)
+		_play(g, day)
+		if g.state == "meeting":
+			seed_v = s_try
+			break
 	var tag: String = "seed %d" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])
-		return
+		return 0
 	var seeded := 0
 	var joined := 0
 	var arrivals := 0
@@ -337,8 +380,9 @@ func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
 			check(late not in before.core.members and not after.core.rebuilt and after.core.tested.keys() == [late] and after.core.members == core.members and _same(after.posterior, r.posterior),
 				"%s: a card heard during the day is tested when it arrives, and only it (%s)" % [who, late])
 	check(seeded > 0, "%s: listeners with firsthand cards to test (%d, %d cards and pairings joined)" % [tag, seeded, joined])
-	if most > 3:
+	if most > 3 and need_arrival:
 		check(joined > 0 and arrivals > 0, "%s: some cores have members, and a late arrival was tried" % tag)
+	return arrivals if joined > 0 else 0
 
 
 ## Seed 100034, day 2: the evil Constance says she saw Odette out; Odette was home.
@@ -431,10 +475,17 @@ func _refresh(g, n) -> Dictionary:
 func _in_game(seed_v: int, npcs: int, day: int) -> void:
 	LiveActivity.cache.clear()
 	Caches.clear_all()
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, npcs)
-	_play(g, day)
+	# From seed_v on, the first game that reaches the meeting (seed 900 ends on day 2 since the
+	# burdens deal moved its game; tools/fixture_seeds.gd practice).
+	var g = null
+	for s_try in range(seed_v, seed_v + 10):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s_try, npcs)
+		_play(g, day)
+		if g.state == "meeting":
+			seed_v = s_try
+			break
 	var tag: String = "seed %d, model on" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])

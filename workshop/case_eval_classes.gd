@@ -3,6 +3,8 @@
 ## `workshop/case_eval.gd`; part of CaseEval's inheritance chain).
 extends "res://workshop/case_eval_content.gd"
 
+const ScriptDefRef = preload("res://sim/script_def.gd")
+
 static var _cc_handles: Dictionary = {}
 static var _cc_handles_epoch: int = -1
 ## Bumped whenever the C# compiled cases are dropped (context epoch, the 32-entry cap).
@@ -75,7 +77,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(case_data.get("reading_challenges", {}).keys())
 	if not view.get("regular_haunts", {}).is_empty():
 		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
-	if not view.get("own_home", {}).get("nights", {}).is_empty():
+	if not view.get("own_home", {}).get("nights", {}).is_empty() or not view.get("own_home", {}).get("out_nights", {}).is_empty():
 		key_input.append(view.own_home)  # the movement model reads the listener's known home nights
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
@@ -102,6 +104,18 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# The same for the quiet-night Warden guards (the Test juror's comparison without
 		# them, WorkshopCanvas.guard_reasons).
 		key_input.append(["quiet_guards_off", Movement.Live.quiet_guards_enabled, Movement.Live.quiet_guards_skip.duplicate()])
+	# The listener's own readings (known) are read in its worlds as the Delusional holder too
+	# (shared Delusion doubt, Michael, Nov 22). When live own_burden is present, CompileOwnCountsWeighted
+	# already splits own-states on ListenerDeluded, so only keyless test views need own_tellers here
+	# (keeping CaseEval.compile shared across listeners in town presentations).
+	var own_tellers: int = Solver.Roles.relay_mediums(Solver.person_ids(view), known) & 0xFFFF if Domain.live(view) and not known.is_empty() and view.get("own_burden", {}).is_empty() else 0
+	# An argued "X is the Delusional" premise (case_data.delusion_odds) weighs X's holder
+	# worlds on the after side (CaseEval.delusion_odds_fits), so X's holding splits the
+	# classes as a teller's does. The odds themselves act after compile; the mask keys it.
+	if Domain.live(view):
+		own_tellers |= delusion_odds_mask(view, case_data)
+	if own_tellers != 0:
+		key_input.append(["own_tellers", own_tellers])
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -134,10 +148,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		reports.append(card)
 		tables.append(table)
 		valids.append(_valid_table(view, card))
-	for need in Solver.lovers_needs(view, cards):
-		for i in range(n):
-			if not Solver.lovers_ok(universe[i], int(need)):
-				dead[i] = 1
 	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
@@ -164,12 +174,12 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 
 	var movement_ok: bool = _movement_ok(view, cards, live)
 	var q_arr: Array = reports.map(func(c): return chance_content(view, c))
-	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
+	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr, own_tellers)
 	if cache_enabled:
 		_compiled[key] = out
 	return out
 
-static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array) -> Dictionary:
+static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array, own_tellers: int = 0) -> Dictionary:
 	_ensure_cc_epoch()
 	var u_key: String = Solver._universe_key(view)
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
@@ -178,10 +188,47 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	var ids: Array = Solver.person_ids(view)
 	var n_people: int = ids.size()
 	var roles_on: bool = bool(view.get("world_options", {}).get("roles", false))
-	var has_curse: bool = view.get("chronology", {}).has("curse")
-	var seer: bool = Solver.Roles.seer_flag(cards)
-	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
-	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)
+	var chrono: Dictionary = view.get("chronology", {})
+	var has_curse: bool = chrono.has("curse")
+	var curse_from: int = int(chrono.curse.get("from", 0)) if has_curse else 0
+	var curse_until: int = int(chrono.curse.get("until", 0)) if has_curse else 0
+	var marked_m: int = Solver.Roles.marked_mask(ids, cards)
+	for card in cards:
+		if card.get("quoted", false):
+			continue
+		var cdata: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "seer" and card.get("testimony_only", false):
+			for person in cdata.get("pair", []):
+				var pi: int = ids.find(str(person))
+				if pi >= 0:
+					marked_m |= 1 << pi
+		if Solver.marked_counts(card):
+			var role_s: String = str(card.get("role", ""))
+			if role_s == "magistrate":
+				# A Magistrate's two are its nominator and nominee (Codex, #547).
+				for person in [cdata.get("nominator", ""), cdata.get("nominee", "")] + cdata.get("group", cdata.get("pair", [])):
+					var pi: int = ids.find(str(person))
+					if pi >= 0:
+						marked_m |= 1 << pi
+			elif role_s == "surveyor":
+				if cdata.has("block") and cdata.has("same"):
+					var blk_s: String = str(cdata.get("block", ""))
+					for p_i in range(n_people):
+						if str(view.people[p_i].get("home", "")) == blk_s:
+							marked_m |= 1 << p_i
+				else:
+					marked_m |= (1 << n_people) - 1
+			else:
+				var rdef = Solver.C.role_def(role_s)
+				if rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
+					for person in cdata.get(rdef.site_group_key, []):
+						var pi: int = ids.find(str(person))
+						if pi >= 0:
+							marked_m |= 1 << pi
+				else:
+					marked_m |= (1 << n_people) - 1
+	var mediums: int = Solver.Roles.relay_mediums(ids, cards) | own_tellers
+	var forbidden_specs: PackedInt32Array = Solver.Roles.forbidden_specs(ids, cards) if (live and roles_on) else PackedInt32Array()
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
 	var concl_at = conclusion.get("at", view.get("alignment_epoch", ""))
 	var concl_conv: bool = Solver._curse_active_at(view, concl_at)
@@ -253,19 +300,21 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 		1 if live else 0,
 		1 if roles_on else 0,
 		1 if has_curse else 0,
-		1 if seer else 0,
+		marked_m,
 		mediums,
-		walkers,
+		1 if movement.any(func(f): return f.get("joint_live", false) and not f.get("profiles", []).is_empty() and f.profiles[0].has("unrequited")) else 0,  # Unrequited holders' own column
 		1 if curr_conv else 0,
 		1 if concl_conv else 0,
 		k,
 		1 if movement_ok else 0,
+		curse_from,
+		curse_until,
 	])
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval.compile", pack_u)
 	var b = SolverBackend._bridge()
-	var cc_h: int = int(b.CaseEvalCompile(u_handle, fallback, header, dead, premise, flat_tables, flat_valids, q_packed, test_specs, move_specs, move_doubles))
+	var cc_h: int = int(b.CaseEvalCompile(u_handle, fallback, header, dead, premise, flat_tables, flat_valids, q_packed, test_specs, move_specs, move_doubles, forbidden_specs))
 	_cc_handles[key] = cc_h
 
 	var raw_ints: PackedInt32Array = b.CaseEvalGetCompiledInts(cc_h)
@@ -307,6 +356,50 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	return out
 
 static var _coarse_cache: Dictionary = {}
+
+## A good listener knows its own burden unless it's hidden (WorkshopBridge.own_burden;
+## ScriptDef.HIDDEN_SECRETS), so its worlds where it holds a burden it would know of, other
+## than the one it knows, are impossible: it can't be Marked unaware, and, one burden to a
+## game, a known holder rules out every other. Marks those worlds dead (dead is in the class
+## key, so classes split by it). A hidden burden on the listener stays possible.
+static func _own_burden_dead(view: Dictionary, universe: Array, dead: PackedByteArray) -> void:
+	var ob: Dictionary = view.get("own_burden", {})
+	if ob.is_empty():
+		return
+	var me: int = Solver.person_index(view, str(ob.get("self", "")))
+	if me < 0:
+		return
+	for i in range(universe.size()):
+		if not _own_burden_ok(ob, me, universe[i]):
+			dead[i] = 1
+
+## Whether a world fits what the listener knows of its own burden (see _own_burden_dead).
+static func _own_burden_ok(ob: Dictionary, me: int, w: Dictionary) -> bool:
+	var known: String = str(ob.get("kind", ""))
+	var mine: String = ""
+	if int(w.get("marked", -1)) == me:
+		mine = "marked"
+	elif int(w.get("holders", 0)) & (1 << me):
+		mine = str(w.get("modifier", ""))
+	return mine == known or (mine in ScriptDefRef.HIDDEN_SECRETS and known == "")
+
+## Knowledge, not evidence: zero the classes it rules out on both sides of the case (the
+## role fits before and after), as the listener's known-good people are, so a case with no
+## burden evidence moves nobody (test_workshop_secrets, test_workshop_votes on bc9a742d).
+## The classes split by it already (dead, in the class key), so each class's rep speaks for it.
+static func _own_burden_fits(view: Dictionary, cc: Dictionary, fits: PackedFloat64Array) -> PackedFloat64Array:
+	var ob: Dictionary = view.get("own_burden", {})
+	if ob.is_empty() or not Domain.live(view):
+		return fits
+	var me: int = Solver.person_index(view, str(ob.get("self", "")))
+	if me < 0:
+		return fits
+	var worlds: Array = Solver.universe(view)
+	var out: PackedFloat64Array = fits.duplicate() # never modify a cached role table
+	for c in range(out.size()):
+		if not _own_burden_ok(ob, me, worlds[cc.rep[c]]):
+			out[c] = 0.0
+	return out
 
 ## A world's movement/trace likelihood ratio (good everywhere = 1), as the support
 ## model's world_score without its prior ranks.
@@ -390,12 +483,117 @@ static func _test_like(view: Dictionary, cc: Dictionary, listener: Dictionary, o
 static var _own_cache: Dictionary = {}
 
 ## Class counts refined by the listener's own private readings' states (3^own states).
-## Depends only on which own cards there are, so listeners holding the same share it.
-static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Dictionary:
-	if own.is_empty():
-		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()]}
+## Helper: world modifier code (0..3) for a burden name, or -1 for none.
+static func _own_burden_mod(kind: String) -> int:
+	return int(Solver.Roles.BURDEN_CODES.get(kind, 0)) - 1
+
+static func _own_burden_hidden_mask() -> int:
+	var m: int = 0
+	for h in ScriptDefRef.HIDDEN_SECRETS:
+		var code: int = _own_burden_mod(str(h))
+		if code >= 0:
+			m |= 1 << code
+	return m
+
+## The listener's chance of being the Delusional before any evidence, for its own worlds' weight
+## (shared Delusion doubt, Michael, Nov 22): Tuning.Workshop.OWN_DELUSION_PRIOR for a good
+## listener with the secret on the script, 0 for one whose gift the deal never makes Delusional
+## (SourceDoubt.could_hold_secret) or that knows it isn't, -1 (the deal's share stands) otherwise.
+## What it knows of its own burden rules the worlds out in the kernel (CaseEvalKernel.OwnBurdenOk).
+static func own_delusion_prior(view: Dictionary, knowledge: Dictionary) -> float:
+	if not Domain.live(view) or view.get("own_burden", {}).is_empty():
+		return -1.0
+	if not "delusional" in view.get("world_options", {}).get("modifiers", []):
+		return -1.0
+	var ob: Dictionary = view.own_burden
+	var can: bool = bool(ob.delusional_ok) if ob.has("delusional_ok") else preload("res://workshop/source_doubt.gd").could_hold_secret(str(knowledge.get("own_role", "")), "delusional")
+	if knowledge.get("not_delusional", false) or not can:
+		return 0.0
+	return Tuning.Workshop.OWN_DELUSION_PRIOR
+
+static var _own_delusion_weight_cache: Dictionary = {}
+
+## The weight on the listener's own Delusional-holder worlds (CaseEvalKernel.OwnDelusionWeight,
+## in GDScript): over the worlds its own-burden knowledge allows with it good, the odds of
+## `prior` over those worlds' own odds. 1 for a negative prior or none or every world held.
+static func own_delusion_weight(view: Dictionary, prior: float) -> float:
+	var ob: Dictionary = view.get("own_burden", {})
+	var me: int = Solver.person_index(view, str(ob.get("self", ""))) if not ob.is_empty() else -1
+	if prior < 0.0 or me < 0:
+		return 1.0
+	var key: String = str([Solver._universe_key(view), me, str(ob.get("kind", "")), prior])
+	if not _own_delusion_weight_cache.has(key):
+		var good: int = 0
+		var held: int = 0
+		for w in Domain.worlds(view):
+			if int(w.evil) & (1 << me) or not _own_burden_ok(ob, me, w):
+				continue
+			good += 1
+			if _listener_deluded(w, me):
+				held += 1
+		var f: float = 1.0
+		if held > 0 and held < good:
+			var sh: float = float(held) / float(good)
+			f = 0.0 if prior <= 0.0 else (prior / (1.0 - prior)) * ((1.0 - sh) / sh)
+		if _own_delusion_weight_cache.size() > 256:
+			_own_delusion_weight_cache.clear()
+		_own_delusion_weight_cache[key] = f
+	return float(_own_delusion_weight_cache[key])
+
+## Whether `me` is the world's Delusional holder (CaseEvalKernel.ListenerDeluded).
+## case_data.delusion_odds = {person id: odds factor > 0}: the argued premise that a person is
+## the Delusional. The people it names (bitmask over Solver.person_ids), skipping factor 1.
+static func delusion_odds_mask(view: Dictionary, case_data: Dictionary) -> int:
+	var odds: Dictionary = case_data.get("delusion_odds", {})
+	var m: int = 0
+	for pid in odds:
+		var pi: int = Solver.person_index(view, str(pid))
+		if pi >= 0 and pi < 16 and float(odds[pid]) > 0.0 and not is_equal_approx(float(odds[pid]), 1.0):
+			m |= 1 << pi
+	return m
+
+## The after side's per-class role fits with case_data.delusion_odds applied: each class whose
+## worlds have that person as the Delusional holder is multiplied by the factor. The before side
+## is left alone, so the argued premise is what moves belief. It composes with the shared
+## Delusion core: the listener's own-prior weight (own counts) and the uniform draw are unchanged.
+## Classes split by the person's holding (delusion_odds_mask in compile), so the rep decides.
+static func delusion_odds_fits(view: Dictionary, cc: Dictionary, case_data: Dictionary, fits: PackedFloat64Array) -> PackedFloat64Array:
+	var odds: Dictionary = case_data.get("delusion_odds", {})
+	if odds.is_empty() or not Domain.live(view):
+		return fits
+	var factors: Array = []
+	for pid in odds:
+		var pi: int = Solver.person_index(view, str(pid))
+		var f: float = float(odds[pid])
+		if pi >= 0 and pi < 16 and f > 0.0 and not is_equal_approx(f, 1.0):
+			factors.append([pi, f])
+	if factors.is_empty():
+		return fits
+	var out: PackedFloat64Array = fits.duplicate() # Never modify a cached role table.
+	var universe: Array = Solver.universe(view)
+	var rep: PackedInt32Array = cc.rep
+	for c in range(out.size()):
+		var w: Dictionary = universe[rep[c]]
+		for e in factors:
+			if _listener_deluded(w, int(e[0])):
+				out[c] *= float(e[1])
+	return out
+
+static func _listener_deluded(w: Dictionary, me: int) -> bool:
+	return int(w.get("marked", -1)) != me and str(w.get("modifier", "")) == "delusional" and (int(w.get("holders", 0)) & (1 << me)) != 0
+
+## Depends only on which own cards there are (and any live listener's own_burden filter and own
+## Delusion prior), so listeners sharing the same compiled case share it without breaking
+## CaseEval.compile reuse. "weights": each state's own Delusion weight (1 off its Delusional worlds).
+static func _own_counts(view: Dictionary, cc: Dictionary, own: Array, knowledge: Dictionary = {}) -> Dictionary:
+	var ob: Dictionary = view.get("own_burden", {}) if Domain.live(view) else {}
+	var ob_me: int = Solver.person_index(view, str(ob.get("self", ""))) if not ob.is_empty() else -1
+	var ob_mod: int = _own_burden_mod(str(ob.get("kind", ""))) if ob_me >= 0 else -1
+	var d_prior: float = own_delusion_prior(view, knowledge) if ob_me >= 0 else -1.0
+	if own.is_empty() and ob_me < 0:
+		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()], "weights": PackedFloat64Array([1.0])}
 	# Keyed by the exact compiled case (its input and C# registration), not only a hash.
-	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id))]
+	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id)), ob_me, ob_mod, d_prior]
 	var key = hash(ref)
 	if cache_enabled and _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
 		return _own_cache[key]
@@ -403,13 +601,13 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
-	var out: Dictionary = _own_counts_cs(cc, own, tables, valids)
+	var out: Dictionary = _own_counts_cs(view, cc, own, tables, valids, ob_me, ob_mod, d_prior)
 	out["_ref"] = ref
 	if cache_enabled:
 		_own_cache[key] = out
 	return out
 
-static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
+static func _own_counts_cs(view: Dictionary, cc: Dictionary, own: Array, tables: Array, valids: Array, ob_me: int = -1, ob_mod: int = -1, d_prior: float = -1.0) -> Dictionary:
 	_ensure_cc_epoch()
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var cc_h: int = _handle_for(cc)
@@ -424,18 +622,28 @@ static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Ar
 			flat_tables.append_array(tables[i])
 			flat_valids.append_array(valids[i])
 	var fb_class_of: PackedInt32Array = cc.class_of if cc_h < 0 else PackedInt32Array()
+	var u_handle: int = -1
+	var fb_worlds := PackedInt64Array()
+	if ob_me >= 0:
+		var u_key: String = Solver._universe_key(view)
+		var universe: Array = Solver.universe(view)
+		u_handle = SolverBackend.get_universe_handle(u_key, universe)
+		if u_handle < 0:
+			fb_worlds = SolverBackend.pack_worlds(universe)
+	var hidden_mask: int = _own_burden_hidden_mask() if ob_me >= 0 else 0
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval._own_counts", pack_u)
 	var b = SolverBackend._bridge()
-	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids))
+	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids, u_handle, fb_worlds, ob_me, ob_mod, hidden_mask, d_prior))
 	var of: PackedInt32Array = b.CaseEvalGetLastOwnOf()
+	var weights: PackedFloat64Array = b.CaseEvalGetLastOwnWeights()
 	var flat_codes: PackedByteArray = b.CaseEvalGetLastOwnFlatCodes()
 	var counts: PackedFloat64Array = b.CaseEvalGetLastOwnCounts()
 	var codes: Array = []
 	codes.resize(ns)
 	for s in range(ns):
-		codes[s] = flat_codes.slice(s * k_own, (s + 1) * k_own)
-	return {"states": ns, "counts": counts, "of": of, "codes": codes, "_flat_codes": flat_codes}
+		codes[s] = flat_codes.slice(s * k_own, (s + 1) * k_own) if k_own > 0 else PackedByteArray()
+	return {"states": ns, "counts": counts, "of": of, "codes": codes, "_flat_codes": flat_codes, "weights": weights}
 
 ## Likelihood factor of one state for a card: holds, healthy but wrong, or no healthy reading.
 static func _factor(st: int, err: float, q: float) -> float:
@@ -496,13 +704,36 @@ static func _class_like_cs(cc: Dictionary, errs: Array, skip: int) -> PackedFloa
 static func _state_like(view: Dictionary, own: Array, errs: Array, codes: Array) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
 	out.resize(codes.size())
-	var qs: Array = own.map(func(c): return chance_content(view, c))
+	var qs: Array = own.map(func(c): return own_chance_content(view, c))
 	for o in range(codes.size()):
 		var v = 1.0
 		for c in range(own.size() - 1, -1, -1):
 			v *= _factor(codes[o][c], errs[c], qs[c])
 		out[o] = v
 	return out
+
+## chance_content for one of the listener's own readings held outside the case (the own
+## states): where its table checks its content, the gift's draw; where it doesn't (a role-checked
+## reading, a Seer's, whose content only the role check reads, and the role check reads case
+## cards), 1, so a world where the listener is the Delusional is neither helped nor hurt by a
+## reading nothing weighs in its healthy worlds (shared Delusion doubt, Nov 22).
+static func own_chance_content(view: Dictionary, card: Dictionary) -> float:
+	var ref: Array = [Solver._universe_key(view), view.people, view.get("timeline", {}), card.kind, card.get("source", ""), card.get("role", ""), card.get("observed_at", {}), card.get("data", {}), card.get("duty_only", false), card.get("testimony_only", false)]
+	var key: int = hash(ref)
+	if not (cache_enabled and _own_checked_cache.has(key) and _own_checked_cache[key].ref == ref):
+		if _own_checked_cache.size() > 1024:
+			_own_checked_cache.clear()
+		var t: PackedByteArray = Solver.report_table(view, card)
+		var v: PackedByteArray = _valid_table(view, card)
+		var checked: bool = false
+		for i in range(mini(t.size(), v.size())):
+			if v[i] == 1 and t[i] == 0:
+				checked = true
+				break
+		_own_checked_cache[key] = {"ref": ref, "checked": checked}
+	return chance_content(view, card) if _own_checked_cache[key].checked else 1.0
+
+static var _own_checked_cache: Dictionary = {}
 
 static var _team_prior_cache: Dictionary = {}
 
@@ -695,6 +926,8 @@ static func _has_bluff_card(cards: Array) -> bool:
 	for card in cards:
 		if card.get("kind", "") in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
 			return true
+		if Solver.Roles.burden_code(card) > 0:
+			return true
 	return false
 
 static func _bare_world_fits(view: Dictionary, personal: Dictionary, u_neutral: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
@@ -765,7 +998,10 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		if tl.has("events") and not role_cards.any(_is_movement_role_card):
 			tl = tl.duplicate(false)
 			tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
-		base_fit_ref = [u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards]
+		# A claimed burden's weight reads the listener's other cards (its timing), so it keys too.
+		base_fit_ref = [u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards,
+			Solver.Roles.burden_claim_factors(view, role_cards) if live else [],
+			Solver.Roles.missed_triggers(view, role_cards) if live else []]  # reads nominations, a soft event
 	var base_fit_key: int = hash(base_fit_ref)
 	var neutral_ref: Array = [base_fit_ref, "neutral"]
 	var neutral_key: int = hash(neutral_ref)
@@ -790,33 +1026,12 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
 			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
 		if cache_enabled:
-			if _fits_cache.size() > 4096:
+			if _fits_cache.size() > 16384:
 				_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
 	var fits: PackedFloat64Array = _personal_fits(view, cc, role_cards, personal, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all)
-	# "Am I the Sleepwalker?" With the secret on the script, a good listener's own nights at
-	# home are a little unsure: with chance SLEEPWALK_SELF_DOUBT they walked without knowing
-	# it, and their home nights say nothing. Being the Sleepwalker is one hidden fact for the
-	# whole case, so the two readings mix whole (Tuning.Workshop.SLEEPWALK_SELF_DOUBT).
-	var home_nights: Array = personal.own_outings.keys().filter(func(k): return not bool(personal.own_outings[k]))
-	if not home_nights.is_empty() and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
-		# A Rumormonger's word can move it (SourceDoubt.sleepwalk_doubt).
-		var d: float = float(view.get("own_home", {}).get("sleep_doubt", Tuning.Workshop.SLEEPWALK_SELF_DOUBT))
-		var walked: Dictionary = personal.duplicate(true)
-		for k in home_nights:
-			walked.own_outings.erase(k)
-		var free: PackedFloat64Array = neutral
-		if not (walked.own_role == "" and walked.own_outings.is_empty() and walked.get("public_roles", {}).is_empty()):
-			free = _personal_fits(view, cc, role_cards, walked, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all)
-		if free == fits:
-			return fits   # nothing the home nights rule out (avoids rounding noise)
-		var mixed := PackedFloat64Array()
-		mixed.resize(nc)
-		for c in range(nc):
-			mixed[c] = (1.0 - d) * fits[c] + d * free[c]
-		return mixed
 	return fits
 
 static var use_cc_reps_handle: bool = true
@@ -854,7 +1069,7 @@ static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, perso
 			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
 		out = _fits_over(view, cc, cards, personal, open, w_all)
 	if cache_enabled:
-		if _fits_cache.size() > 4096:
+		if _fits_cache.size() > 16384:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 		_fits_cache[key] = {"ref": ref.duplicate(true), "out": out}
@@ -919,6 +1134,14 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		weights = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx)
 	var has_weights: bool = not weights.is_empty()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
+	# Counting readings a Marked person can sway (Solver.marked_counts): weighed in one
+	# vectorised C# pass over the class representatives (Argon, Nov 22).
+	var counting: Array = cards.filter(func(card): return Solver.marked_counts(card))
+	var self_id: String = str(knowledge.get("self", ""))
+	var mc_weights := PackedFloat64Array()
+	if not counting.is_empty() and Solver.marked_count_weighting:
+		mc_weights = _marked_count_weights_cs(view, reps, counting, self_id, live, cc_reps_handle, sub_idx)
+	var has_mc: bool = not mc_weights.is_empty()
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
 	for x in range(which.size()):
@@ -942,6 +1165,8 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			if not rel_readings.is_empty():
 				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
+		if content > 0.0 and has_mc:
+			content *= mc_weights[x]
 		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
 		out[which[x]] = content * w_mult
 	return out
@@ -1021,7 +1246,136 @@ static func _expand(cc: Dictionary, oc: Dictionary, w: PackedFloat64Array) -> Pa
 	var of: PackedInt32Array = oc.of
 	var out = PackedFloat64Array()
 	out.resize(class_of.size())
+	var has_of: bool = of.size() == class_of.size()
 	for i in range(class_of.size()):
-		var k: int = class_of[i] * ns + (of[i] if ns > 1 else 0)
+		var o: int = of[i] if has_of else 0
+		if o < 0:
+			out[i] = 0.0
+			continue
+		var k: int = class_of[i] * ns + o
 		out[i] = w[k] / counts[k] if counts[k] > 0.0 else 0.0
+	return out
+
+
+## A counting reading's Marked weight in one world (Solver.marked_count_weight), only where its
+## content is read: a good reader (Solver.source_valid), not the world's Delusional holder
+## (unless it's the listener's own reading), and not under a fallen omen.
+static func _marked_count_weight(view: Dictionary, world: Dictionary, card: Dictionary, self_id: String) -> float:
+	if not Solver.source_valid(view, world, card):
+		return 1.0
+	var src: int = Solver.person_index(view, str(card.get("source", "")))
+	var mod: String = str(world.get("modifier", ""))
+	var holders: int = int(world.get("holders", 0))
+	if src >= 0 and mod == "delusional" and (holders & (1 << src)) and str(card.get("source", "")) != self_id:
+		return 1.0
+	if mod == "ill_omened":
+		for cid in card.get("omen_claimants", []):
+			var ci: int = Solver.person_index(view, str(cid))
+			if ci >= 0 and (holders & (1 << ci)):
+				return 1.0
+	return Solver.marked_count_weight(view, world, card)
+
+## Vectorised counting pass (RoleConstraintsKernel.MarkedCountWeights) over `cc_reps_handle`
+## (`sub_indices`) or fallback `reps`: evaluates `source_valid` (pre-checking world-independent
+## gift_time / observer_alive once per card), Delusional / omen skips, and as-evil/as-good
+## content checks in one C# call with zero per-world boundary crossings.
+static func _marked_count_weights_cs(view: Dictionary, reps: Array, counting: Array, self_id: String, live: bool, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
+	var ids: Array = Solver.person_ids(view)
+	var card_specs := PackedInt32Array()
+	var block_masks := PackedInt32Array()
+	var need_blocks: bool = false
+
+	for card in counting:
+		if str(card.get("kind", "")) != "report":
+			continue
+		var src_str: String = str(card.get("source", ""))
+		var src_idx: int = ids.find(src_str)
+		var testimony_only: bool = bool(card.get("testimony_only", false))
+		var obs_at: Dictionary = card.get("observed_at", {}) if card.get("observed_at") is Dictionary else {}
+		if live and not testimony_only:
+			if src_idx < 0 or not Domain.gift_time(card) or not Solver.History.observer_alive(view, src_str, obs_at):
+				continue
+
+		var d: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
+		var role_str: String = str(card.get("role", ""))
+		var mode: int = -1
+		var group_mask: int = 0
+		var target_or_same: int = 0
+		var group_size: int = 0
+		var content_stamp = obs_at
+
+		if role_str == "magistrate":
+			if not Solver._magistrate_nomination_ok(view, card, true):
+				continue
+			var ma_i: int = ids.find(str(d.get("nominator", "")))
+			var mb_i: int = ids.find(str(d.get("nominee", "")))
+			if ma_i < 0 or mb_i < 0 or ma_i == mb_i:
+				continue
+			mode = 1
+			group_mask = (1 << ma_i) | (1 << mb_i)
+			group_size = 2
+			target_or_same = 1 if bool(d.get("same", false)) else 0
+			content_stamp = {"day": int(obs_at.get("day", -1)), "phase": "afternoon"}
+		elif role_str == "surveyor" and d.has("block") and d.has("same"):
+			var blk_id: String = str(d.get("block", ""))
+			for p_i in range(view.people.size()):
+				if str(view.people[p_i].get("home", "")) == blk_id:
+					group_mask |= (1 << p_i)
+					group_size += 1
+			if group_size < 2 or (src_idx >= 0 and (group_mask & (1 << src_idx)) != 0):
+				continue
+			mode = 1
+			target_or_same = 1 if bool(d.get("same", false)) else 0
+		else:
+			var rdef = Solver.C.role_def(role_str)
+			var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
+			var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
+			if is_site_group:
+				mode = 0
+				for pid in d.get(rdef.site_group_key, []):
+					var p_i: int = ids.find(str(pid))
+					if p_i >= 0:
+						group_mask |= (1 << p_i)
+				target_or_same = int(d.get("count", 0))
+			elif is_surveyor:
+				mode = 2
+				need_blocks = true
+				target_or_same = int(d.get("count", 0))
+			else:
+				continue
+
+		var src_stamp = TimeModel.statement_time(card) if testimony_only else obs_at
+		var src_conv: bool = Solver._curse_active_at(view, src_stamp)
+		var content_conv: bool = Solver._curse_active_at(view, content_stamp)
+		var skip_deluded: bool = (live and not testimony_only) or (src_str != self_id)
+		var flags: int = (1 if src_conv else 0) | (2 if content_conv else 0) | (4 if skip_deluded else 0)
+		var omen_m: int = Solver.Roles.omen_mask(ids, card)
+
+		card_specs.append(mode)
+		card_specs.append(src_idx)
+		card_specs.append(flags)
+		card_specs.append(omen_m)
+		card_specs.append(group_mask)
+		card_specs.append(target_or_same)
+		card_specs.append(group_size)
+
+	if card_specs.is_empty():
+		return PackedFloat64Array()
+
+	if need_blocks:
+		var blk_dict: Dictionary = {}
+		for p_i in range(view.people.size()):
+			var home_s: String = str(view.people[p_i].get("home", ""))
+			blk_dict[home_s] = int(blk_dict.get(home_s, 0)) | (1 << p_i)
+		for bm in blk_dict.values():
+			block_masks.append(int(bm))
+
+	var st: int = SolverBackend.begin_stage("world_domain") if SolverBackend.profiling_enabled else -1
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(reps) if u_handle < 0 else PackedInt64Array()
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints.marked_count_weights", pack_u)
+	var out: PackedFloat64Array = SolverBackend._bridge().RoleMarkedCountWeightsByHandle(u_handle, sub_indices, fallback, card_specs, block_masks, float(Tuning.Setup.MARKED_EVIL_CHANCE))
+	if st >= 0:
+		SolverBackend.end_stage(st)
 	return out

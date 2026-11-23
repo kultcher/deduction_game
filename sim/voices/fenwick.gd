@@ -61,6 +61,8 @@ const LINES = {
 	"own_night_lie": "And so I confess the harmless deception: I was indeed abroad {nights}! A necessary fib to guard the third act, I assure you.",
 	"opinion_clear": "{subject}? No villain in that one, my friend—wrong casting entirely.",
 	"vote_resist_readings_agree": "Hang {nominee}? Never! Their readings play true to what I know.",
+	"support_doubt_for": "I've known {target} an age, and in every tale I could tell of them, they would never stoop to this... would they?",
+	"vote_yes_doubtful_friend": "Of all the endings I'd have written for you, {nominee}, this was never one. Forgive me.",
 	"call_on_share": "Since you ask, a chapter I've not yet read aloud:",
 	"call_on_nothing": "The tale is told in full, my friend; there are no pages left.",
 	"withheld_defer_friend": "There's more, but it touches a dear friend, and I'll not misread the scene. Let me be sure.",
@@ -309,4 +311,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. No bow, no encore. I'm still grieving them.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town. They're dear to me, my friend.",
 	"anger_backed_hanging": "You backed hanging {subject}. I didn't want that ending.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Ah, a familiar plot! I've carried the mark since birth, my friend; gifts read me wrong. That's all {reader} saw.",
+	"burden_marked_counterclaim": "{claimant}, Marked? Miscast! The mark is mine, and the part has only one player.",
+	"burden_marked_private": "Between us and the wings, my friend: I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Hear me, good people! I'm Marked. A gift may read me as evil; it would be wrong.",
+	"burden_unrequited_reveal": "If you must have the scene: I went to {beloved}'s door. I care for them. They don't know.",
+	"burden_unrequited_defend": "{beloved}, the villain? I can't believe it. You'll need a stronger script than that.",
+	"burden_unrequited_spell_breaks": "I've played {beloved}'s champion long enough. I can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. I cared for them, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} is lying! I'm the Ill-Omened, and there's only one such part.",
+	"burden_denial": "Me, {burden}? Miscast, my friend! Whoever told you that is wrong.",
+	"burden_double_claim": "{a} and {b} both play {burden}? There's only one such part; one of them is lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before the final act, hear me: I'm Ill-Omened! Hang me, and the whole company pays the cost.",
+	"burden_ill_omened_early": "Mind how this scene ends, my friend. I'm Ill-Omened, and hanging me would cost the town.",
 }

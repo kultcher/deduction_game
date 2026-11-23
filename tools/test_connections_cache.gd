@@ -73,7 +73,8 @@ func _play(game_seed: int, npcs: int, days: int) -> Dictionary:
 
 
 func _games() -> void:
-	for spec in [[900, 7, 3], [692, 10, 1]]:
+	# 692 runs to day 2: with the secret errand retired (burdens prototype) its first day repeats no judgement.
+	for spec in [[900, 7, 3], [692, 10, 2]]:
 		Connections.cache_enabled = false
 		CaseEval.cache_enabled = false
 		Connections.cache_verify = false

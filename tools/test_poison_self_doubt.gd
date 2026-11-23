@@ -82,9 +82,8 @@ const AGAINST_NISHA = ["odette", "seer", 1, 3, {"pair": ["nisha", "agnes"], "yes
 
 
 func _init() -> void:
-	# Seed 692's script carries Delusional too; the poison-only checks run without that
-	# self-doubt, and section 7 puts the two together.
-	SourceDoubt.delusional_self_doubt = false
+	# Seed 692's script carries Delusional too. Its doubt is no longer a per-night one here (it's
+	# the judge's shared hypothesis, test_shared_delusion), so each night's doubt is the poison's.
 	# 1. The doubt itself: the poison chance, on the night the Poisoner would have acted (the
 	#    night before a day reading), keyed to the reading's own day.
 	var on: Dictionary = _run(_game(OWN, [CLASH]))
@@ -124,20 +123,19 @@ func _init() -> void:
 	check(none[2].doubt.is_empty(), "with no Poisoner on the script there's no poison self-doubt (%s)" % str(none[2].doubt))
 	# 6. Stable: the next refresh changes nothing.
 	check(absf(on[1].post.hollis - on[2].post.hollis) < 1e-9 and on[1].doubt == on[2].doubt, "a refresh with nothing new changes nothing")
-	# 7. With the Delusional self-doubt as well (#216): two independent ways the gift can fail,
-	#    1 - (1 - poison)(1 - Delusional), as the Night Watch's broken chance (Michael, Nov 18).
-	SourceDoubt.delusional_self_doubt = true
+	# 7. With Delusional on the script (seed 692's), the night's doubt is still the poison chance
+	#    alone: the Delusional is one hypothesis for all its readings, in the judge's worlds
+	#    (shared Delusion doubt, Michael, Nov 22), not a per-night doubt (retired #216's 1 -
+	#    (1 - poison)(1 - Delusional)). With no Poisoner there's no per-night doubt at all.
 	var both: Dictionary = _run(_game(OWN, [CLASH]))
 	var d_both: float = float(both[2].doubt.get(1, 0.0))
-	var want: float = 1.0 - (1.0 - float(both.pi)) * (1.0 - Tuning.Workshop.DELUSIONAL_SELF_DOUBT)
-	print("with Delusional too: %.4f (want %.4f)" % [d_both, want])
-	check(absf(d_both - want) < 1e-9, "poison and Delusional combine as independent chances (%.4f)" % d_both)
+	print("with Delusional on the script: %.4f (poison %.4f)" % [d_both, float(both.pi)])
+	check(absf(d_both - float(both.pi)) < 1e-9, "the Delusional adds no per-night doubt (%.4f)" % d_both)
 	var delus_only: Dictionary = _run(_game(OWN, [CLASH], false))
-	check(absf(float(delus_only[2].doubt.get(1, 0.0)) - Tuning.Workshop.DELUSIONAL_SELF_DOUBT) < 1e-9, "with no Poisoner, only the Delusional doubt (%s)" % str(delus_only[2].doubt))
+	check(delus_only[2].doubt.is_empty(), "with no Poisoner, no per-night doubt (%s)" % str(delus_only[2].doubt))
 	# 8. A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so it
 	#    carries no poison doubt (Codex on #232). The listener's own reading, relabelled as a
-	#    night-0 register, against the same reading as a night-0 Dowser's (Delusional off).
-	SourceDoubt.delusional_self_doubt = false
+	#    night-0 register, against the same reading as a night-0 Dowser's.
 	var g8 = _game(OWN, [CLASH])
 	_run(g8)
 	var n8 = g8.w.npcs[0]
@@ -223,9 +221,8 @@ func _init() -> void:
 
 ## A Medium's own transmissions carry the dead person as source and the Medium as relay
 ## (LiveAssessment.medium_card): each night it heard them carries the poison chance for that
-## night (Codex on #232). The Delusional doubt is off here, so the doubt is the chance alone.
+## night (Codex on #232).
 func _medium_case() -> void:
-	SourceDoubt.delusional_self_doubt = false
 	var found: Dictionary = Seeds.search(3, func(g):
 		for n in g.w.living_good():
 			if str(n.role) != "medium":
@@ -263,7 +260,6 @@ func _medium_case() -> void:
 ## chance its own reading was wrong, from the clash with what else it holds. Delusional on, as
 ## seed 692's script has it.
 func _judged_case() -> void:
-	SourceDoubt.delusional_self_doubt = true
 	var agree: Array = [["nisha", "seer", 1, 3, {"pair": ["hollis", "merrin"], "yes": false}]]
 	var calm: Dictionary = _run(_game(OWN, agree))
 	var one: Dictionary = _run(_game(OWN, [CLASH]))
@@ -275,7 +271,10 @@ func _judged_case() -> void:
 	var m1: float = float(crowd.judged.get(1, -1.0))
 	print("judged doubt of the own reading: an agreeing teller %.3f, one clashing %.3f, two clashing %.3f (prior %.3f)" % [c1, o1, m1, float(one.self_doubt.get(1, 0.0))])
 	check(c1 >= 0.0 and o1 > c1 and m1 > o1, "the more trusted tellers it clashes with, the more the NPC doubts its own reading")
-	check(c1 < float(calm.self_doubt.get(1, 1.0)), "a reading that fits the rest is doubted less than its prior (%.3f against %.3f)" % [c1, float(calm.self_doubt.get(1, 1.0))])
+	# Its prior is the night's poison and the shared Delusion's (OWN_DELUSION_PRIOR), which sits
+	# in the judge's worlds now, not in the per-night self_doubt (shared Delusion doubt, Nov 22).
+	var start: float = 1.0 - (1.0 - float(calm.self_doubt.get(1, 1.0))) * (1.0 - Tuning.Workshop.OWN_DELUSION_PRIOR)
+	check(c1 < start, "a reading that fits the rest is doubted less than its prior (%.3f against %.3f)" % [c1, start])
 	var trig: float = Tuning.Workshop.SELF_DOUBT_TRIGGER
 	var want_calm: Array = [1] if c1 >= trig else []
 	var want_crowd: Array = [1] if m1 >= trig else []

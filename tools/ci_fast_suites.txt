@@ -17,6 +17,8 @@ test_bluff_blend
 test_board
 test_bot_m4
 test_buildings_tavern_town_hall
+test_burden_unrequited_walk
+test_burdens_ui
 test_call_on
 test_canvas_card_text
 test_card_wording_fixes
@@ -30,7 +32,6 @@ test_caught_out_ladder
 test_codex_fixes
 test_confessed_night
 test_connections
-test_connections_cache
 test_connections_cases
 test_connections_core
 test_connections_pairings
@@ -45,7 +46,7 @@ test_daytime_defence_lines
 test_defence_grounds
 test_defence_repeats
 test_delusional_reading
-test_delusional_self_doubt
+test_demon_candidates
 test_demon_types
 test_demon_when_hanged
 test_dialogue
@@ -123,6 +124,8 @@ test_npc_fixes_shifts_dead_haunt
 test_npc_openness
 test_outcomes
 test_own_alibi_lies
+test_own_burden_knowledge
+test_own_route_knowledge
 test_pacing
 test_peer_role_gossip
 test_place_icons
@@ -167,11 +170,11 @@ test_roles_registry
 test_roles_secrets
 test_roles_shelter
 test_self_doubt_poisoner
+test_shared_delusion
 test_shared_model
 test_sighter_contest
 test_sighting_followup
 test_silence_pressure
-test_sleepwalk_bluff
 test_social
 test_social_evidence_boundary
 test_social_trust

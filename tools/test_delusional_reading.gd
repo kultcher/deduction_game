@@ -48,9 +48,10 @@ func _init() -> void:
 	var bystander: Dictionary = world.duplicate(true)
 	bystander.holders = 1 << 1
 	check(Solver.Roles.fit_weight(view, bystander, [card], {}, {}, true) == 0.0, "a Delusional bystander doesn't excuse a healthy Archivist")
-	# The listener's own reading keeps its check: a's own wrong reading isn't excused by
-	# a being the Delusional one (only a listener's own readings are strong alone).
-	check(Solver.Roles.fit_weight(view, world, [card], {"self": "a", "own_role": "archivist"}, {}, true) == 0.0, "a listener's own wrong reading isn't excused by their own possible delusion")
+	# Shared Delusion doubt: a listener can now be its own Delusional holder (at the deal's
+	# share, OWN_DELUSION_PRIOR), so its own wrong reading is excused in that world, the same
+	# way as anyone else's.
+	check(Solver.Roles.fit_weight(view, world, [card], {"self": "a", "own_role": "archivist"}, {}, true) > 0.0, "a listener's own wrong reading is excused in the world where they're the Delusional one")
 	var co: Dictionary = card.duplicate(true)
 	co["content_only"] = true
 	check(Solver.Roles.fit_weight(view, world, [co], {}, {}, true) == 0.0, "the content-only mask still judges the reading's content")
@@ -68,5 +69,33 @@ func _init() -> void:
 	check(del_share > 0.05, "'they were Delusional' is a live explanation of a wrong reading (%.3f)" % del_share)
 	check(lie_share < 0.95, "'they lied' no longer takes nearly all of it (%.3f)" % lie_share)
 	check(lie_share + del_share <= 1.0 + 1e-6, "the explanations share one wrongness")
+	# "Delusional all along" (Michael, Nov 22): a Mistaken call naming Delusion on one reading
+	# covers all of that reader's readings in the case, and needs Delusional on the script.
+	var second: Dictionary = card.duplicate(true)
+	second.id = "arch2"
+	second.fact_id = "arch2"
+	second.night = 2
+	second.observed_at = {"day": 2, "phase": "night"}
+	var other: Dictionary = card.duplicate(true)
+	other.id = "barch"
+	other.fact_id = "barch"
+	other.source = "b"
+	var all_cards: Array = [card, second, other]
+	var v2: Dictionary = _view()
+	v2.cards = all_cards.duplicate(true)
+	check(Challenges.valid(v2, "arch", {"mode": "delusional", "supports": []}), "a Delusional call stands on one reading, without a group")
+	var no_del: Dictionary = v2.duplicate(true)
+	no_del.world_options.modifiers = ["marked"]
+	check(not Challenges.valid(no_del, "arch", {"mode": "delusional", "supports": []}), "but not where the script can't deal Delusional")
+	check(Challenges.reader_group(all_cards, "arch", "a") == ["arch", "arch2"], "it covers the same reader's readings, not another's (%s)" % str(Challenges.reader_group(all_cards, "arch", "a")))
+	var value2 = Solver.empty_case()
+	value2.conclusion.at = v2.alignment_epoch
+	value2.cards = ["arch", "arch2", "barch"]
+	value2.reading_challenges = {"arch": {"mode": "delusional", "supports": []}}
+	var r2: Dictionary = Challenges.assess(v2, value2, listener, all_cards)
+	var hit: Dictionary = r2.results[0] if not r2.results.is_empty() else {}
+	check(hit.get("group", []) == ["arch", "arch2"] and not r2.reports.has("barch"), "assessed as one call on both of a's readings, leaving b's alone (%s, %s)" % [str(hit.get("group", [])), str(r2.reports.keys())])
+	if r2.reports.has("arch"):
+		check(is_equal_approx(float(r2.reports.get("arch", 1.0)), float(r2.reports.get("arch2", 1.0))), "both readings take the same discount (%.3f, %.3f)" % [float(r2.reports.get("arch", 1.0)), float(r2.reports.get("arch2", 1.0))])
 	print("delusional reading: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

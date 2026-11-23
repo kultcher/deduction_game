@@ -354,15 +354,22 @@ func _secrets() -> void:
 	var n = w.living_good()[0]
 	var other = w.living_good()[1]
 	w.day = 2
-	n.secret = {"kind": "lover", "with": other.id, "text": "slips out to meet a lover", "me": "slip out to meet a lover"}
-	n.history[w.time_key(1, C.NIGHT)] = "night:hill"
+	# The Lovers retired with the burdens prototype: the confession that remains is Unrequited's.
+	for m in w.npcs:
+		if m.secret_mod in ["marked", "unrequited", "ill_omened"]:
+			m.secret_mod = ""
+	n.secret_mod = "unrequited"
+	n.beloved = other.id
+	n.burden_self_known = true
+	load("res://sim/burdens.gd").setup_unrequited(w)
+	n.history[w.time_key(1, C.NIGHT)] = "night:" + other.home_block
 	n.claimed_role = ""
 	n.trust = 1.0
 	n.traits["privacy"] = 0.0
 	n.pressure = 3.0
 	var r = Mind.answer_night(w, n, 1)
 	var secrets: Array = r["facts"].filter(func(c): return c["kind"] == "secret")
-	_check(secrets.size() == 1 and secrets[0].get("mod", "") == "lovers", "a Lover's confession records the disclosed secret type")
+	_check(secrets.size() == 1 and secrets[0].get("mod", "") == "unrequited" and secrets[0].get("beloved", "") == other.id, "an Unrequited confession records the burden and the beloved")
 	if secrets.is_empty():
 		return
 

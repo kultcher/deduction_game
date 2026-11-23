@@ -42,6 +42,8 @@ const LINES = {
 	"own_night_lie": "Which explains my little fiction about {nights}—I was out, of course, though a gentleman never surrenders his alibi before his role.",
 	"opinion_clear": "Strange as it sounds coming from me, I don't take {subject} for one of the wicked.",
 	"vote_resist_readings_agree": "I'm not staking a rope on {nominee}: their readings hold up against what I know.",
+	"support_doubt_for": "I've known {target} for ages, and murder seems terribly unlike them... doesn't it?",
+	"vote_yes_doubtful_friend": "Nothing personal, {nominee}. Well—a little personal. Forgive me.",
 	"call_on_share": "Since you ask so nicely, there's a little something I've kept back:",
 	"call_on_nothing": "Alas, you've had all of me there is to have.",
 	"withheld_defer_friend": "There's more, but it touches a dear friend, and I'd hate to be careless with it. Give me time.",
@@ -290,4 +292,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I'm still grieving them.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town. They're dear to me.",
 	"anger_backed_hanging": "You backed hanging {subject}. I didn't want that.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I've carried the mark since birth, Demonologist. Gifts read me crooked; that's all {reader} saw.",
+	"burden_marked_counterclaim": "A bold bluff, but {claimant} isn't Marked. I am, and there's only the one.",
+	"burden_marked_private": "Between us, Demonologist: I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "A card face-up for all of you: I'm Marked. A gift may read me as evil; it would be wrong.",
+	"burden_unrequited_reveal": "No scandal, I'm afraid. I went to {beloved}'s door. I care for them. They don't know.",
+	"burden_unrequited_defend": "{beloved}? I'm not buying it. You'll need a better hand than that.",
+	"burden_unrequited_spell_breaks": "I've backed {beloved} long enough. I can't any more.",
+	"burden_unrequited_grave": "No game this time. I went to {beloved}'s grave. I cared for them, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} is bluffing. I'm the Ill-Omened, and there's only one.",
+	"burden_denial": "Me, {burden}? Hardly. Whoever sold you that was cheating you.",
+	"burden_double_claim": "{a} and {b} both say they're {burden}. There's only one; one of them is bluffing.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before you call, Demonologist: I'm Ill-Omened. Hang me, and the whole table pays.",
+	"burden_ill_omened_early": "Mind the stakes. I'm Ill-Omened, and hanging me would cost the town.",
 }

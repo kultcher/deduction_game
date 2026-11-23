@@ -24,7 +24,8 @@
 ##               never four people at 70% in a two-evil town
 ##
 ##   firsthand   what the listener knows for itself among the cards it holds: its own
-##               readings, and a sighting of it on a night it knows it spent at home
+##               readings, its own sightings and vigils, and a sighting of it on a night it
+##               knows it spent at home
 ##   core        the items holding a firsthand card (the seed), judged together with every
 ##               other item worth more next to the seed than apart from it. Each candidate
 ##               is tested against the seed only, never against what already joined, so the
@@ -92,10 +93,19 @@ const Profiler = preload("res://workshop/profiler.gd")
 ## the town's demon mix is. It changes the grouping, not the mix the judge uses. Empty in play.
 static var force_row: String = ""
 
-## Tests and tools only: whether a sighting of the listener on a night it knows it spent at
-## home is firsthand knowledge (it seeds the core). On in play; a tool turns it off to
-## measure what it changes.
-static var seed_wrong_sightings: bool = true
+## Whether a sighting of the listener on a night it knows it spent at home is firsthand
+## knowledge that seeds the core. Off in play (Lantern, Nov 21, #506 on seed 100100): the
+## sighting sits in the night's movement item, so seeding pulled that whole item into the core,
+## and the core's correction for the item's overlap with the listener's own readings (there
+## before the sighting was told) landed as if the sighting caused it: Lian's false sighting of
+## Constance added +0.86 log-odds against him as an item and -1.02 through the core, so it
+## cleared him. The sighting still counts in full through its item, against its teller (the
+## sighter contest with the listener's own home night). A tool turns it on to compare.
+static var seed_wrong_sightings: bool = false
+## What the listener saw for itself (its own sightings and vigils, not quoted or relayed)
+## seeds the core like its own readings (Michael, Nov 22). On in play; a tool turns it off
+## to compare.
+static var seed_own_sightings: bool = true
 ## Measurement switches (on in play), for showing what each rule changes on a replay:
 ## - reuse_rule: a presenter's case that reuses its own cards doesn't stack (case_plan's
 ##   replacement, case_step's shared part).
@@ -381,13 +391,19 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 ## view, which the rest of the key leaves out (Lantern, Nov 19; the Lamplighter fix (b)). Exact
 ## whatever the chance reads; only makes the key finer, so lists stay as they were.
 static func _mix_key(view: Dictionary, listener: Dictionary, cards: Array) -> int:
+	# A claimed burden's weight reads every card the listener holds (the earliest telling, and
+	# whether an evil reading came first: RoleConstraints.burden_claim_factors), not only the
+	# judged ones, so it is keyed itself (Argon on #507).
+	var burden: int = 0
+	if cards.any(func(c): return Solver.Roles.burden_code(c) > 0):
+		burden = hash([Solver.Roles.burden_claim_factors(view, cards), Solver.Roles.missed_triggers(view, cards)])
 	if not cards.any(func(c): return str(c.get("kind", "")) == "report" and str(c.get("role", "")) in ["nightwatch", "lamplighter"]):
-		return 0
+		return burden
 	var mixed: Array = []
 	for c in CaseEval._list_broken(view, cards, listener):
 		if c.has("broken_chance") or c.get("count_mix", false):
 			mixed.append([str(c.get("id", "")), float(c.get("broken_chance", 0.0)), bool(c.get("count_mix", false))])
-	return hash(mixed)
+	return hash(mixed) if burden == 0 else hash([hash(mixed), burden])
 
 
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false, key_ctx: Dictionary = {}) -> Dictionary:
@@ -628,9 +644,58 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			if names_memo[id].any(func(p): return claimants.has(p)):
 				ctx.append(id)
 		out.append({"key": "claims:" + r, "ids": ids, "ctx": ctx, "kind": "unit"})
+	# One teller's readings of one gift, read together (51795): each night's reading alone is
+	# weighed against the listener's dawn view of the teller, so three counts from a teller it
+	# has since come to suspect each clear their group in full, and the clearings add up to
+	# more than the readings say together (Jory's three Dowser counts in Kiran's eyes: -0.80 on
+	# Odette apart, -0.12 judged with all he held). Together, the readings share one doubt
+	# about the teller.
+	var tellings: Dictionary = {}
+	for id in held:
+		var c: Dictionary = by_id[id]
+		if c.kind == "report" and not placed.has(id) and str(c.get("role", "")) != "" and str(c.get("source", "")) != "":
+			var tk: String = "%s:%s" % [str(c.source), str(c.role)]
+			if not tellings.has(tk):
+				tellings[tk] = []
+			tellings[tk].append(id)
+	# A reading (a lone one, or one teller's together) reads, as context, any burden claim or
+	# player's word on a secret about a person it names (as the night items read claims):
+	# without them a Seer's "yes" on a person who claims, or is argued, to be Marked counts in
+	# full against them, while the joint judgement explains it by the mark (Marked badge
+	# against the town, Nov 22).
+	var burden_ctx: Array = held.filter(func(x): return by_id[x].kind == "secret_claim" or by_id[x].get("player_word", false))
+	var burden_about := func(ids: Array) -> Array:
+		var got: Array = []
+		if burden_ctx.is_empty():
+			return got
+		var who: Array = []
+		for id in ids:
+			if not names_memo.has(id):
+				names_memo[id] = _names(by_id, [id], people)
+			who = _union(who, names_memo[id])
+		for x in burden_ctx:
+			if x in ids:
+				continue
+			if not names_memo.has(x):
+				names_memo[x] = _names(by_id, [x], people)
+			var about: Array = [str(by_id[x].get("subject", ""))] if by_id[x].kind == "secret_claim" else names_memo[x]
+			if about.any(func(p): return p in who):
+				got.append(x)
+		return got
+	var teller_keys: Array = tellings.keys()
+	teller_keys.sort()
+	for tk in teller_keys:
+		var ids: Array = tellings[tk]
+		if ids.size() < 2:
+			continue
+		for id in ids:
+			placed[id] = true
+		out.append({"key": "teller:" + tk, "ids": ids, "ctx": burden_about.call(ids), "kind": "unit"})
 	for id in held:
 		if not placed.has(id):
-			out.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
+			var c: Dictionary = by_id[id]
+			var lone_ctx: Array = burden_about.call([id]) if c.kind == "report" and not c.get("player_word", false) else []
+			out.append({"key": id, "ids": [id], "ctx": lone_ctx, "kind": "card"})
 	if row_name == "hexer":
 		# The Hexer's day evidence, in one always-on connection (see the header).
 		var day_cards: Array = held.filter(func(id): return by_id[id].kind in DAY_KINDS)
@@ -721,8 +786,8 @@ static func pool(item_list: Array) -> Dictionary:
 	return {"ids": ids, "ctx": ctx}
 
 
-## The held cards the listener knows firsthand (sorted ids): its own readings, and
-## (seed_wrong_sightings) a sighting of it on a night it knows it spent at home. That
+## The held cards the listener knows firsthand (sorted ids): its own readings, its own
+## sightings and vigils (seed_own_sightings), and (seed_wrong_sightings) a sighting of it on a night it knows it spent at home. That
 ## sighting is knowledge about its teller: "he says he saw me out, and I wasn't".
 static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> Array:
 	var self_id: String = str(listener.get("id", ""))
@@ -731,6 +796,9 @@ static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> A
 	for id in held:
 		var c: Dictionary = by_id[id]
 		if c.kind == "report" and str(c.get("source", "")) == self_id:
+			out.append(id)
+		elif seed_own_sightings and c.kind in ["sighting", "vigil"] and str(c.get("source", "")) == self_id \
+				and not c.get("quoted", false) and not c.has("relay_source"):
 			out.append(id)
 		elif seed_wrong_sightings and c.kind == "sighting" and self_id in c.get("subjects", [c.get("subject", "")]):
 			var night: String = str(c.get("night", -1))

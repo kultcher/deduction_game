@@ -42,6 +42,8 @@ const LINES = {
 	"own_night_lie": "So yes, love, I was out and about {nights}, whatever I said earlier. A body doesn't blab her work on the first morning.",
 	"opinion_clear": "There's no rot in {subject}, dear. I'd know.",
 	"vote_resist_readings_agree": "Not {nominee}, dear. Their readings tally with what I know.",
+	"support_doubt_for": "I've known {target} since we were young, and they never had it in them... did they?",
+	"vote_yes_doubtful_friend": "Forgive me, {nominee}. I've known you since we were young, and it near breaks me to do this.",
 	"call_on_share": "Since you ask, dear, there's something I've not said yet:",
 	"call_on_nothing": "I've told the town all I know, and that's the honest truth.",
 	"withheld_defer_friend": "There's more, but it touches someone dear to me. Let me be sure before I say it.",
@@ -290,4 +292,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I'm grieving them still, dear.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town. They're dear to me.",
 	"anger_backed_hanging": "You backed hanging {subject}, love. I didn't want that.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I've carried the mark since I was born, dear. Gifts read me crooked; that's all {reader} saw.",
+	"burden_marked_counterclaim": "{claimant} isn't Marked, love. I am, and there's only ever the one.",
+	"burden_marked_private": "Keep this under your hat, dear: I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Best you all hear it plain: I'm Marked. A gift may read me evil, and it'd be wrong.",
+	"burden_unrequited_reveal": "I was out because I went to {beloved}'s door, dear. I care for them. They don't know.",
+	"burden_unrequited_defend": "Not {beloved}, love. You'll need more flour in the bowl than that.",
+	"burden_unrequited_spell_breaks": "I've stood up for {beloved} long enough, dear. I can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave, dear. I cared for them, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant}'s lying through their teeth. The omen's mine, and there's only one.",
+	"burden_denial": "Me, {burden}? No, love. Whoever told you that is wrong.",
+	"burden_double_claim": "{a} and {b} both say they're {burden}, dear. There's only one; one of them's lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Hear me before you vote, all of you: I'm Ill-Omened. Hang me, and we'll all pay for it.",
+	"burden_ill_omened_early": "Mind where this is going, love. I'm Ill-Omened, and hanging me would cost the town.",
 }

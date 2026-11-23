@@ -86,6 +86,8 @@ static func _pick_scapegoat(w, why: String) -> void:
 			s += Tuning.Evil.SCAPEGOAT_DISTRUST_BONUS
 		if g.claim_public and C.has_role_def(g.claimed_role) and C.role_def(g.claimed_role).hard_to_kill:
 			s += Tuning.Evil.SCAPEGOAT_HARD_TO_KILL_BONUS  # claims a gift the demon can't kill through: better hanged
+		if g.id == str(w.evil_plan.get("omen_holder", "")):
+			s += Tuning.Evil.OMEN_KNOWN_SCAPEGOAT_BONUS  # a known Ill-Omened: hanging them poisons the town (Michael, Nov 22)
 		if s > best_s:
 			best_s = s
 			best = g
@@ -129,6 +131,8 @@ static func review_scapegoat(w) -> void:
 				clears += Tuning.Evil.SCAPEGOAT_CLEAR_PENALTY * pow(HEAT_FADE, w.day - e["day"])
 		if clears > 0.0:
 			parts["dead_end"] = -clears
+		if g.id == str(w.evil_plan.get("omen_holder", "")):
+			parts["omen_holder"] = Tuning.Evil.OMEN_KNOWN_SCAPEGOAT_BONUS  # a known Ill-Omened (Michael, Nov 22)
 		var flop_cooloff: float = vote_cooloff(w, "", g.id)
 		if flop_cooloff > 0.0:
 			parts["failed_vote"] = -flop_cooloff
@@ -699,6 +703,8 @@ static func choose_kill_target(w) -> String:
 				parts["mood_hungry"] = snappedf(w.rng.randf() * Tuning.Evil.KILL_HUNGRY_MAX, 0.01)
 		if n.id == plan["scapegoat"] and w.living().size() > 4:
 			parts["keep_scapegoat"] = Tuning.Evil.KILL_KEEP_SCAPEGOAT
+		if n.id == str(plan.get("omen_holder", "")):
+			parts["omen_holder_better_hanged"] = Tuning.Evil.OMEN_KNOWN_KILL_PENALTY  # better hanged than killed (Michael, Nov 22)
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
 		var vet = believed_veteran(w, n)
 		var poisoner_up = w.living_with_role("poisoner") != null
@@ -1074,6 +1080,37 @@ static func _mark_fake(entry: Dictionary) -> void:
 	entry["true"] = false
 	entry["fake"] = true
 
+## A bluff switched after the first night to a gift that only reads on the first night (a
+## double claim, or a taken bluff) still needs that night's reading, or the bluffer has
+## nothing to tell (Michael's playtest, Nov 22). Made now, as of night 0, and checked against
+## what's public like any fabrication.
+static func backfill_start_reading(w, n, role: String) -> void:
+	if w.day == 0 or not C.ROLES.get(role, {}).get("first_night", false) or not C.has_role_def(role):
+		return
+	if n.info_log.any(func(e): return e.get("fake", false) and str(e.get("role", "")) == role):
+		return
+	var bdef = C.role_def(role)
+	var plan: Dictionary = w.evil_plan
+	var s: String = str(plan.get("scapegoat", ""))
+	var m = mate(w, n)
+	if m == null:
+		m = n
+	var saved: int = w.day
+	w.day = 0
+	var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, m, [])
+	var entry: Dictionary = {} if gen.is_empty() else _stamp_fake(w, gen["entry"], role, false)
+	w.day = saved
+	if entry.is_empty():
+		return
+	var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, m, entry, false), s)
+	entry = vetted["entry"]
+	entry["day"] = 0
+	_mark_fake(entry)
+	entry["why"] = "evil fabrication: " + named(w, str(gen["why"])) + " (the first night's reading for a bluff taken up later)"
+	n.info_log.append(entry)
+	_remember_frame(n, entry, s)
+	w.dlog.add("fake_info", n.id, "", entry, "%s (evil, now bluffing %s) prepares its first-night reading: %s [%s]" % [n.name, role, entry["text"], entry["why"]])
+
 ## A fabricated reading as it will be told: its gift, its night (or day phase).
 static func _stamp_fake(w, entry: Dictionary, bluff: String, day_only: bool) -> Dictionary:
 	entry["day"] = w.day
@@ -1262,6 +1299,27 @@ static func scapegoat_readiness(w, n, t) -> Dictionary:
 	var score: float = clampf(room + pocket - cooloff, 0.0, 1.2)
 	return {"score": score, "room_heat": room, "pocket_ammo": pocket, "cooloff": cooloff}
 
+## The heat a push to hang a known Ill-Omened waits for (Michael, Nov 22): the town's own public
+## talk about them, plus evil's planted frames that rest on an actual claim (a fabricated reading,
+## a made-up sighting, a bluffed burden). Not evil's bare accusations, nominations or votes.
+## Less the cool-off after a failed vote. Returns {heat, score}.
+static func omen_push_heat(w, n, t) -> Dictionary:
+	var h: float = Tuning.Evil.PUBLIC_HEAT_BASE
+	for e in w.public_log:
+		if not (t.id in e["subjects"]):
+			continue
+		if w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil() and str(e["kind"]) in ["accusation", "nomination", "vote_yes"]:
+			continue
+		h += _heat_of(e, t.id) * pow(HEAT_FADE, w.day - e["day"])
+	h = clampf(h, 0.0, 1.0)
+	var framed: bool = n.info_log.any(func(e): return e.get("fake", false) and not e.get("shared", false) and t.id in Gifts.implicated(e))
+	for k in w.evil_plan.get("fake_sightings", {}):
+		var fs = w.evil_plan["fake_sightings"][k]
+		if fs is Dictionary and fs.get("who", "") == t.id:
+			framed = true
+	var heat: float = h + (Tuning.Evil.EVIL_POCKET_FRAME_BONUS if framed else 0.0)
+	return {"heat": heat, "score": clampf(heat - vote_cooloff(w, n.id, t.id), 0.0, 1.2)}
+
 ## What the town seems to think of someone, judged from public events; evil mimics this.
 static func town_view(w, t) -> float:
 	return public_heat(w, t)
@@ -1311,6 +1369,9 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 	elif block != "" and w.by_id[block].is_evil() and block != nominee:
 		yes = true
 		why = "A teammate is on the block; votes to replace them with a good NPC."
+	elif load("res://sim/burdens.gd").omen_push(w, v, nominee):
+		yes = true
+		why = "A real Ill-Omened: hanging them poisons every good gift for a night."
 	elif nominee == w.evil_plan["scapegoat"]:
 		yes = true
 		why = "Votes to hang the scapegoat."

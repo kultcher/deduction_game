@@ -12,6 +12,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Recency = preload("res://sim/recency.gd")
 const Connections = preload("res://workshop/connections.gd")
+const Burdens = preload("res://sim/burdens.gd")
 const CaseGraph = preload("res://workshop/case_graph.gd")
 static var _mind_script
 
@@ -128,9 +129,6 @@ static func shadow_run(w, n, f: Callable) -> void:
 
 static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
 	return _mind().sighting_report(w, n, b, nd)
-
-static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
-	return _mind().sleepwalk_excuse(w, n, where)
 
 static func susp(n, target_id: String) -> float:
 	return _mind().susp(n, target_id)

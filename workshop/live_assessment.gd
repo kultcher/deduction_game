@@ -1,6 +1,14 @@
 ## Restricted live comparison. Pure inputs/outputs; no simulation objects or effects.
 extends RefCounted
+const Chronology = preload("res://workshop/chronology.gd")
 const Tuning = preload("res://sim/tuning.gd")
+## The burdens a confession can name (docs/design/burdens.md): those a script deals, plus the
+## first slate's other known burdens, so a claimed Unrequited night visit can explain an outing
+## once it is dealt. The Lovers, Sleepwalker 1.0 and the flavour secrets retired.
+const CLAIMABLE_BURDENS = ["delusional", "marked", "unrequited", "ill_omened"]
+## The burdens "holds a secret" can argue: only a hidden one, which its holder doesn't know of
+## (ScriptDef.HIDDEN_SECRETS). A known burden (Marked) is argued through its claim.
+const HIDDEN_BURDENS = ["delusional"]
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
@@ -126,9 +134,27 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true),
 		# The nights the listener knows it spent at home (WorkshopBridge.own_home), for the
 		# movement model only (LiveActivity.own_home_cards); the Demonologist's view has none.
-		"own_home": snapshot.get("own_home", {}).duplicate(true)}
+		"own_home": snapshot.get("own_home", {}).duplicate(true),
+		# What a good listener knows of its own burden (WorkshopBridge.own_burden): its worlds
+		# drop the burdens it knows it doesn't hold (CaseEval._own_burden_dead).
+		"own_burden": snapshot.get("own_burden", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
+	# Ill-Omened (burdens prototype): a claimed Ill-Omened hanged after restating it at the
+	# nomination may have poisoned every good person from that night until the next night
+	# starts. Each reading observed inside such a window carries the claimants whose hanging it
+	# could have fallen under; the judge reads it as unhealthy in worlds where one of them truly
+	# held the burden (Solver.valid_table, RoleConstraints).
+	var omens: Array = snapshot.public_events.filter(func(e): return e.kind == "omen_hanged" and e.subjects.size() == 1)
+	if not omens.is_empty():
+		view["omen_windows"] = omens.map(func(e): return {"claimant": e.subjects[0], "from": int(e.at.day) * 4 + 3, "until": (int(e.at.day) + 1) * 4 + 3})
+		for card in cards:
+			if card.kind != "report" or card.get("quoted", false):
+				continue
+			var t: int = Chronology.tick(card.observed_at)
+			var under: Array = view.omen_windows.filter(func(o): return t >= o.from and t < o.until).map(func(o): return o.claimant)
+			if not under.is_empty():
+				card["omen_claimants"] = under
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
@@ -310,14 +336,20 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["data"] = e.content.data.duplicate(true)
 		return card # Legacy opinion Psychologist readings stay context.
 	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
-		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover", "sleepwalker"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
+		# A claimed burden (docs/design/burdens.md): the Lovers, Sleepwalker 1.0 and the flavour
+		# secrets retired with the rework.
+		if e.content.get("secret_kind", "") not in CLAIMABLE_BURDENS or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
 			return {}
 		card["kind"] = "secret_claim"
 		card["night"] = -1 # Confessing an explanation does not prove an outing.
 		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
 		card["data"] = {"secret_kind": e.content.secret_kind}
-		if str(e.content.get("partner", "")) in ids:
-			card.data["partner"] = str(e.content.partner)  # a Lovers confession names the other (triage 5.9)
+		if e.content.secret_kind == "unrequited" and str(e.content.get("beloved", "")) in ids:
+			card.data["beloved"] = str(e.content.beloved)  # whom the holder visits (the movement model)
+		if e.content.secret_kind == "unrequited" and bool(e.content.get("spell_broken", false)):
+			# The holder gave the burden up at this meeting (Burdens.spell_breaks): no visits
+			# from that night on (LiveActivityKernel.UnrequitedLikelihood; Codex, #547).
+			card.data["spell_broken"] = true
 		return card
 	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):
@@ -646,7 +678,8 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		if valid and cited[0].kind == "secret":
 			var context = activity_card(cited[0], snapshot)
 			var parts: PackedStringArray = str(key).split(":")
-			valid = not context.is_empty() and parts.size() == 2 and parts[0] == context.subject and parts[1].is_valid_int() and int(parts[1]) >= context.applies.from and int(parts[1]) <= context.applies.through
+			# Only an Unrequited claim explains a night outing (the private errand retired).
+			valid = not context.is_empty() and str(context.get("data", {}).get("secret_kind", "")) == "unrequited" and parts.size() == 2 and parts[0] == context.subject and parts[1].is_valid_int() and int(parts[1]) >= context.applies.from and int(parts[1]) <= context.applies.through
 		elif valid:
 			valid = C.ROLES.get(cited[0].content.get("role", ""), {}).get("night_walk", false) and str(key).begins_with(cited[0].source + ":")
 		if not valid:
@@ -802,8 +835,8 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 		var minions: Array = view.get("script_minions", [])
 		if not minions.is_empty() and "scion" not in minions:
 			return [HANGED_NO_SCION_ISSUE]
-	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
-		return ["Choose a supported modifier for the secret premise."]
+	if c.type == "secret_mod" and c.get("mod", "") not in HIDDEN_BURDENS:
+		return ["Only a hidden secret can be argued this way; a known one is argued through its claim."]
 	# "X was turned by the curse" needs a public curse, and X among the souls it could turn.
 	if c.type == "turned":
 		var curse: Dictionary = view.get("chronology", {}).get("curse", {})

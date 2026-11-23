@@ -130,7 +130,7 @@ func body(id: String) -> Array:
 		else:
 			count = clampi(int(card.data.get("count", 0)), 0, model.view.people.size())
 		for i in range(count):
-			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and card.data.has("count") and count == 4 else ("Minion" if card.role == "chronicler" else (str(card.data.get("secret", "marked")).capitalize() if card.role == "rumormonger" else "Slot %d" % (i + 1)))
+			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and card.data.has("count") and count == 4 else ("Minion" if card.role == "chronicler" else (C.secret_name(str(card.data.get("secret", "marked"))) if card.role == "rumormonger" else "Slot %d" % (i + 1)))
 			result.append("%s: %s" % [prefix, Solver.person_name(model.view, slots[i]) if i < slots.size() and slots[i] is String and slots[i] != "" else "?"])
 		if card.role == "seer":
 			result.append("Registration: " + str(node.answers.get(card.id, {}).get("registration", "? Any valid cause")).replace("_", " ").capitalize())
@@ -959,7 +959,7 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 				draw_string(font, center + Vector2(radius * 0.4, -radius * 0.55), "M", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), Color("fbf6ea"))
 			if state.begins_with("reason:"):
 				var reason: String = state.trim_prefix("reason:")
-				var tag: String = {"unexplained": "?", "gift": "gift", "evil": "evil", "secret": "errand"}.get(reason, reason)
+				var tag: String = {"unexplained": "?", "gift": "gift", "evil": "evil", "secret": preload("res://ui/live_workshop_fields.gd").UNREQUITED_TAG}.get(reason, reason)
 				var color: Color = {"unexplained": Color("8a8378"), "gift": Color("3f7f9a"), "evil": Color("c0392b"), "secret": Color("6a8a3a")}.get(reason, Color("8a8378"))
 				var tw: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 10
 				var tr = Rect2(center + Vector2(-tw / 2.0, radius + 18) * Vector2(1, 1) + Vector2(0, 0), Vector2(tw, 16) * zoom)

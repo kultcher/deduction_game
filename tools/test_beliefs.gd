@@ -125,7 +125,9 @@ func _test_poison_not_honesty() -> void:
 	var hb = Mind.reliability(L, t["B"].id, -1, "report")
 	var r1 = Mind.reliability(L, t["B"].id, 1)
 	var r2 = Mind.reliability(L, t["B"].id, 2)
-	_check(hb >= 0.999 and r1 >= 0.999 and r2 < 0.5, "a poisoned reading doesn't damage B's honesty or their other readings")
+	# Night 1 keeps only the ordinary per-night poison doubt every reading carries since the
+	# shared Delusion doubt (about 5%), not the doubt the challenged night-2 reading took.
+	_check(hb >= 0.999 and r1 >= 0.9 and r2 < 0.5, "a poisoned reading doesn't damage B's honesty or their other readings (hb %.3f, night 1 %.3f, night 2 %.3f)" % [hb, r1, r2])
 
 func _test_stable_recompute() -> void:
 	var t = _setup(5104)

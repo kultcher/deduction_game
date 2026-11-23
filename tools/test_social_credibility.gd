@@ -305,14 +305,11 @@ func _relationships() -> void:
 	var a = people[1]
 	var b = people[2]
 	var c = people[3]
-	var hidden_lover = people[4]
+	var hidden_friend = people[4]
 	check(not w.town_relationships.is_empty() and g.known_relationships.is_empty(), "rolled bonds exist but start undiscovered")
 	w.town_relationships = [{"kind": "friend", "people": [a.id, b.id]}, {"kind": "rival", "people": [a.id, c.id]}]
-	# Secret modifiers can add a friendship after public bonds were captured.
-	a.friends.append(hidden_lover.id)
-	a.lover = hidden_lover.id
-	hidden_lover.lover = a.id
-	a.secret_mod = "lovers"
+	# A friendship added after public bonds were captured is not one of them.
+	a.friends.append(hidden_friend.id)
 	source.traits.gossip = 1.0
 	source.trust = 1.0
 	var probe = RandomNumberGenerator.new()
@@ -342,7 +339,7 @@ func _relationships() -> void:
 	var notes: Array = g.profile_data(a.id).relationships
 	check(notes.size() == 2 and notes.all(func(text): return text.begins_with(source.name + " says ")), "profile notes retain their attributed source")
 	check(g.profile_data(b.id).relationships.size() == 1 and g.profile_data(c.id).relationships.size() == 1, "a learned bond appears on both participants' profiles")
-	check(g.profile_data(hidden_lover.id).relationships.is_empty() and not hidden_lover.name in str(notes), "a secret-added Lover friendship is not disclosed")
+	check(g.profile_data(hidden_friend.id).relationships.is_empty() and not hidden_friend.name in str(notes), "a friendship outside the public bonds is not disclosed")
 	var state = w.rng.state
 	GameConversation._maybe_tell_relationships(g, source, b, r)
 	GameConversation._maybe_tell_relationships(g, source, a, r)
@@ -507,11 +504,10 @@ func _test_2_3_gravedigger_credence_gate() -> void:
 	g.w.on_execution_reading_heard(listener, fake_gd, entry, 1.0)
 	_check(is_equal_approx(listener.trust, trust_before), "suspected Gravedigger claim never docks player Rapport")
 
-	# Trusted Gravedigger still does not dock personal Rapport when executed Good villager was not a friend/lover.
+	# Trusted Gravedigger still does not dock personal Rapport when executed Good villager was not a friend.
 	listener.suspicion[fake_gd.id] = 0.05
 	listener.npc_trust[fake_gd.id] = 0.75
 	listener.friends = []
-	listener.lover = ""
 	g.w.on_execution_reading_heard(listener, fake_gd, entry, 1.0)
 	_check(is_equal_approx(listener.trust, trust_before), "non-friend execution accuracy stays in Credibility.dawn rather than personal Rapport")
 

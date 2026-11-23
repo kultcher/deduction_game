@@ -59,14 +59,14 @@ func _init() -> void:
 
 	# Forced roles are always dealt.
 	var forced = ScriptDef.default_script()
-	forced.forced = ["sexton", "veteran", "scion", "sleepwalker"]
+	forced.forced = ["sexton", "veteran", "scion", "unrequited"]
 	var always = true
 	for sd in range(500, 520):
 		var r = _deal(sd, 7, forced)
 		var dealt: Array = r.roles.values().map(func(x): return x[0])
 		var mods: Array = r.roles.values().map(func(x): return x[1])
-		always = always and "sexton" in dealt and "veteran" in dealt and "scion" in dealt and "sleepwalker" in mods
-	_check(always, "forced Sexton, Veteran, Scion and Sleepwalker are always in play")
+		always = always and "sexton" in dealt and "veteran" in dealt and "scion" in dealt and "unrequited" in mods
+	_check(always, "forced Sexton, Veteran, Scion and Unrequited are always in play")
 
 	# Checks: too few to deal a size is an error for that size only.
 	var small = ScriptDef.default_script()
@@ -179,6 +179,8 @@ func _init() -> void:
 	_check(dealt_marked.roles.values().any(func(x): return x[0] == "magistrate"), "a forced playtest role is dealt")
 	# Placement rules: Lovers and Sleepwalker never on a night-walker; the Rumormonger never holds one alone.
 	_check(not ScriptDef.placement_allows("sleepwalker", "warden") and ScriptDef.placement_allows("delusional", "warden")
+		and not ScriptDef.placement_allows("unrequited", "lamplighter") and not ScriptDef.placement_allows("unrequited", "warden")
+		and ScriptDef.placement_allows("unrequited", "seer") and ScriptDef.placement_allows("ill_omened", "lamplighter")
 		and not ScriptDef.placement_allows("marked", "rumormonger") and ScriptDef.placement_allows("lovers", "rumormonger"), "secret placement rules read from the table")
 	_check(spares_ok and ideal_ok, "every deal guarantee has spare roles on a dynamic script (all 4 start-knowledge gifts, 3+ identifiers)")
 	_check(distinct.size() >= 30, "dynamic scripts vary (%d different town lists in 40)" % distinct.size())

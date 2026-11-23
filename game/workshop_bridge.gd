@@ -37,7 +37,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
-			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
+			"other_modifier_holders": 1, "roles": possible_roles(g),
 			"minions": script_minions(g), "demons": script_demons(g),
 			"declared_demon": g.w.declared_demon_type},
 		# Only the Demonologist's own view holds the raw watch record. A listener hears it
@@ -51,7 +51,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
 			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote", "nomination", "meeting"] else "unknown")}})
-		if event.kind in ["curse", "curse_lifted"] and event.has("phase"):
+		if event.kind in ["curse", "curse_lifted", "omen_hanged"] and event.has("phase"):
 			input.public_events[-1].at = Evidence.stamp({"day": event.day, "phase": event.phase})
 		if event.kind == "vote":
 			input.public_events[-1]["data"] = {}
@@ -161,7 +161,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	input.listener["disowned_reports"] = []
 	for key in n.history:
 		if str(key).ends_with(":3"):
-			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")
+			input.listener.own_outings[str(key).trim_suffix(":3")] = not str(n.history[key]).begins_with("home")
 	for e in n.info_log:
 		var card = _reading(n.id, e)
 		if e.get("disowned", false):
@@ -178,6 +178,8 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	if w != null:
 		input["regular_haunts"] = known_haunts(w, n)
 		input["own_home"] = own_home(w, n, input.listener.own_outings)
+		if not n.is_evil():
+			input["own_burden"] = own_burden(n)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -208,20 +210,37 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 	return card
 
 
+## What a good NPC knows of its own burden (view.own_burden; Michael's design, Nov 21 via
+## Seneschal): {"self", "kind"}. A burden is known to its holder unless it's hidden
+## (ScriptDef.HIDDEN_SECRETS: the Delusional), so "kind" is the burden it holds and knows,
+## or "" for none it would know of. An evil NPC passes none: its view is its good self's.
+static func own_burden(n) -> Dictionary:
+	var held: String = str(n.secret_mod)
+	# delusional_ok: whether its gift could be the Delusional one (the deal's placement rules),
+	# for its own Delusion prior (CaseEval.own_delusion_prior; shared Delusion doubt, Nov 22).
+	return {"self": n.id, "kind": held if held != "" and bool(n.burden_self_known) and held not in ScriptDef.HIDDEN_SECRETS else "",
+		"delusional_ok": preload("res://workshop/source_doubt.gd").could_hold_secret(str(n.role), "delusional")}
+
 ## The nights an NPC knows it spent at home, for its movement model (view.own_home):
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
-## evidence: it never enters the ledger, ownership, citations or the world domain. Only a
-## Sleepwalker could have walked unknowing, so with that secret on the script a night
-## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error. The Rumormonger
-## readings the listener holds move the first, once each is weighed by its route
-## (SharedLedger.prepare, SourceDoubt.apply_sleepwalk_doubt).
-static func own_home(w, n, outings: Dictionary) -> Dictionary:
-	var doubt: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
+## evidence: it never enters the ledger, ownership, citations or the world domain. Each night
+## carries only the tiny own-reading error (burdens prototype: Sleepwalker 1.0 retired).
+## "out_nights": the nights it was out, with the blocks it walked (reading-note gap 2, Nov 21:
+## everyone knows their own whereabouts), as WorldNight._walk walks them: the road from home
+## to the destination (C.route), except the Lamplighter's round and the Sexton's toll, which
+## tour every block. A same-block outing (a Warden guarding a neighbour) is its home alone.
+static func own_home(_w, n, outings: Dictionary) -> Dictionary:
 	var nights: Dictionary = {}
+	var out_nights: Dictionary = {}
 	for k in outings:
 		if not bool(outings[k]):
-			nights[str(k)] = doubt
-	return {"self": n.id, "block": n.home_block, "nights": nights}
+			nights[str(k)] = Tuning.Workshop.OWN_ERR
+		else:
+			var dest: String = str(n.history.get(str(k) + ":3", "")).trim_prefix("night:")
+			if dest in C.BLOCKS:
+				var tours: bool = dest == n.home_block and str(n.role) in ["lamplighter", "sexton"]
+				out_nights[str(k)] = C.BLOCKS.keys() if tours else C.route(n.home_block, dest)
+	return {"self": n.id, "block": n.home_block, "nights": nights, "out_nights": out_nights}
 
 
 ## The haunts an NPC knows without being told (regulars know regulars): their own, and

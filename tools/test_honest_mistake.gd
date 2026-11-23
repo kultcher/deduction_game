@@ -55,7 +55,8 @@ func _game(sd: int, mode: String, poisoner: bool = true, causes: bool = true) ->
 	if not poisoner or not causes:
 		g.w.case_script.minions = g.w.case_script.minions.filter(func(m): return m != "poisoner")
 	if not causes:
-		g.w.case_script.secrets = g.w.case_script.secrets.filter(func(m): return m not in ["delusional", "marked"])
+		# Ill-Omened poisons the town once a claimed holder hangs, so it is a cause too.
+		g.w.case_script.secrets = g.w.case_script.secrets.filter(func(m): return m not in ["delusional", "marked", "ill_omened"])
 	var goods: Array = g.w.living_good()
 	var reader = goods[0]
 	g.w.day = 2
@@ -157,7 +158,6 @@ func _lie(sd: int) -> void:
 
 
 func _init() -> void:
-	SourceDoubt.delusional_self_doubt = false  # the listener's own self-doubt, off to keep the numbers plain
 	var sd: int = _seed()
 	check(sd > 0, "a seed with a Poisoner on the script (%d)" % sd)
 	if sd <= 0:
@@ -206,15 +206,31 @@ func _init() -> void:
 	var seer_no: Dictionary = {"kind": "report", "role": "seer", "data": {"pair": ["a", "b"], "yes": false}}
 	var dowse_some: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 1}}
 	var dowse_none: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 0}}
-	check(RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's reading and no other gift")
+	check(RC.cause_reaches("red_herring", seer_yes) and not RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's \"yes\", not a \"no\" (it reads falsely as the Demon, never falsely clear), and no other gift")
 	check(RC.cause_reaches("marked", seer_yes) and RC.cause_reaches("marked", dowse_some) and not RC.cause_reaches("marked", dowse_none) and not RC.cause_reaches("marked", seer_no), "Marked doesn't reach a reading that only speaks for people")
 	var parity: Dictionary = {"kind": "report", "role": "surveyor", "data": {"block": "square", "same": false}}
 	check(RC.cause_reaches("marked", parity), "Marked reaches a Surveyor's block parity, which names no one (Codex on #296)")
 	check(RC.cause_reaches("poison", dowse_none) and RC.cause_reaches("delusion", seer_no), "poison and Delusion reach any reading")
 	var bare: Dictionary = {"script_minions": ["scion"], "world_options": {"modifiers": ["lovers"]}}
-	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except a Seer's (its Red Herring)")
+	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_yes) and not RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except on a Seer's \"yes\" (its Red Herring)")
+	# The Seer card's reminder names Marked only when Marked is on the script (§2.1).
+	var seer_def = preload("res://sim/content.gd").role_def("seer")
+	var nm_id: Callable = func(id): return id
+	var RoleDefScript = preload("res://sim/role_def.gd")
+	RoleDefScript.script_secrets = ["delusional", "unrequited"]
+	var no_mark: String = seer_def.short_text({"pair": ["a", "b"], "yes": true}, "S", nm_id)
+	RoleDefScript.script_secrets = ["delusional", "marked"]
+	var with_mark: String = seer_def.short_text({"pair": ["a", "b"], "yes": true}, "S", nm_id)
+	RoleDefScript.script_secrets = []
+	check(not ("Marked" in no_mark) and "Red Herring" in no_mark and "Marked" in with_mark, "the Seer card names Marked only when it's on the script (%s / %s)" % [no_mark.replace("\n", " "), with_mark.replace("\n", " ")])
 	var none: Dictionary = _game(sd, "misled", true, false)
 	var nv: Dictionary = Live.view(none.g)
+	# Nor does the Seer chooser offer "registered as Marked" on a script without Marked.
+	var nv_marked: Dictionary = nv.duplicate(true)
+	nv_marked["world_options"] = {"modifiers": ["marked"]}
+	var nv_unknown: Dictionary = nv.duplicate(true)
+	nv_unknown.erase("world_options")
+	check(not CanvasModel.new(nv).marked_answers_open() and CanvasModel.new(nv_marked).marked_answers_open() and CanvasModel.new(nv_unknown).marked_answers_open(), "the Seer's Marked answer is offered only when Marked is on the script (or the script is unknown)")
 	print("no causes: refused '%s', minions %s, modifiers %s" % [none.refused, nv.get("script_minions"), nv.get("world_options")])
 	check(none.refused != "", "with no cause on the script, the canvas refuses a Mistaken call on an Archivist reading")
 	# 5. The lie.

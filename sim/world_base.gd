@@ -80,12 +80,17 @@ var initial_good_roles: Array = []  # Good roles dealt at case start (unaffected
 var initial_minion_ids: Array = []  # Minion ids dealt at case start (unaffected by Scion promotion)
 var initial_evil_ids: Array = []    # Initial evil ids dealt at case start (unaffected by Revenant curse)
 var initial_secret_holders: Array = [] # Good townsfolk dealt a secret modifier at case start
+var burden_holder_id: String = ""       # the burden's holder ("" if none); secret_mod stays the source of truth
+var burden_claims: Dictionary = {}  # burden kind -> who has claimed it, in order (burdens prototype)
+var omen_restated: Dictionary = {} # id -> day it restated Ill-Omened as the nominee (burdens prototype)
+var omen_unclaimed: Dictionary = {} # id -> day it was first nominated, able to speak, without claiming Ill-Omened
+var omen_nights: Array = []        # the Ill-Omened's fallen omens: {executed, day, night} (burdens prototype)
+var burden_told: Dictionary = {}    # "owner|listener" -> {day, phase} of the owner's first private telling (burdens prototype)
 var town_hall_uses_left: int = Tuning.Setup.TOWN_HALL_USES_PER_CASE
 var town_hall_shown_roles: Array = []
 var _town_hall_rng: RandomNumberGenerator = null
 var player_ward = ""
 var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
-var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (to anyone)
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""
@@ -328,7 +333,7 @@ func public_event(kind: String, subjects: Array, by: String, data: Dictionary = 
 	if subjects.is_empty():
 		return
 	var e = {"day": day, "kind": kind, "subjects": subjects.duplicate(), "by": by}
-	if kind in ["curse", "curse_lifted"]:
+	if kind in ["curse", "curse_lifted", "omen_hanged"]:
 		e["phase"] = phase # The announced boundary's public clock time.
 	if not data.is_empty():
 		e["data"] = data.duplicate(true)

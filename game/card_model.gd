@@ -24,9 +24,9 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 const VIEW_KINDS = {
 	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil"],
 	"statements": ["home", "haunt", "info", "claim", "town_hall", "hint", "refusal", "opinion", "accusation", "secret", "case"],
-	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
+	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "omen", "silenced", "knell"],
 	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil", "info", "claim", "town_hall", "hint", "refusal",
-		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
+		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "omen", "silenced", "knell", "deduction"],
 }
 
 ## Facts that can reach you more than once (told privately, then publicly; relayed by
@@ -236,19 +236,8 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 			if gist != "":
 				# Tavern gossip isn't the person's own hint, so it keeps its "Rumour:" (Codex on #256).
 				return ("Rumour: %s, %s" if _rumour(card) else "%s hints: %s") % [_subjects(card, nm), gist]
-		"secret":
-			var who: String = ("Rumour: " if _rumour(card) else "") + nm.call(str(card.get("owner", card.get("source", ""))))
-			match str(card.get("secret_kind", "")):
-				"sleepwalker":
-					return "%s sleepwalks" % who
-				"lover":
-					return "%s meets %s in secret" % [who, nm.call(str(card.get("partner", "")))] if str(card.get("partner", "")) != "" else "%s has a lover" % who
-				"insomnia":
-					return "%s prays at night" % who
-				"smuggling":
-					return "%s smuggles" % who
-				"debt":
-					return "%s pays a gambling debt" % who
+		# Burden cards keep their full text: the flavour secrets' short forms retired with the
+		# Burdens rework (insomnia, smuggling, debt).
 	# No short form: the full text, which the card cuts to fit and ends in "…".
 	return card.get("text", "")
 

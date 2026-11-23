@@ -175,7 +175,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# Only a good NPC's own mind asks it: an evil NPC knows whether it lied, and its cover
 		# mind (the good self it plays) never speaks it.
 		if n.is_shadow or n.is_evil():
-			OwnGiftDoubt.clear(n)
+			_clear_own_gift_doubt(n)
 		elif not cache_hit:
 			_stage_own_gift_doubt(n, proposal, adjusted)
 		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
@@ -324,14 +324,22 @@ static func _visibility(n, facts: Array) -> String:
 	return "shared_private"
 
 
+## Measurement switch (on in play): workshop_state.own_delusion and delusion_of each refresh.
+static var delusion_exposed: bool = true
+
 ## Keeps what OwnGiftDoubt needs to answer, for this refresh: every card the connections
 ## refresh held, and the doubt-adjusted view and listener the evaluation started from
 ## (Shared.last_adjusted), so the poison and Delusional prior reaches the role check and the
 ## readings' weight there as it did here (Codex on #320). None without a connections refresh.
+static func _clear_own_gift_doubt(n) -> void:
+	OwnGiftDoubt.clear(n)
+	n.workshop_state.erase("own_delusion")
+	n.workshop_state.erase("delusion_of")
+
 static func _stage_own_gift_doubt(n, proposal: Dictionary, adjusted: Dictionary) -> void:
 	var cx: Dictionary = proposal.get("connections", {})
 	if cx.is_empty() or adjusted.is_empty():
-		OwnGiftDoubt.clear(n)
+		_clear_own_gift_doubt(n)
 		return
 	var held: Array = []
 	for it in cx.get("items", []):
@@ -343,3 +351,17 @@ static func _stage_own_gift_doubt(n, proposal: Dictionary, adjusted: Dictionary)
 	weigher["trust"] = listener.get("trust", 0.5)
 	weigher["insight"] = listener.get("insight", 0.5)
 	OwnGiftDoubt.stage(n, adjusted.view, weigher, held)
+	# Each reader's chance of being the Delusional, for Quill (shared Delusion doubt, Nov 22):
+	# own_delusion for a good listener holding its own readings, delusion_of for the others.
+	# It costs one judgement per refresh (measured Nov 22: about a third of a ten-NPC game's
+	# time); off, OwnGiftDoubt.delusion_of_npc asks it when first read instead.
+	if not delusion_exposed:
+		n.workshop_state.erase("own_delusion")
+		n.workshop_state.erase("delusion_of")
+		return
+	var dl: Dictionary = OwnGiftDoubt.delusion_of_npc(n)
+	if float(dl.own) >= 0.0:
+		n.workshop_state["own_delusion"] = float(dl.own)
+	else:
+		n.workshop_state.erase("own_delusion")
+	n.workshop_state["delusion_of"] = dl.of

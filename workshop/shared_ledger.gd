@@ -554,10 +554,12 @@ static var keep_adjusted: bool = false
 static func secret_claims(presented: Dictionary) -> Array:
 	var out: Array = []
 	var add := func(conclusion: Dictionary) -> void:
-		if str(conclusion.get("type", "")) != "secret_mod":
+		# "is Marked" is its own premise in the burdens prototype, and the same word.
+		var ctype: String = str(conclusion.get("type", ""))
+		if ctype != "secret_mod" and ctype != "marked":
 			return
 		var target: String = Assess._target(conclusion)
-		var mod: String = str(conclusion.get("mod", ""))
+		var mod: String = "marked" if ctype == "marked" else str(conclusion.get("mod", ""))
 		if target == "" or mod == "":
 			return
 		var entry = {"target": target, "mod": mod}
@@ -607,7 +609,7 @@ static func _add_player_words(prepared: Dictionary, presentations: Dictionary, w
 			var card = {"id": id, "fact_id": id, "kind": "report", "role": "rumormonger", "source": "player",
 				"testimony_only": true, "player_word": true, "night": -1, "observed_at": at.duplicate(true), "reported_at": at.duplicate(true),
 				"data": {"pair": [claim.target], "secret": claim.mod},
-				"text": "The Demonologist says %s holds a secret: %s." % [_name(view, claim.target), Assess.C.secret_name(claim.mod)]}
+				"text": "The Demonologist says %s carries a hidden burden: %s." % [_name(view, claim.target), Assess.C.secret_name(claim.mod)]}
 			prepared.listener.reading_reliability[id] = player_weight
 			# A new array, so Solver.card_by_id's index sees the card.
 			view.cards = view.cards + [card]

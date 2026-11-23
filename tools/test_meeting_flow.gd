@@ -84,7 +84,7 @@ func _run_fixes() -> void:
 # ---------------------------------------------------------------- from test_claude_batch
 
 func _run_claude_batch() -> void:
-	_sleepwalk_excuse()
+	pass  # its Sleepwalker excuse check retired with Sleepwalker 1.0 (burdens prototype)
 
 
 # ---------------------------------------------------------------- from test_phase4_2_balanced_execution_priority
@@ -207,7 +207,7 @@ func before_press_night(w, n, card):
 
 
 func pressed_nights():
-	for mode in ["home", "personal", "sleepwalker", "seer", "nightwatch", "warden", "lamplighter", "medium"]:
+	for mode in ["home", "personal", "seer", "nightwatch", "warden", "lamplighter", "medium"]:
 		for seed_value in [1, 2, 3, 4]:
 			var a = fresh()
 			var b = fresh()
@@ -227,7 +227,7 @@ func pressed_nights():
 				n.max_tier = 0
 				n.claim_public = false
 				n.claimed_role = mode if evil else ""
-				n.secret_mod = "sleepwalker" if mode == "sleepwalker" else ""
+				n.secret_mod = ""
 				n.secret = {"kind": "gambling", "text": "gambles at night", "me": "go gambling"} if mode == "personal" else {}
 				n.beliefs = []
 				n.history[g.w.time_key(1, C.NIGHT)] = ("home:" if mode == "home" else "night:") + n.home_block
@@ -248,12 +248,9 @@ func pressed_nights():
 				continue
 			var before = before_press_night(a.w, na, card)
 			var after = Mind.press(b.w, nb, card)
-			# Oct 26 (Claude): pressed with a sighting, the Sleepwalker (and evil whose bluff
-			# doesn't explain being out) may add "I've been known to sleepwalk" (an extra
-			# secret fact; evil rolls for it). Everything else stays wording only.
-			var excuse_facts: Array = after.facts.filter(func(f): return f.get("secret_kind", "") == "sleepwalker")
-			var kept_facts: Array = after.facts.filter(func(f): return f.get("secret_kind", "") != "sleepwalker")
-			check(JSON.stringify(before.facts) == JSON.stringify(kept_facts) and (mode == "sleepwalker") == (excuse_facts.size() == 1 and mode == "sleepwalker") , "press wording preserves home/secret/sleepwalker/evil cover facts")
+			# Pressing again changes only the wording (the Sleepwalker's excuse retired with
+			# Sleepwalker 1.0 in the burdens prototype).
+			check(JSON.stringify(before.facts) == JSON.stringify(after.facts), "press wording preserves home/secret/evil cover facts")
 			var may_roll: bool = evil and not C.ROLES[mode].get("night_walk", false)
 			check((a.w.rng.state == b.w.rng.state or may_roll) and na.pressed_today == nb.pressed_today and na.trust == nb.trust, "wording-only press keeps original RNG, fatigue and trust")
 			check(before.lines[0].text != after.lines[0].text, "pressing does not replay the original alibi or refusal sentence")
@@ -602,46 +599,6 @@ func claude_batch__game(sd: int):
 	return g
 
 
-## A scorched sigil reads like a murder for routes: the Demon went to that door that night.
-## A sighting on the way there counts against whoever was seen; without the sigil, a quiet
-## night says nothing about where the Demon went.
-func _sleepwalk_excuse() -> void:
-	var g = claude_batch__game(4450)
-	var w = g.w
-	var goods: Array = w.living_good()
-	var sleeper = goods[0]
-	var plain = goods[1]
-	for n in w.npcs:
-		n.secret_mod = ""
-	sleeper.secret_mod = "sleepwalker"
-	_check(not Mind.sleepwalk_excuse(w, sleeper, "the meeting").is_empty(), "the real Sleepwalker can say they've been known to sleepwalk")
-	_check(Mind.sleepwalk_excuse(w, plain, "the meeting").is_empty(), "an ordinary good townsperson doesn't")
-	var e = w.evil_team()[0]
-	w.evil_plan["bluffs"][e.id] = "nightwatch"
-	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "evil with a night-walking bluff has no need of it")
-	w.evil_plan["bluffs"][e.id] = "clerk"
-	_check(Mind.sleepwalk_excuse(w, e, "the meeting").is_empty(), "and evil won't say it once someone else has (one Sleepwalker per case)")
-	# The model: one claim from a good person means they're the Sleepwalker; two claims
-	# mean at least one claimant is evil.
-	w.day = 2
-	GameBoard.add_card(g, {"kind": "secret", "subject": [sleeper.id], "owner": sleeper.id, "source": sleeper.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % sleeper.name})
-	GameBoard.add_card(g, {"kind": "secret", "subject": [plain.id], "owner": plain.id, "source": plain.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % plain.name})
-	var view = Live.view(g)
-	var claims: Array = view.cards.filter(func(c): return c.kind == "secret_claim")
-	_check(claims.size() == 2, "the claims reach the shared model as secret claims")
-	# As Assess.prepare sets it up for a case that cites a secret claim.
-	view["live_activity"] = true
-	view.world_options["roles"] = true
-	view.world_options["identities"] = true
-	var one: Array = Solver.solve(view, [claims[0]]).worlds
-	var ids: Array = view.people.map(func(p): return p.id)
-	var a: int = ids.find(claims[0].subject)
-	var b: int = ids.find(claims[1].subject)
-	_check(not one.is_empty() and one.all(func(x): return (x.evil & (1 << a)) or (x.modifier == "sleepwalker" and x.holders & (1 << a))), "one claim: the claimant is the Sleepwalker or evil")
-	var both: Array = Solver.solve(view, claims).worlds
-	_check(not both.is_empty() and both.all(func(x): return (x.evil & (1 << a)) or (x.evil & (1 << b))), "two claims: at least one claimant is evil")
-
-
 # ---- test_phase4_2_balanced_execution_priority
 
 
@@ -942,15 +899,16 @@ func _test_case_98933_polish_fixes() -> void:
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
 	var reasons: Array = Mind.MindNomination.case_against(w, hollis, odette.id)
-	# Superseded by purge phase 2a: reasons now come from the shared model's attribution,
-	# and only for people the shared model actually suspects. This synthetic fixture (legacy
-	# apply_info, no poisoning explanation ruled out) leaves Odette below Hollis's average,
-	# so she has no reasons at all. The realistic version of this case is covered in
-	# tools/test_legacy_purge_phase2a.gd ("case_against surfaces Hollis's private
-	# Gravedigger reading against Odette via leave-one-out").
+	# Reasons come from the shared model's attribution, and only for people it suspects.
+	# Since teller grouping (Nov 22) Hollis does suspect Odette here, but in this synthetic
+	# fixture (legacy apply_info) his own Gravedigger reading isn't what moves her: leaving it
+	# out raises her chance (0.60 -> 0.64), so the attribution rightly doesn't credit it. The
+	# realistic case, where it is the reading that bites, is covered in
+	# tools/test_meeting_reasons.gd ("case_against surfaces Hollis's private Gravedigger
+	# reading against Odette via leave-one-out"). Here: a suspected Odette gets a reason.
 	var odette_req: float = float(hollis.workshop_state.get("requested", {}).get(odette.id, 0.0))
-	_check(odette_req <= 0.0 or reasons.any(func(rr): return rr["kind"] == "private" and rr["entry"] == gd_entry),
-		"case_against cites Hollis's private Gravedigger reading whenever the shared model suspects Odette (%s)" % str(reasons))
+	_check(odette_req <= 0.0 or not reasons.is_empty(),
+		"case_against gives a reason whenever the shared model suspects Odette (%s)" % str(reasons))
 
 	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves unprepared_refreshes at 0.
 	g.unprepared_refreshes.clear()

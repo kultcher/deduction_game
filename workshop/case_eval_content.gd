@@ -28,17 +28,18 @@ static func _concl_type_code(c_type: String) -> int:
 
 ## Chance of this report's content arising by chance: roughly one over the number of
 ## different things the gift could have said.
+## Each burden on the script places one holder among the good (one burden a game): the known
+## burdens (Marked, Unrequited, Ill-Omened) on any of them, Delusional on any but the reader.
 static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 	var w_h: float = 0.0
-	if "marked" in mods:
-		w_h += float(g)
+	for m_kind in KNOWN_BURDENS:
+		if m_kind in mods:
+			w_h += float(g)
 	if "delusional" in mods:
 		w_h += float(maxi(0, g - 1))
-	if "sleepwalker" in mods:
-		w_h += float(g)
-	if "lovers" in mods:
-		w_h += float(g * (g - 1)) * 0.5
 	return w_h
+
+const KNOWN_BURDENS = ["marked", "unrequited", "ill_omened"]
 
 static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
 	var n: int = view.get("people", []).size()
@@ -56,14 +57,6 @@ static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
 	var sec: String = str(d.get("secret", "marked"))
 	if sec not in mods:
 		return clampf(1.0 / w_h, 0.01, 0.5)
-	if sec == "lovers":
-		if n < 3 or g < 2:
-			return 0.2
-		var denom: float = float((n - 1) * (n - 2))
-		var both_good: float = float((g - 1) * (g - 2)) / denom
-		var one_good: float = float(2 * (g - 1) * e) / denom
-		var exp_lovers: float = both_good * float(2 * g - 3) + one_good * float(g - 1)
-		return clampf(exp_lovers / w_h, 0.01, 0.5)
 	var exp_solo: float = float(pair_sz) * float(g - 1) / float(n - 1)
 	return clampf(exp_solo / w_h, 0.01, 0.5)
 
@@ -81,14 +74,11 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional", "sleepwalker"]:
+	for m_kind in KNOWN_BURDENS + ["delusional"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
-	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0
-	var lovers_no_src: float = (float((g - 1) * (g - 2)) * 0.5) if "lovers" in mods else 0.0
 	var trios_one_sec: float = float((e - 1) * (g - 2))
-	var trios_two_sec: float = float((e - 1) * 2 * maxi(0, g - 3))
-	var exp_holds: float = ((solo_worlds + lovers_with_src) * trios_one_sec + lovers_no_src * trios_two_sec) / c_n1_3
+	var exp_holds: float = (solo_worlds * trios_one_sec) / c_n1_3
 	return clampf(exp_holds / w_h, 0.01, 0.5)
 
 ## The chance that a source who can't give a healthy reading (evil, poisoned, Delusional)
@@ -110,6 +100,13 @@ const ROLE_CONTENT_FIXED = ["archivist", "clerk", "executor", "gravedigger", "re
 	"nightwatch", "warden", "veteran", "seer"]
 
 static func chance_content(view: Dictionary, card: Dictionary) -> float:
+	# The player's own word "X holds secret S" (SharedLedger._add_player_words) names X
+	# because the player is arguing about X, so when the player is wrong it still lands on
+	# X: its chance of arising is 1, and the word is worth the player's credibility alone
+	# (1 / error on the odds), not a boost from how rarely the secret would be named by
+	# chance. Michael, Nov 22 (option b').
+	if card.get("player_word", false):
+		return 1.0
 	var role_id: String = str(card.get("role", ""))
 	if role_id in ROLE_CONTENT_FIXED:
 		return _chance_content_fixed(view, card)
@@ -164,7 +161,7 @@ static var _valid_cache: Dictionary = {}
 
 ## Per world: can this card's source give a healthy reading? (cached per card and universe)
 static func _valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
-	var ref: Array = [Solver._universe_key(view), card.kind, card.get("source", ""), card.get("observed_at", {}), card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at"), card.get("duty_only", false)]
+	var ref: Array = [Solver._universe_key(view), card.kind, card.get("source", ""), card.get("observed_at", {}), card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at"), card.get("duty_only", false), card.get("omen_claimants", [])]
 	var key: int = hash(ref)
 	if _valid_cache.has(key) and _valid_cache[key].ref == ref:
 		return _valid_cache[key].out

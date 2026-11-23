@@ -10,6 +10,7 @@ const GameDayNight = preload("res://game/game_day_night.gd")
 const GameConversation = preload("res://game/game_conversation.gd")
 const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
+const ScriptDefRef = preload("res://sim/script_def.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -249,9 +250,9 @@ static func _script(g) -> String:
 	out.append(C.DEMON_NIGHT_RULE)
 	for r in sc.minions:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
-	out.append("Secrets (one in play, laid on a townsfolk on top of their gift):")
+	out.append("Burdens: %s in play, on top of a gift:" % ("one" if sc.secrets_in_play == 1 else str(sc.secrets_in_play)))
 	for k in sc.secrets:
-		out.append("  %-12s %s" % [C.secret_name(k), C.SECRET_MODS[k]["desc"]])
+		out.append("  %-12s %s%s" % [C.secret_name(k), "Hidden: " if k in ScriptDefRef.HIDDEN_SECRETS else "", C.SECRET_MODS[k]["desc"]])
 	return "\n".join(out)
 
 

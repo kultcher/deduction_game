@@ -149,12 +149,8 @@ func _run(g, size: int) -> void:
 	if e_off != "":
 		check(MindDefence.night_route_rebuttal(w, e, 1, e_off).is_empty(), tag + " evil that was out on the victim's block never claims other_block, even sighted elsewhere")
 		e.history[w.time_key(1, C.NIGHT)] = "home:" + e.home_block
-		# Keep the "I sleepwalk" excuse out of it (a game where evil has claimed it, or rolls to,
-		# takes that move first): someone else has claimed sleepwalking, so evil won't.
-		var sw_was: Array = w.sleepwalk_claims.duplicate()
-		w.sleepwalk_claims.append("_test_other_sleepwalker")
+		# (The "I sleepwalk" excuse this used to keep out retired with the Sleepwalker: burdens rework.)
 		var e_res: Dictionary = Mind.defend_self(w, e, accuser.id, [_sighting(accuser, e, 1, e_off)])
-		w.sleepwalk_claims = sw_was
 		check("rebuttal" in e_res.moves, tag + " evil at home, sighted off the route, says it (%s)" % [e_res.moves])
 		var thinks: Array = w.dlog.entries.filter(func(x): return x["type"] == "think" and x["actor"] == e.id and x["data"].get("topic", "") == "rebuttal")
 		check(not thinks.is_empty() and "misleading" in str(thinks[-1]["reason"]), tag + " evil's rebuttal is logged with its reason")

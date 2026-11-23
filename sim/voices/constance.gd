@@ -42,6 +42,8 @@ const LINES = {
 	"own_night_lie": "I must therefore amend my earlier account: I was abroad {nights}, as my duty required, before I judged it prudent to say so.",
 	"opinion_clear": "I have seen nothing in {subject}'s conduct to suggest wickedness.",
 	"vote_resist_readings_agree": "I will not hang {nominee}: their readings accord with what I know to be so.",
+	"support_doubt_for": "I have known {target} a long time, and I would not have thought them capable of this. I find I cannot say so with the certainty I would like.",
+	"vote_yes_doubtful_friend": "{nominee}, I take no pleasure in this. My regard for you has not changed; my judgement has.",
 	"call_on_share": "Since you ask, there is a matter I have not yet put before the town:",
 	"call_on_nothing": "I have told the town everything I know.",
 	"withheld_defer_friend": "There is more, but it concerns someone close to me, and I will be certain before I speak.",
@@ -290,4 +292,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I am grieving them still.",
 	"anger_accused_my_friend": "You accused {subject} before the whole parish. They are dear to me.",
 	"anger_backed_hanging": "You supported the hanging of {subject}. I did not wish it.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I have borne the mark since birth. Gifts misread me; that, and nothing more, is what {reader} observed.",
+	"burden_marked_counterclaim": "{claimant} is not Marked. The mark is mine, and there is only one in any parish.",
+	"burden_marked_private": "I ask your discretion in this: I am Marked. Should a gift ever name me evil, that is the reason.",
+	"burden_marked_public": "The parish ought to know that I am Marked. A gift may read me as evil; it would be in error.",
+	"burden_unrequited_reveal": "I was abroad because I went to {beloved}'s door. I hold them in deep regard. They are unaware of it.",
+	"burden_unrequited_defend": "I cannot believe that of {beloved}. You will require more than that.",
+	"burden_unrequited_spell_breaks": "I have defended {beloved} as long as conscience permits. I can do so no longer.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. I cared for them deeply, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} speaks a falsehood. I am the Ill-Omened, and there is only one.",
+	"burden_denial": "I am not {burden}. Whoever told you so is mistaken.",
+	"burden_double_claim": "{a} and {b} both profess to be {burden}. There is but one; one of them is lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before the parish votes, know this: I am Ill-Omened. Hang me, and the cost will fall upon us all.",
+	"burden_ill_omened_early": "Take care where this leads. I am Ill-Omened, and my hanging would cost the parish dearly.",
 }

@@ -42,6 +42,8 @@ const LINES = {
 	"own_night_lie": "So yeah, I was totally out {nights} when I said I was home—had to cover my tracks till you knew what I do!",
 	"opinion_clear": "{subject}? Nah, not one of them. No way.",
 	"vote_resist_readings_agree": "No way I'm hanging {nominee}! Their readings line up with what I know.",
+	"support_doubt_for": "{target}? No way. I've known them forever. They wouldn't... right?",
+	"vote_yes_doubtful_friend": "Sorry, {nominee}. Really. I just—I wish I could say no.",
 	"call_on_share": "Oh! Since you ask—there's something I haven't said:",
 	"call_on_nothing": "That's everything, I swear! Told the town all of it.",
 	"withheld_defer_friend": "There's more, but it's about a friend, so—let me be sure first, okay?",
@@ -290,4 +292,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I... still miss them. Still grieving.",
 	"anger_accused_my_friend": "You accused {subject} in front of everyone! They're my friend!",
 	"anger_backed_hanging": "You backed hanging {subject}. Didn't want that!",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Marked since birth, that's me! Gifts read me wrong. That's all {reader} saw!",
+	"burden_marked_counterclaim": "{claimant}? Not Marked. I am! There's only the one.",
+	"burden_marked_private": "Keep this quiet, will you? I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Listen up, all of you: I'm Marked! A gift might read me evil. It'd be wrong!",
+	"burden_unrequited_reveal": "Fine—I went to {beloved}'s door. I care for them. They don't know!",
+	"burden_unrequited_defend": "{beloved}? Not a chance! You'll need far more than that.",
+	"burden_unrequited_spell_breaks": "I've stuck up for {beloved} long enough. Can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. Cared for them. They never knew.",
+	"burden_ill_omened_counterclaim": "{claimant}'s lying! I'm the Ill-Omened. There's only one!",
+	"burden_denial": "Me? {burden}? No! Whoever told you that's got it wrong.",
+	"burden_double_claim": "Wait—{a} and {b} both say they're {burden}? There's only one! Somebody's lying!",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Wait, before you vote! I'm Ill-Omened! Hang me and it costs all of us!",
+	"burden_ill_omened_early": "Careful! I'm Ill-Omened. Hang me and the whole town pays!",
 }

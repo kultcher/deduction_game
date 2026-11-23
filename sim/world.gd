@@ -100,8 +100,6 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 	_assign_roles()
 	_assign_relationships()
 	_assign_secret_mod()
-	if C.USE_FLAVOR_SECRETS:
-		_assign_secrets()
 
 	for n in npcs:
 		for m in npcs:
@@ -119,8 +117,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 			n.npc_trust[m.id] = snappedf(t, 0.01)
 		n.trust = clampf(Tuning.Setup.PLAYER_TRUST_BASE + Tuning.Setup.PLAYER_TRUST_OPENNESS_SCALE * (1.0 - n.traits["privacy"]) + rng.randf_range(Tuning.Setup.PLAYER_TRUST_JITTER_MIN, Tuning.Setup.PLAYER_TRUST_JITTER_MAX), Tuning.Setup.PLAYER_TRUST_MIN, Tuning.Setup.PLAYER_TRUST_MAX)
 		n.trust_at_reconsider = n.trust
-		if n.secret_mod == "lovers" and n.lover != "":
-			n.npc_trust[n.lover] = Tuning.Setup.INITIAL_TRUST_LOVER
+	load("res://sim/burdens.gd").setup_unrequited(self)  # the beloved's place in their heart (burdens prototype)
 
 	# Each good NPC knows their own gift: a firsthand record that counts against anyone
 	# who claims it falsely.
@@ -128,6 +125,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		if not n.is_evil():
 			Mind.hear_claim(self, n, n.id, n.role, Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")
 	evil_plan = Evil.make_plan(self)
+	load("res://sim/burdens.gd").setup_evil_knows_omen(self)  # the evil team knows the Ill-Omened (Michael, Nov 22)
 	_log_grimoire()
 	trace_capture("initial_setup", true)
 	if on_cast_ready.is_valid():
@@ -196,7 +194,7 @@ func _assign_roles() -> void:
 		if rdef != null:
 			rdef.setup_world(self, n)
 
-## One secret modifier per case, on a townsfolk (the Lovers take two), on top of their gift.
+## One burden per case, on a townsfolk, on top of their gift (burdens prototype: the Lovers retired).
 func _assign_secret_mod() -> void:
 	initial_secret_holders = []
 	var goods = shuffled(npcs.filter(func(n): return not n.is_evil()))
@@ -205,7 +203,8 @@ func _assign_secret_mod() -> void:
 	var forced_secret: Array = case_script.forced_in(case_script.secrets)
 	var k: String = forced_secret[0] if not forced_secret.is_empty() else pick(case_script.secrets)
 	# Placement rules (ScriptDef.PLACEMENT_RULES): the Rumormonger never holds a secret
-	# alone; Lovers and Sleepwalker never land on a night-walker (Case 22485). Each rule
+	# alone; Unrequited (like the retired Lovers and Sleepwalker) never lands on a night-walker
+	# (Case 22485). Each rule
 	# narrows the candidates in turn, as the hand-written checks always did.
 	for rule in ScriptDef.PLACEMENT_RULES:
 		if rule.has("except") and k in rule.except:
@@ -217,21 +216,13 @@ func _assign_secret_mod() -> void:
 			return
 	var a = goods[0]
 	a.secret_mod = k
-	if k == "lovers":
-		var b = goods[1]
-		b.secret_mod = "lovers"
-		a.lover = b.id
-		b.lover = a.id
-		for pr in [[a, b], [b, a]]:
-			if not (pr[1].id in pr[0].friends):
-				pr[0].friends.append(pr[1].id)
-			pr[0].rivals.erase(pr[1].id)
-			pr[0].secret = {"kind": "lover", "with": pr[1].id, "dest": pr[1].home_block,
-				"text": "slips out to meet %s in secret" % pr[1].name, "me": "slip out to meet %s in secret" % pr[1].name}
-			pr[0].known_secrets[pr[1].id] = pr[1].id
+	a.burden_self_known = k not in ScriptDef.HIDDEN_SECRETS
+	if k == "unrequited":
+		# The beloved: anyone else, who may be evil, and doesn't know (burdens.md section 2.1).
+		a.beloved = pick(npcs.filter(func(n): return n != a)).id
+	burden_holder_id = a.id
 	initial_secret_holders = npcs.filter(func(n): return not n.is_evil() and n.secret_mod != "").map(func(n): return n.id)
-	dlog.add("secret_mod", a.id, a.lover, {"mod": k}, "Secret: %s is %s%s." % [a.name, C.secret_name(k),
-		(" with " + by_id[a.lover].name) if a.lover != "" else ""])
+	dlog.add("secret_mod", a.id, a.beloved, {"mod": k, "beloved": a.beloved}, "Secret: %s is %s%s." % [a.name, C.secret_name(k), (", in love with %s" % by_id[a.beloved].name) if a.beloved != "" else ""])
 
 func _assign_relationships() -> void:
 	for i in range(npcs.size()):
@@ -264,31 +255,13 @@ func _assign_relationships() -> void:
 			elif b.id in a.rivals:
 				town_relationships.append({"kind": "rival", "people": [a.id, b.id]})
 
-## Personal reasons to be out at night (flavour, separate from the secret modifier).
-func _assign_secrets() -> void:
-	var goods = shuffled(npcs.filter(func(n): return not n.is_evil() and n.secret.is_empty() and n.secret_mod != "sleepwalker"))
-	var busy_nights = npcs.any(func(n): return n.secret_mod in ["lovers", "sleepwalker"])
-	var count = (1 if not busy_nights or chance(0.5) else 0) + (1 if n_npcs >= 10 and chance(0.5) else 0)
-	for i in range(mini(count, goods.size())):
-		var n = goods[i]
-		var s: Dictionary = pick(C.SECRETS).duplicate()
-		if s.get("needs_friend", false):
-			var f = npc(pick(n.friends))
-			s["with"] = f.id
-			s["dest"] = f.home_block
-			s["text"] = s["text"] % f.name
-		n.secret = s
-		if s.has("with"):
-			npc(s["with"]).known_secrets[n.id] = n.id
-		dlog.add("secret_assigned", n.id, s.get("with", ""), s, "%s %s (good NPC; will hide it)" % [n.name, s["text"]])
-
 func _log_grimoire() -> void:
 	var g = []
 	for n in npcs:
 		g.append({"id": n.id, "occupation": n.occupation, "work_phases": n.work_phases, "role": n.role,
 			"align": n.alignment, "home": n.home_block, "ring": n.ring, "friends": n.friends, "rivals": n.rivals,
 			"traits": n.traits, "trait_base": n.trait_base, "secret": n.secret.get("kind", ""),
-			"red_herring": n.red_herring, "trust": snappedf(n.trust, 0.01), "secret_mod": n.secret_mod, "lover": n.lover})
+			"red_herring": n.red_herring, "trust": snappedf(n.trust, 0.01), "secret_mod": n.secret_mod, "beloved": n.beloved})
 	dlog.add("grimoire", "world", "", {"npcs": g, "bluffs": bluffs, "plan": evil_plan},
 		"Hidden setup. Demon=%s, minions=%s, bluffs=%s" % [demon_id, ", ".join(PackedStringArray(minion_ids.map(func(i): return "%s (%s)" % [i, by_id[i].role]))), str(bluffs)])
 

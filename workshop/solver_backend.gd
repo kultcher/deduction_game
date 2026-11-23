@@ -38,6 +38,7 @@ static func _bridge() -> Variant:
 			if scr != null and scr.can_instantiate():
 				_cs_bridge = scr
 				_cs_bridge.SetMode(1)  # the bridge's own label; C# is the only path
+				_cs_bridge.RoleSetMarkedDemonChance(float(preload("res://sim/tuning.gd").Setup.MARKED_DEMON_CHANCE))
 		if _cs_bridge == null:
 			push_error(MISSING_ASSEMBLY)
 			if DisplayServer.get_name() != "headless":
@@ -65,9 +66,9 @@ static func modifier_code(world: Dictionary) -> int:
 			return 0
 		"marked":
 			return 1
-		"lovers":
+		"ill_omened":  # 2 and 3 were the Lovers and Sleepwalker 1.0 (burdens prototype)
 			return 2
-		"sleepwalker":
+		"unrequited":
 			return 3
 		_:
 			return -1

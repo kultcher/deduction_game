@@ -108,11 +108,15 @@ static func _pick_item(w, s, l):
 			var key = "reading:%d:%s" % [e["day"], e["role"]]
 			if C.has_role_def(str(e.get("role", ""))) and not C.role_def(str(e.get("role", ""))).may_share_reading(w, s, e):
 				continue
-			if not e["shared"] and not _told(s, l, key):
+			if not e["shared"] and not _told(s, l, key) and not Burdens.withholds_for_beloved(w, s, e):
 				var wgt = _reading_weight(s, priv, bond) * unclaimed_mult
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):
 			cands.append([(1.0 - priv) * maxf(0.0, bond - Tuning.Social.SHARE_SECRET_BOND_FLOOR) * Tuning.Social.SHARE_SECRET_SLOPE, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
+		# A known burden, shared privately as trust allows (burdens prototype).
+		var burden_w: float = Burdens.private_share_weight(w, s, bond)
+		if burden_w > 0.0 and not l.known_secrets.has(s.id):
+			cands.append([burden_w, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id, "burden": s.secret_mod}])
 		var ranked = Mind.ranked_suspects(w, s).filter(func(m): return m != l)
 		if not ranked.is_empty() and Mind.susp(s, ranked[0].id) >= Tuning.Social.SHARE_OPINION_MIN_SUSP and not _told(s, l, "opinion:" + ranked[0].id):
 			var t = ranked[0]
@@ -154,7 +158,7 @@ static func _pick_item(w, s, l):
 				if w.scenes[sid]["day"] == b["day"] and w.scenes[sid]["block"] == b["block"]:
 					scene = Tuning.Social.SHARE_SIGHTING_SCENE_BONUS
 			cands.append([gos * Tuning.Social.SHARE_SIGHTING_GOSSIP_SCALE + scene, {"kind": "sighting", "about": b["who"], "block": b["block"], "day": b["day"], "from": s.id, "key": key2}])
-	# Peer night-home alibis: townsfolk (and evil or sleepwalking bluffers) occasionally mention
+	# Peer night-home alibis: townsfolk (and evil bluffers) occasionally mention
 	# having stayed home last night so alibis circulate naturally in 1-on-1 conversations.
 	if w.day >= 1:
 		var nd_alibi: int = w.day - 1
@@ -162,7 +166,7 @@ static func _pick_item(w, s, l):
 		if not _told(s, l, akey):
 			var where_a: String = str(s.history.get(w.time_key(nd_alibi, C.NIGHT), "home:" + s.home_block))
 			var claims_walk_duty: bool = C.has_role_def(s.claimed_role) and C.role_def(s.claimed_role).uses_night_duty_alibi(w, s, nd_alibi, where_a.begins_with("night:"))
-			var claims_home: bool = not claims_walk_duty and (not where_a.begins_with("night:") or s.secret_mod == "sleepwalker" or s.is_evil())
+			var claims_home: bool = not claims_walk_duty and (not where_a.begins_with("night:") or s.is_evil())
 			if claims_home:
 				cands.append([gos * Tuning.Social.SHARE_ALIBI_WEIGHT, {"kind": "alibi", "about": s.id, "block": s.home_block, "day": nd_alibi, "from": s.id, "key": akey, "lie": where_a.begins_with("night:") and s.is_evil()}])
 	# Low-walker daytime rumor fuel (Phase 4.1): when `s` holds no recent untold night sightings,
@@ -368,7 +372,7 @@ static func _record_direct_statement_for_listener(w, s, l, item: Dictionary, ori
 			"text": "%s says they were home (on %s) on night %d." % [s.name, C.block_name(s.home_block), nd_a]}
 		var where_n: String = str(s.history.get(w.time_key(nd_a, C.NIGHT), "home:" + s.home_block))
 		var a_false: bool = where_n.begins_with("night:")
-		var a_why: String = ("misled" if (not s.is_evil() and s.secret_mod == "sleepwalker") else "lying") if a_false else ""
+		var a_why: String = "lying" if a_false else ""
 		PsychologistRole.record_heard(w, l, s.id, a_fact, a_false, a_why)
 
 static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: Dictionary = {}) -> void:
@@ -400,6 +404,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		Evil.intel_from_share(w, l, s, item)
 		if item["kind"] == "secret":
 			l.known_secrets[item["about"]] = s.id
+			if item["about"] == s.id and str(item.get("burden", "")) != "":
+				Burdens.claim(w, s, str(item["burden"]), false, "trusting %s" % l.name, l.id)
 		return
 	# Repeats are handled by the listener's ledger (same reading never stacks).
 	# The teller's credibility is applied live by the listener's ledger (rel = the source).
@@ -490,8 +496,12 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		"secret":
 			var owner = w.by_id[item["about"]]
 			l.known_secrets[owner.id] = s.id
+			if owner == s:
+				Burdens.reveal_cost(w, s, [l])  # an Unrequited confiding its love (burdens prototype)
 			if owner != s:
 				owner.secret_spread_by_npc = true
+			elif str(item.get("burden", "")) != "":
+				Burdens.claim(w, s, str(item["burden"]), false, "trusting %s" % l.name, l.id)
 	if not public:
 		l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + gossip_bond(l, s, item), 0.0, 1.0)
 
@@ -621,7 +631,7 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "they are the %s" % C.role_name(item["role"])
 		"secret":
 			var o = w.by_id[item["about"]]
-			return "%s's secret: %s %s" % [o.name, o.name, o.secret.get("text", "?")]
+			return "%s's secret: %s %s" % [o.name, o.name, Burdens.phrase(o)]
 	return item["kind"]
 
 ## Evil members in the same crowded tavern can pass word unobserved (slow, partial).
@@ -712,7 +722,10 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 		if not rank.has(tier):
 			continue
 		var best: Dictionary = record.get(src, {})
-		if best.is_empty() or int(rank[tier]) > int(rank.get(str(best.get("tier", "")), 0)):
+		# A reading about only me confirms what I know of myself, not something to cite for the
+		# reader (playtest 51795): it still moves trust, but isn't kept to speak of.
+		var self_only: bool = Gifts.subjects({"role": str(c.get("role", "")), "data": c.get("data", {})}) == [n.id]
+		if not self_only and (best.is_empty() or int(rank[tier]) > int(rank.get(str(best.get("tier", "")), 0))):
 			record[src] = {"tier": tier, "card": cid, "day": w.day, "source": str(r.get("source", "")), "agreement": snappedf(float(r.get("agreement", 0.0)), 0.001)}
 		if n.is_shadow or n.is_evil():
 			continue

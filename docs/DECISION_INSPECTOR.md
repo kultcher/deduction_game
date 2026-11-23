@@ -66,6 +66,12 @@ removes each thing a mind has heard (each ledger entry: reading, claim, defence,
 accusation, case) one at a time, re-runs the refresh and lists the biggest movers. A
 suspicion clamped at 0 understates how far the movers push it.
 
+What belief mode can't see: anything a mind holds outside its ledger. That's its own
+readings (`info_log`), what it was told in private (`known_claims` and their readings;
+`game/workshop_bridge.gd`, `_listener`), its own sightings and guards, its own whereabouts
+(`own_home`), and its lean carried over from the day before. None of those is taken out,
+so a suspicion no ledger entry explains is likely held up by one of them.
+
 ```text
 godot --headless --path . --script res://tools/explain_case.gd -- logs/case_13910.jsonl --belief fenwick --at 372 [--top 8]
 ```

@@ -43,31 +43,17 @@ internal static class WorldDomainKernel
             {
                 string kind = modifiers[m];
                 int modCode = modCodes[m];
-                bool isLovers = kind == "lovers";
                 bool isMarked = kind == "marked";
+                // One holder per burden (burdens prototype: the Lovers' two-holder worlds retired).
                 for (int i = 0; i < n; i++)
                 {
                     if ((evil & (1 << i)) != 0)
                     {
                         continue;
                     }
-                    if (!isLovers)
-                    {
-                        int marked = isMarked ? i : -1;
-                        var w = WorldEntry.Pack(evil, 1 << i, marked, modCode, -2, -2);
-                        baseWorlds.Add((w, m));
-                    }
-                    else
-                    {
-                        for (int j = i + 1; j < n; j++)
-                        {
-                            if ((evil & (1 << j)) == 0)
-                            {
-                                var w = WorldEntry.Pack(evil, (1 << i) | (1 << j), -1, modCode, -2, -2);
-                                baseWorlds.Add((w, m));
-                            }
-                        }
-                    }
+                    int marked = isMarked ? i : -1;
+                    var w = WorldEntry.Pack(evil, 1 << i, marked, modCode, -2, -2);
+                    baseWorlds.Add((w, m));
                 }
             }
         }

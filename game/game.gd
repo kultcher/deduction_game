@@ -22,6 +22,7 @@ const WITHDRAW_OUTSIDE_MEETING = "You can only take back a case before the whole
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
+const RoleDef = preload("res://sim/role_def.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Deduction = preload("res://sim/deduction.gd")
@@ -286,6 +287,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	w.trace_tuning = trace_tuning
 	w.case_script = case_script
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
+	RoleDef.script_secrets = w.case_script.secrets.duplicate() if w.case_script != null else []
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
 	state = "day"

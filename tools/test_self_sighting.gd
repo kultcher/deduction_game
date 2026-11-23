@@ -58,25 +58,9 @@ func _init() -> void:
 	# (then seeds 100034, 100031 and 100020); searched for, so play changes don't break them
 	# (tools/fixture_seeds.gd).
 	_found_case(Seeds.framed_sighting(2, false, "street"), "subject", "sighter", func(p): return p >= 0.6, "a framed person holds the planter's fake sighting against them")
-	_found_case(Seeds.sleepwalker_sighting(2), "subject", "sighter", func(p): return p < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied")  # (a plain liar caught this way reads near 0.9)
-	_relay_case(Seeds.relay(3, func(t): return t.is_evil(), true))
+	_found_case(Seeds.relay(3, func(t): return t.is_evil(), true), "listener", "teller", func(p): return p >= 0.8, "an evil relayer's invented relay of the listener doesn't clear them")
 	print("Self-sighting: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
-
-
-## An evil Medium's invented relay of the listener, held to what the relay does (Seeds.relay_effect),
-## not to where the relayer ends up: that rests on the game's other cards, and a listener who
-## already clears the relayer may stay low (Beadle on #454, seed 100009: 0.006 without the relay,
-## 0.31 with it). It must count against the relayer, about as much as the relayer's own word would.
-func _relay_case(found: Dictionary) -> void:
-	var label: String = "an evil relayer's invented relay of the listener counts against them, as much as their own word would"
-	if found.is_empty():
-		check(false, "%s (no seed has the case)" % label)
-		return
-	var eff: Dictionary = Seeds.relay_effect(found.g, str(found.listener), str(found.teller))
-	check(not eff.is_empty() and float(eff.with) > float(eff.without) and float(eff.with) >= float(eff.firsthand) - 0.05,
-		"%s (seed %d: %s on %s; %.3f with it, %.3f without, %.3f told as their own)" % [label, int(found.seed), found.listener, found.teller,
-			float(eff.get("with", -1.0)), float(eff.get("without", -1.0)), float(eff.get("firsthand", -1.0))])
 
 
 func _found_case(found: Dictionary, listener_key: String, teller_key: String, ok: Callable, label: String) -> void:

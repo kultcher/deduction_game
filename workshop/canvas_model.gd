@@ -16,6 +16,15 @@ var serial = 0
 ## Whether answers can say "registered as Marked" (premises step 2: the live editor says
 ## Marked with a secret premise instead, and turns this off).
 var marked_answers: bool = true
+
+## Whether Marked is on the case's script (the view's world options; unknown keeps it), so a
+## "registered as Marked" answer is never offered when it can't be true (reading_interpretation.md §2.1).
+func marked_possible() -> bool:
+	return "marked" in view.get("world_options", {}).get("modifiers", ["marked"])
+
+## Marked answers, where the board allows them and the script has Marked.
+func marked_answers_open() -> bool:
+	return marked_answers and marked_possible()
 ## Claim cards the last compile() brought in by itself (premises step 2).
 var auto_cards: Array = []
 ## Whether two contradicting cards stay separate, joined by a "contradicts" link (the live
@@ -464,11 +473,13 @@ func add_modifier(id: String, mode: String, attribution: String = "") -> String:
 			return "Say which side of the relay you're challenging: the Medium's passing-on (a lie or a failed gift) or the dead person's original reading."
 	else:
 		attribution = ""
-	if report.kind != "report" or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
+	if report.kind != "report" or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired", "delusional"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
 	# Mistaken needs a cause the script allows that could have fooled this gift (Nov 18).
 	if RC.canonical(mode) == RC.HONEST and not RC.honest_allowed(view, report, attribution):
 		return "Nothing in this town could have fooled that gift."
+	if mode == "delusional" and not RC.delusion_possible(view):
+		return "No one in this town can be Delusional."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
 			node.mode = mode
@@ -538,7 +549,7 @@ func _auto_citations(result: Dictionary) -> void:
 					if not Graph.valid_citation(view, probe, person, night).is_empty():
 						chosen = card.id
 						break
-				elif reason == "secret" and card.get("kind", "") == "secret_claim" and card.get("subject", "") == person:
+				elif reason == "secret" and card.get("kind", "") == "secret_claim" and card.get("subject", "") == person and str(card.get("data", {}).get("secret_kind", "")) == "unrequited":
 					var applies: Dictionary = card.get("applies", {})
 					if night >= int(applies.get("from", 0)) and night <= int(applies.get("through", 99)):
 						chosen = card.id
@@ -911,7 +922,7 @@ func premise_offered(type: String, target: String) -> bool:
 
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
 	"demon": "is the Demon",
-	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "turned": "was turned by the Revenant's curse",
+	"notdemon": "is not the Demon", "secret_mod": "carries a hidden burden", "turned": "was turned by the Revenant's curse",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
 	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading", "inconsistent": "has readings that don't fit together"}
 
@@ -926,7 +937,7 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
-		var mode_title: String = {"misled": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading"}[node.mode]
+		var mode_title: String = {"misled": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading", "delusional": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + ": " + preload("res://workshop/reading_challenges.gd").DELUSION_ALL_ALONG_LABEL.to_lower()}[node.mode]
 		return mode_title + (" · " + RELAY_SIDE_TEXT.get(node.attribution, "") if node.has("attribution") else "")
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
@@ -1125,7 +1136,7 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 				else:
 					answer["in_play_role"] = value
 		"reg":
-			if value != "marked" or marked_answers:
+			if value != "marked" or marked_answers_open():
 				answer["registration"] = value
 		"pick":
 			if (role in ["dowser", "magistrate"] or is_parity_surv) and not marked_answers:

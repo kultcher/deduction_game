@@ -30,7 +30,9 @@ func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	# A NO rules out the Demon and the Red Herring (a Marked soul may still read NO).
 	var pair: String = _names(d.get("pair", []), nm)
 	if d.get("yes", false):
-		return "%s: Demon? YES\n(Marked or Red Herring?)" % pair
+		# Marked only when it's on the script (reading_interpretation.md §2.1).
+		var marked_possible: bool = script_secrets.is_empty() or "marked" in script_secrets
+		return "%s: Demon? YES\n(%s?)" % [pair, "Marked or Red Herring" if marked_possible else "Red Herring"]
 	return "%s: Demon? NO" % pair
 
 
@@ -58,12 +60,21 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 	return {}
 
 
-## The Seer's two picks, by Insight. A sharp Seer usually re-checks their top suspect and
-## pairs them with someone they haven't looked at yet; once two readings have said "yes"
-## with that suspect in them, it's settled as far as sight can tell, so they spend their
-## sight on two fresh people instead.
+## The Seer's two picks, by Insight (reading_interpretation.md §2.1, Michael, Nov 21).
+## - It looks for the Demon, not just for evil: anyone its own "no" readings cleared of being
+##   the Demon goes to the back, however evil it thinks them (Lantern's interim stand-in, Nov 21,
+##   until the town holds a belief about who is the Demon).
+## - After a "yes" not yet narrowed down, with its top suspect one of the two (Michael, Nov 22),
+##   a focused Seer re-checks that suspect beside either
+##   someone fresh (its likeliest Demon among those it hasn't looked at) or someone it trusts
+##   as good (someone it has cleared, or failing that its least suspected), on a coin flip
+##   (Michael, Nov 21).
+## - Otherwise a sharp Seer re-checks its top suspect and pairs them with someone it hasn't
+##   looked at yet; once two readings have said "yes" with that suspect in them, it's settled
+##   as far as sight can tell, so it spends its sight on two fresh people instead.
 func pick_targets(w, n, mind):
-	var ranked: Array = mind.ranked_suspects(w, n)
+	var by_susp: Array = mind.ranked_suspects(w, n)
+	var ranked: Array = by_susp.filter(func(m): return not n.cleared.has(m.id)) + by_susp.filter(func(m): return n.cleared.has(m.id))
 	var asked: Array = mind.requested_targets(w, n, "seer")
 	if not asked.is_empty():
 		var pair_req: Array = asked.slice(0, 2)
@@ -90,6 +101,7 @@ func pick_targets(w, n, mind):
 				if e["data"]["yes"]:
 					yes_on[pid] = yes_on.get(pid, 0) + 1
 	var fresh: Array = ranked.filter(func(m): return not checked.has(m.id))
+	var narrow: Array = _narrowing_pick(w, n, ranked, seen_pairs, yes_on, checked)
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
@@ -107,6 +119,9 @@ func pick_targets(w, n, mind):
 		if pair.is_empty():
 			pair = shuf.slice(0, 2)
 		why = "a scattered look (insight %.2f): two unchecked together" % ins
+	elif not narrow.is_empty():
+		pair = narrow.slice(0, 2)
+		why = "narrows a \"yes\": %s again, beside %s, %s" % [narrow[0].id, narrow[1].id, narrow[2]]
 	elif ins >= Tuning.Roles.SEER.sharp_insight_threshold and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
 		pair = w.shuffled(fresh).slice(0, 2)
 		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id
@@ -128,6 +143,43 @@ func pick_targets(w, n, mind):
 	var ids: Array = pair.map(func(m): return m.id)
 	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
 	return ids
+
+
+## The latest "yes" not yet narrowed down: neither of the two cleared since, neither in a
+## second "yes". Returns [its top suspect, a partner, why], or [] if there's none or its top
+## suspect isn't one of the two. The partner, on a coin flip (Michael, Nov 21), is someone
+## fresh (its likeliest Demon among those unchecked) or someone it trusts as good (one its own
+## readings cleared, else its least suspected), avoiding a pair it has already looked at.
+func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary, checked: Dictionary = {}) -> Array:
+	var open: Array = []
+	for i in range(n.info_log.size() - 1, -1, -1):
+		var e: Dictionary = n.info_log[i]
+		if e.get("role", "") != "seer" or not e["data"].get("yes", false):
+			continue
+		var p: Array = e["data"]["pair"]
+		if p.any(func(id): return n.cleared.has(id) or yes_on.get(id, 0) >= 2):
+			continue
+		open = p
+		break
+	if open.is_empty():
+		return []
+	# Only when its top suspect is in that "yes" (Michael, Nov 22): otherwise it reads its top
+	# suspect, rather than spending a night on the other of the two.
+	if ranked.is_empty() or not (ranked[0].id in open):
+		return []
+	var target = ranked[0]
+	var fresh: Array = ranked.filter(func(m): return not (m.id in open) and not checked.has(m.id))
+	if not fresh.is_empty() and w.decision_roll(n, "seer_confirm_beside_fresh", 0.5, {"fresh": fresh.size()}):
+		return [target, fresh[0], "someone fresh"]
+	var trusted: Array = ranked.filter(func(m): return not (m.id in open))
+	trusted.reverse()
+	var cleared_first: Array = trusted.filter(func(m): return n.cleared.has(m.id)) + trusted.filter(func(m): return not n.cleared.has(m.id))
+	for m in cleared_first:
+		var key: Array = [target.id, m.id]
+		key.sort()
+		if not seen_pairs.has("%s:%s" % [key[0], key[1]]):
+			return [target, m, "whom it trusts"]
+	return []
 
 
 func score_gift_request(_w, n, targets: Array, top: String, parts: Dictionary, _mind) -> void:

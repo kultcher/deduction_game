@@ -189,7 +189,7 @@ func setup_counts():
 	var main = load("res://ui/main.tscn").instantiate()
 	main.show_script_at_start = false
 	root.add_child(main)
-	var expected = {7: "Good: 5 gifted townsfolk / 1 secret · Evil: 1 minion / 1 demon", 10: "Good: 7 gifted townsfolk / 1 secret · Evil: 2 minions / 1 demon"}
+	var expected = {7: "Good: 5 gifted townsfolk / 1 burden · Evil: 1 minion / 1 demon", 10: "Good: 7 gifted townsfolk / 1 burden · Evil: 2 minions / 1 demon"}
 	for count in [7, 10]:
 		main.g = fresh(count)
 		var board = JSON.stringify(main.g.board)

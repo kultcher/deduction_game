@@ -34,7 +34,7 @@ func _game(sd: int = 692, count: int = 7):
 func _run() -> void:
 	_test_setup_receipts_and_board_cleanup()
 	_test_immutable_filing_on_new_haunt()
-	_test_bereavement_dated_traits()
+	# (The Lovers' bereavement trait check retired with the Lovers: burdens rework.)
 	_test_profile_node_person_swap_and_restore()
 	_test_remove_profile_info_clears_contradiction_prior_links()
 	await _test_live_editor_dropdown_and_shortcuts()
@@ -86,25 +86,6 @@ func _test_immutable_filing_on_new_haunt() -> void:
 	_check(prepared.ready, "shared evaluator prepares all profile receipt kinds without fallback")
 	_check(Shared.endorsed_facts(snap2, snap2.root).size() == 4, "synthetic draft root -1 never collides with profile receipt board_map")
 	_check(WorkshopCanvas.status(g, compiled2).ready, "WorkshopCanvas.status succeeds across audience with first profile receipt included")
-
-func _test_bereavement_dated_traits() -> void:
-	var g = _game(692, 7)
-	var a = g.w.npcs[0]
-	var b = g.w.npcs[1]
-	a.secret_mod = "lovers"
-	b.secret_mod = "lovers"
-	a.lover = b.id
-	b.lover = a.id
-	a.traits["privacy"] = 0.2
-	a.revealed_traits["privacy"] = "low"
-	var r1: int = GameConversation._record_trait_receipt(g, a, "privacy", "low", "player")
-	b.alive = false
-	g.w.day = 2
-	g.w._bereave(b)
-	GameConversation.sync_bereaved_traits(g, a, "player")
-	var traits_for_a: Array = GameBoard.profile_receipts_for(g, a.id, "personality")
-	_check(r1 < 0 and traits_for_a.size() == 2, "bereavement adds a new dated trait receipt rather than overwriting the historical one")
-	_check(traits_for_a[0].tier == "low" and not traits_for_a[0].withdrawn and traits_for_a[1].tier == "high" and traits_for_a[1].withdrawn, "both pre-bereavement and post-bereavement trait tiers are preserved with dates")
 
 func _test_profile_node_person_swap_and_restore() -> void:
 	var g = _game(692, 7)

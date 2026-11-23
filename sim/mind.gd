@@ -800,9 +800,6 @@ static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}
 static func _gift_outing(w, n, night: int) -> bool:
 	return MindPress._gift_outing(w, n, night)
 
-static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
-	return MindPress.sleepwalk_excuse(w, n, where)
-
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	return MindPress._answer_pressed_night(w, n, night)
 

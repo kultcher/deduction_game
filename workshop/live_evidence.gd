@@ -24,7 +24,7 @@ const FIELDS = ["assigned", "block", "loc", "locs", "home", "night", "role", "se
 	"nominee", "by", "yes", "no", "player_yes", "count", "threshold", "outcome", "alive_before", "owner", "material", "crime_night", "scene", "scene_block", "victim", "ward", "guard_claim", "save_claim", "watch_claim", "target",
 	"work_phases", "occupation", "trait", "tier", "withdrawn", "bond_kind", "tavern_gossip", "workshop_usable", "pressable",
 	"trace_family", "trace_subtype", "trace_slot", "trace_scene_count", "scene_trace_count", "trace_key", "trace_home_block", "trace_evening_block", "victim_block", "item_label", "walked", "good", "forgot", "watches", "crowd_unseen", "partner",
-	"excuse", "excuses_night", "duty_role"]
+	"excuse", "excuses_night", "duty_role", "beloved", "spell_broken"]
 const KINDS = ["home", "work", "haunt", "trait", "bond", "info", "claim", "town_hall", "sighting", "conversation", "vigil", "alibi",
 	"trace", "totem", "death", "execution", "quiet", "vote", "martyr", "curse",
 	"curse_lifted", "silenced", "knell", "secret", "hint", "refusal", "opinion", "accusation", "case", "ward", "scorched_sigil", "watch_log"]
@@ -62,7 +62,7 @@ static func normalize(input: Dictionary) -> Dictionary:
 		"arguments": [], "root": input.get("root", 0), "listener": input.get("listener", {}).duplicate(true),
 		"issues": input.get("issues", []).duplicate(true), "assessment_ready": false,
 		"watched": input.get("watched", []).duplicate(true), "regular_haunts": input.get("regular_haunts", {}).duplicate(true),
-		"own_home": input.get("own_home", {}).duplicate(true)}
+		"own_home": input.get("own_home", {}).duplicate(true), "own_burden": input.get("own_burden", {}).duplicate(true)}
 	var by_id = {}
 	for receipt in input.get("receipts", []):
 		var card = normalize_card(receipt.card)
@@ -102,7 +102,9 @@ static func normalize(input: Dictionary) -> Dictionary:
 
 static func normalize_card(card: Dictionary) -> Dictionary:
 	var kind: String = card.get("kind", "unknown")
-	var observed = stamp(card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
+	# A burden fact carries when it was first said (burdens prototype: a relay keeps the
+	# holder's own telling), which dates the claim for the judge (RoleConstraints).
+	var observed = stamp(card.observed_at if card.get("observed_at") is Dictionary else card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
 	var content = {"kind": kind, "source": card.get("source", ""),
 		"subjects": card.get("subject", []).duplicate(), "observed_at": observed}
 	if kind == "info" and card.get("anonymous", false):
@@ -245,7 +247,13 @@ static func report_data(role: String, data: Dictionary) -> Dictionary:
 
 static func stamp(value: Dictionary) -> Dictionary:
 	var phase = value.get("phase", -1)
-	return {"day": int(value.get("day", -1)), "phase": ["morning", "afternoon", "evening", "night"][phase] if phase is int and phase >= 0 and phase < 4 else "unknown"}
+	var names: Array = ["morning", "afternoon", "evening", "night"]
+	if phase is String:
+		# A named phase (burden facts, burdens prototype); "day" with no finer phase reads as
+		# the afternoon.
+		var p: String = "afternoon" if phase == "day" else phase
+		return {"day": int(value.get("day", -1)), "phase": p if p in names else "unknown"}
+	return {"day": int(value.get("day", -1)), "phase": names[phase] if phase is int and phase >= 0 and phase < 4 else "unknown"}
 
 static func canonical(value):
 	if value is Dictionary:

@@ -24,6 +24,7 @@ var alive = true
 var death_day = -1
 var death_cause = ""     # "demon" | "executed"
 var poisoned = false
+var omen_poisoned_day: int = -1  # a fallen Ill-Omened's poison: the hanging day, -1 when clear (burdens prototype)
 
 var loc = ""             # current location id, "home", or "night:<block>"
 var working = false      # at work this phase
@@ -38,8 +39,7 @@ var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<blo
 var friends: Array = []  # seeds for npc_trust
 var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
-var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker
-var lover = ""           # Secret Lovers: the other lover's id
+var secret_mod = ""      # the burden on top of their gift: delusional | marked (burdens prototype)
 var withdrawn_since = ""   # the Lover whose death left them withdrawn (visible in the profile)
 
 ## The player relationship beyond trust.
@@ -120,6 +120,8 @@ var told_readings = 0        # how many info_log entries have been told to the p
 ## Player knowledge about them.
 var revealed_traits = {}     # trait -> tier string
 var secret_known = false     # the player learned their secret from them
+var beloved: String = ""  # Unrequited (burdens prototype): the one they love, who doesn't know
+var burden_self_known: bool = false  # the holder knows its own burden (Marked); false for a hidden one (Delusional)
 var secret_spread = false    # the player used it against them
 var secret_kept_nights = 0   # nights the player has kept it so far (the rapport bonus shrinks)
 
@@ -165,7 +167,7 @@ var red_herring = ""
 
 ## Their gift does nothing real tonight/today: poisoned, or Delusional.
 func gift_broken() -> bool:
-	return poisoned or secret_mod == "delusional"
+	return poisoned or omen_poisoned_day >= 0 or secret_mod == "delusional"
 
 func is_evil() -> bool:
 	return alignment == "evil"

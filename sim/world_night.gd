@@ -17,6 +17,7 @@ func resolve_night() -> void:
 		n.busy_with = ""
 		n.pressure = n.pressure * Tuning.Setup.NIGHT_PRESSURE_DECAY
 	Mind.end_of_day_trust(self)
+	load("res://sim/burdens.gd").lift_omen(self)  # a fallen Ill-Omened's poison (burdens prototype)
 
 	# The Sexton's bell (start of night, once per case from night 1): suppresses all minions
 	var sexton = living_with_role("sexton")
@@ -259,20 +260,11 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	var sx_walk = living_with_role("sexton")
 	if sx_walk and sexton_tolled_night == day:
 		_walk(sx_walk, sx_walk.home_block, "tolling the church bell through every parish", C.BLOCKS.keys())
-	# The Secret Lovers meet somewhere new each night; the Sleepwalker wanders unknowing.
-	var met = {}
+	# The Unrequited visits the beloved's door, or their grave once they're gone (burdens prototype).
 	for n in living():
-		if n.secret_mod == "lovers" and n.lover != "" and not met.has(n.id) and by_id[n.lover].alive and not n.out_last_night and not by_id[n.lover].out_last_night:
-			var spot: String = pick(C.BLOCKS.keys())
-			for x in [n, by_id[n.lover]]:
-				x.secret["dest"] = spot
-				_walk(x, spot, "secret: meeting %s" % by_id[x.lover].name)
-				met[x.id] = true
-		elif n.secret_mod == "sleepwalker" and not n.out_last_night and chance(Tuning.Setup.SLEEPWALK_CHANCE):
-			_walk(n, pick(C.BLOCKS.keys()), "sleepwalking (doesn't know it)")
-	for n in living_good():
-		if not n.secret.is_empty() and n.secret.get("kind", "") != "lover" and not n.out_last_night and chance(Tuning.Setup.FLAVOR_SECRET_WALK_CHANCE):
-			_walk(n, n.secret["dest"], "secret: " + n.secret["kind"])
+		var visit: String = load("res://sim/burdens.gd").unrequited_visit(self, n)
+		if visit != "":
+			_walk(n, visit, "secret: unrequited (%s)" % ("the beloved's grave" if visit == "hill" and not by_id[n.beloved].alive else "the beloved's door"))
 	for n in living():
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block
 	dlog.add("night_movement", "world", "", {"walkers": night_walkers})
@@ -290,8 +282,8 @@ func _night_sightings() -> void:
 		var wn = by_id[wk["id"]]
 		var path: Array = wk.get("path", [wk["block"]])
 		for o in living():
-			if o == wn or o.secret_mod == "sleepwalker":
-				continue  # (a sleepwalker sees nothing; they're asleep)
+			if o == wn:
+				continue
 			var saw = false
 			var where = ""
 			if o.out_last_night and o.night_block in path:
@@ -313,7 +305,7 @@ func _night_sightings() -> void:
 	# Neighbours at home sometimes notice each other going in for the night and not coming
 	# out again: a (true, if weak) alibi for those who stayed in.
 	for o in living():
-		if o.out_last_night or o.secret_mod == "sleepwalker":
+		if o.out_last_night:
 			continue
 		for m in living():
 			if m != o and m.home_block == o.home_block and not m.out_last_night and chance(Tuning.Setup.NIGHT_NEIGHBOUR_ALIBI_CHANCE):
@@ -530,7 +522,6 @@ func _kill(v) -> void:
 	v.death_day = day
 	v.death_cause = "demon"
 	v.loc = "dead"
-	_bereave(v)
 	deaths_last_night.append(v.id)
 	var killer = night_killer()
 	var brute_killed: bool = killer.role == "brute"
@@ -597,7 +588,7 @@ func _add_info(n, entry: Dictionary, quiet: bool = false) -> void:
 	if not entry.has("true"):
 		entry["true"] = true
 	if n.gift_broken() and entry.get("why", "") == "":
-		entry["why"] = ("poisoned" if n.poisoned else "delusional")
+		entry["why"] = ("poisoned" if (n.poisoned or n.omen_poisoned_day >= 0) else "delusional")
 	if not entry["true"]:
 		entry["why"] = false_reading_reason(entry)
 	if phase != C.NIGHT:
@@ -653,7 +644,7 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null, c
 	if entry.is_empty():
 		return
 	if broken:
-		entry["why"] = "%s" % ("poisoned" if n.poisoned else "delusional")
+		entry["why"] = "%s" % ("poisoned" if (n.poisoned or n.omen_poisoned_day >= 0) else "delusional")
 	_add_info(n, entry)
 
 static func _secret_phrase(k: String) -> String:
@@ -662,10 +653,11 @@ static func _secret_phrase(k: String) -> String:
 			return "Delusional, their gift a fancy"
 		"marked":
 			return "Marked, and may read as evil"
-		"lovers":
-			return "one of the Secret Lovers"
-		"sleepwalker":
-			return "a Sleepwalker"
+		# Michael's (Nov 21, docs/design/burdens_wording.md).
+		"unrequited":
+			return "Unrequited, and walks out at night for love"
+		"ill_omened":
+			return "Ill-Omened, and their hanging would bring a cost"
 	return k
 
 ## Whom someone trusts and suspects most. Evil keep their team close and point at their

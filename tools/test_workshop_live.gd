@@ -54,8 +54,8 @@ func _live(seed_value: int, size: int) -> void:
 	# Hidden-role mutations must not change the public snapshot or this listener's mind.
 	for person in g.w.npcs:
 		person.poisoned = not person.poisoned
-		person.secret_mod = "delusional"
-		if person != n: # Their own gift is permitted private knowledge, not referee data.
+		if person != n: # Their own gift and known burden are permitted private knowledge, not referee data.
+			person.secret_mod = "delusional"
 			person.role = "poisoner"
 		person.intel["secret"] = "HIDDEN_INTEL"
 	g.w.demon_id = other.id

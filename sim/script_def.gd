@@ -17,7 +17,11 @@ const MAX_DEMONS = 4
 const DEFAULT_NAME = "Default"
 const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
-const DEFAULT_SECRETS = ["delusional", "marked", "lovers", "sleepwalker"]
+## Burdens (Michael, Nov 20-22; docs/design/burdens.md): Delusional (hidden), Marked,
+## Unrequited and Ill-Omened (known); the Lovers and Sleepwalker 1.0 are retired.
+const DEFAULT_SECRETS = ["delusional", "marked", "unrequited", "ill_omened"]
+## Burdens whose holder doesn't know they carry it. At most one per script.
+const HIDDEN_SECRETS = ["delusional"]
 const USER_DIR = "user://scripts"
 
 ## Soft coverage the editor suggests: at least this many town roles with the tag.
@@ -61,10 +65,18 @@ const DEAL_RULES = [
 const JINXES = []
 ## Deal-level placement of the one secret (World._assign_secret_mod). `except` lists the
 ## secrets the rule skips; `not_on_flag` names a RoleDef flag the holder's role must not have.
+## Burdens whose claim the design forces at a trigger (Michael, Nov 22): a real holder always
+## claims then, so one who let the trigger pass in silence can't be a real holder when they
+## claim it later (RoleConstraints.missed_forced_trigger). "nominated": the Ill-Omened, who
+## always cites the omen when nominated (Burdens.omen_at_nomination), unless silenced.
+const FORCED_CLAIM_TRIGGERS = {"ill_omened": "nominated"}
+
 const PLACEMENT_RULES = [
 	{"except": ["lovers"], "not_on_flag": "cannot_hold_solo_secret",
 		"why": "the Rumormonger's gift can't name its own holder, so it never holds a secret alone"},
-	{"only": ["lovers", "sleepwalker"], "not_on_flag": "night_walk",
+	# Unrequited (Michael, Nov 21): a holder whose gift already takes them out at night (a
+	# Lamplighter, a Warden on duty) never visits the beloved (Beadle), so it isn't dealt there.
+	{"only": ["lovers", "sleepwalker", "unrequited"], "not_on_flag": "night_walk",
 		"why": "these send their holder out at night, so never on a role already out at night"},
 ]
 const TAG_NAMES = {
@@ -85,6 +97,15 @@ var town: Array = []
 var minions: Array = []
 var demons: Array = []
 var secrets: Array = []
+## The script's hidden burden (one of HIDDEN_SECRETS on its list), or "".
+var hidden_secret: String:
+	get:
+		for k in secrets:
+			if k in HIDDEN_SECRETS:
+				return k
+		return ""
+## How many burdens are in play (burdens.md: one per script at both town sizes, for now).
+var secrets_in_play: int = 1
 ## Custom games / debug: roles and secrets that must be dealt (they must be on the script).
 var forced: Array = []
 
@@ -212,7 +233,7 @@ func check(count: int = 0) -> Dictionary:
 	if minions.size() != MINION_SIZE:
 		warnings.append("Scripts usually list %d minions (this one has %d)." % [MINION_SIZE, minions.size()])
 	if secrets.size() != SECRET_SIZE:
-		warnings.append("Scripts usually list %d secrets (this one has %d)." % [SECRET_SIZE, secrets.size()])
+		warnings.append("Scripts usually list %d burdens (this one has %d)." % [SECRET_SIZE, secrets.size()])
 	for tag in SUGGESTED_TAGS:
 		var have: int = town.filter(func(r): return tag in tags_of(r)).size()
 		if have < SUGGESTED_TAGS[tag]:
@@ -288,7 +309,7 @@ func ok(count: int = 0) -> bool:
 
 ## One line for the New Case screen: what may be in play.
 func summary() -> String:
-	return "%s · %d town · %d minion%s · %d demon%s · %d secret%s%s" % [
+	return "%s · %d town · %d minion%s · %d demon%s · %d burden%s%s" % [
 		mode(), town.size(), minions.size(), "" if minions.size() == 1 else "s",
 		demons.size(), "" if demons.size() == 1 else "s", secrets.size(), "" if secrets.size() == 1 else "s",
 		(" · %d forced" % forced.size()) if not forced.is_empty() else ""]
@@ -308,7 +329,7 @@ func to_dict() -> Dictionary:
 
 ## Ids that once were on the roster and have been removed. A saved script that still lists
 ## one loads without it, so an old custom script keeps working (the Muddler, Nov 20).
-const RETIRED_IDS = ["muddler"]
+const RETIRED_IDS = ["muddler", "lovers", "sleepwalker"]
 
 static func from_dict(d: Dictionary):
 	var s = new()

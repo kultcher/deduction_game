@@ -61,6 +61,18 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			_public_disclosure(w, n, lines, facts)
 		elif n.claim_public:
 			_public_disclosure(w, n, lines, facts)  # already out: share any new readings
+		# A known burden (burdens prototype): a counter-claim, a "public" holder's first-meeting
+		# announcement, or evil's claim after days of silence.
+		var bc: Dictionary = Burdens.counterclaim(w, n)
+		if bc.is_empty():
+			bc = Burdens.spell_breaks(w, n)  # Unrequited: suspicion of the beloved breaks the spell
+		if bc.is_empty() and w.meeting.get("accusations", []).any(func(a): return str(a.get("target", "")) == n.id):
+			bc = Burdens.omen_early_warning(w, n)  # Ill-Omened: the town is turning on them
+		if bc.is_empty():
+			bc = Burdens.evil_silence_claim(w, n) if n.is_evil() else Burdens.testimony_claim(w, n)
+		if not bc.is_empty():
+			lines.append(bc["line"])
+			facts.append(bc["fact"])
 		var acc = _public_accusation(w, n, lines, facts)
 		var reasoned_acc: int = 0
 		if acc != null:
@@ -235,7 +247,6 @@ static func block_safety(w, d) -> float:
 ## A volunteer never invents a cover or reveals an undisclosed walk. Reuse the
 ## known account and walking-gift/reading constraints used by private followups.
 static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
-	if n.secret_mod == "sleepwalker": return false
 	if n.is_evil() and Evil.is_teammate(w, n, b.who): return false
 	var pre_def = C.role_def(n.claimed_role)
 	if pre_def != null:
@@ -401,6 +412,7 @@ static func _change_bluff(w, n, old: String, new: String) -> void:
 		s.info_log = s.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))
 		s.applied_info = s.info_log.size()
 		s.role = new if C.ROLES.has(new) and C.ROLES[new]["align"] == "good" else ""
+	Evil.backfill_start_reading(w, n, new)
 
 ## A Minion that hears a claim may take that gift as its own bluff: a deliberate double
 ## claim (Michael, Nov 19). Never the Demon or a Scion, never once it has claimed, nor if a
@@ -411,6 +423,14 @@ static func choose_double_claim(w, l, rival, role: String) -> bool:
 	if not l.is_evil() or not C.is_minion(l.role) or l.turned or l.id == w.demon_id or l.role == "scion" or l.claim_public or l.claimed_role != "" or l.silenced:
 		return false
 	if role == "" or C.ROLES.get(role, {}).get("kind", "") == "evil":
+		return false
+	# Never against a teammate's claim (Michael's playtest, Nov 22): the double claim is there to
+	# discredit a good claimant; against an ally it only hangs one of them.
+	if Evil.is_teammate(w, l, rival.id):
+		return false
+	# Nor once it has told anyone, even in private, that it holds another gift (playtest 51795:
+	# the Poisoner had told Lian it was the Registrar).
+	if w.npcs.any(func(o): return o != l and not (str(o.known_claims.get(l.id, {}).get("role", "")) in ["", role])):
 		return false
 	if l.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
 		return false
@@ -766,7 +786,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 		var PsychRole = preload("res://sim/roles/psychologist.gd")
 		var shared_this_turn: Array = []
 		for e in n.info_log:
-			if e["shared"] or e.get("disowned", false):
+			if e["shared"] or e.get("disowned", false) or Burdens.withholds_for_beloved(w, n, e):
 				continue
 			e["shared"] = true
 			var weights = {}
@@ -1222,6 +1242,19 @@ static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
 		return ev
 	return null
 
+## The push to hang a known Ill-Omened waits, as evil's scapegoat nominations do, until the
+## town is warm on them (Evil.omen_push_heat: the town's talk, and evil's claim-backed frames,
+## not its bare accusations; less the cool-off), at the same confidence-scaled bar; never on
+## day 1.
+static func _omen_push_ready(w, n, id: String) -> bool:
+	if w.day < 2 or not w.by_id.has(id):
+		return false
+	var ready: Dictionary = Evil.omen_push_heat(w, n, w.by_id[id])
+	if float(ready["heat"]) <= Tuning.Evil.PUBLIC_HEAT_BASE:
+		return false
+	var thr: float = Tuning.Evil.EVIL_NOMINATION_BASE_HEAT - Tuning.Evil.EVIL_NOMINATION_CONFIDENCE_SCALE * float(n.traits.get("confidence", 0.5))
+	return float(ready["score"]) >= thr
+
 static func _evil_nomination(w, n, m: Dictionary, block: String):
 	var res = _evil_nomination_choice(w, n, m, block)
 	var chosen: String = Evil.martyr_bluff_chosen(n)
@@ -1247,6 +1280,15 @@ static func _evil_nomination_choice(w, n, m: Dictionary, block: String):
 				return _evil_counter_or_pass(w, n, m, ev)
 			sc["reason"] = "Evil (good self): nominates teammate %s; %s" % [sc["nominee"], sc["reason"]]
 		return sc
+	var omen_t: String = Burdens.omen_push_target(w, n)
+	# Only once the town is already warm on the holder (Michael, Nov 22): the scapegoat
+	# readiness bar evil's own nominations use, which carries the cool-off after a failed vote.
+	if omen_t != "" and not _omen_push_ready(w, n, omen_t):
+		omen_t = ""
+	if omen_t != "" and not (omen_t in m["nominated"]) and m.get("block", "") != omen_t and evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES, 0.5, "push to hang %s, a real Ill-Omened (good self wouldn't nominate)" % omen_t):
+		var omen_s: float = Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES
+		return {"nominee": omen_t, "by": n.id, "score": omen_s,
+			"reason": "Evil: %s claims Ill-Omened and isn't one of us, so it's real; hanging them poisons every good gift for a night." % omen_t}
 	if ev == null:
 		return null
 	var blk2: String = m.get("block", "")

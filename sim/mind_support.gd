@@ -49,7 +49,7 @@ static func run(w, nominee_id: String, nominator_id: String) -> Dictionary:
 		return out
 	var d = w.by_id[nominee_id]
 	_mind().flush_beliefs(w)
-	var ctx: Dictionary = {"for_ids": [], "accused": 0, "spoken": [], "case_facts": w.meeting.get("pending", {}).get("case_facts", [])}
+	var ctx: Dictionary = {"for_ids": [], "accused": 0, "spoken": [], "nominator": nominator_id, "case_facts": w.meeting.get("pending", {}).get("case_facts", [])}
 	var queue: Array = candidates(w, d, nominator_id)
 	# Anyone holding the gift the nominee claims speaks first.
 	var first: Array = queue.filter(func(s): return _counter_claim_ready(w, s, d))
@@ -108,6 +108,14 @@ static func choose(w, s, d, ctx: Dictionary) -> Dictionary:
 		return {}
 	return pick
 
+
+## A friend of the nominee whose vote sits close to the yes line (within the close margin
+## the vote lines use), judged by a dry run of its vote before the player's is known.
+static func _doubting_friend(w, s, d, ctx: Dictionary) -> bool:
+	if not (d.id in s.friends) or s.is_evil():
+		return false
+	var margin: float = load("res://sim/mind_vote.gd").dry_margin(w, s, d.id, str(ctx.get("nominator", "")))
+	return absf(margin) < Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN
 
 static func _choose(w, s, d, ctx: Dictionary) -> Dictionary:
 	if not s.is_evil():
@@ -326,8 +334,13 @@ static func _speak(w, s, d, choice: Dictionary, ctx: Dictionary, out: Dictionary
 				facts.append(acc.fact)
 		"vibes":
 			if choice.get("side", "") == "for":
-				lines.append(_mind().say_voiced(s, "support_vibes_for", "I've known %s long enough. I can't believe them evil." % d.name, {"target": d.name}))
-				facts.append({"kind": "opinion", "subject": [d.id], "source": s.id, "stance": "for", "day": w.day, "phase": w.phase, "text": "%s speaks up for %s." % [s.name, d.name]})
+				if _doubting_friend(w, s, d, ctx):
+					# A friend close to voting yes defends them, but with doubt (Michael, Nov 22).
+					lines.append(_mind().say_voiced(s, "support_doubt_for", "I've known %s for a long time. They wouldn't be capable of something like this... would they?" % d.name, {"target": d.name}))
+					facts.append({"kind": "opinion", "subject": [d.id], "source": s.id, "stance": "for", "doubt": true, "day": w.day, "phase": w.phase, "text": "%s speaks up for %s, though with doubt." % [s.name, d.name]})
+				else:
+					lines.append(_mind().say_voiced(s, "support_vibes_for", "I've known %s long enough. I can't believe them evil." % d.name, {"target": d.name}))
+					facts.append({"kind": "opinion", "subject": [d.id], "source": s.id, "stance": "for", "day": w.day, "phase": w.phase, "text": "%s speaks up for %s." % [s.name, d.name]})
 				_stance_for(w, s, d)
 			else:
 				lines.append(_mind().say_voiced(s, "support_vibes_against", "Something about %s has never sat right with me." % d.name, {"target": d.name}))

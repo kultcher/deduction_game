@@ -20,11 +20,9 @@ class Setup:
 	}
 
 	## Rule & mechanic toggles
-	const ALLOW_NO_GIFT_DENIAL = false
 	const SHADOW_SELF = true
 	const INFO_BEFORE_KILL = true
 	const DEFENCE_MOVES = true
-	const USE_FLAVOR_SECRETS = false
 	const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.22
 
 	## Marked registration probabilities
@@ -47,7 +45,6 @@ class Setup:
 	const INITIAL_TRUST_JITTER = 0.05
 	const INITIAL_TRUST_RIVAL = -0.25
 	const INITIAL_TRUST_FRIEND = 0.25
-	const INITIAL_TRUST_LOVER = 0.9
 
 	## Initial NPC-to-Player trust prior
 	# Starting rapport no longer depends on Privacy (Oct 30): the old mean at privacy 0.5.
@@ -75,8 +72,6 @@ class Setup:
 	const PRE_PHASE_CHAT_CHANCE = 0.65
 	const POST_PHASE_PAIR_MULT = 0.4
 	const SAME_BLOCK_SIGHTING_CHANCE = 0.4
-	const SLEEPWALK_CHANCE = 0.5
-	const FLAVOR_SECRET_WALK_CHANCE = 0.55
 
 	## Night sightings & crime scene traces
 	const NIGHT_SIGHTING_STREET_CHANCE = 0.5
@@ -711,6 +706,11 @@ class Meeting:
 	## a quarter it backfires, as a low-credibility yes does.
 	const PLAYER_VOTE_NO_SLOPE = 0.12
 	const PLAYER_VOTE_NO_OFFSET = -0.03
+	## Strong trust in the nominee blunts the social push to hang them (Michael, Nov 22): above
+	## this trust, the town's consensus pressure and the player's yes count for less, rising
+	## linearly to VOTE_TRUST_DAMP_MAX off at full trust. Suspicion from evidence isn't damped.
+	const VOTE_TRUST_DAMP_START = 0.75
+	const VOTE_TRUST_DAMP_MAX = 0.6
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
 	const VOTE_PREFERS_BLOCK_OFFSET = -0.4
@@ -820,6 +820,19 @@ class Evil:
 	const EVIL_CAUTION_MINION = 0.7
 	const MINION_ID_DRIFT = 0.08
 	const MINION_CAUTION_FLOOR = 0.25
+	## A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant
+	## (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the
+	## usual exposure cost. Sized so that on a close vote a Minion under about the median
+	## scrutiny votes yes, and under heavy scrutiny keeps cover.
+	const OMEN_PUSH_STAKES = 0.35
+	## The evil team knows the Ill-Omened (Michael, Nov 22; burdens prototype). A mild pull
+	## away from killing them (a Seer's claim is worth 4 to the Demon, a spent first-night
+	## gift 0), and toward making them the scapegoat.
+	const OMEN_KNOWN_KILL_PENALTY = -1.5
+	const OMEN_KNOWN_SCAPEGOAT_BONUS = 0.4
+	## The chance evil still claims a dead holder's Ill-Omened when a Rumormonger
+	## reading has shown it in play.
+	const OMEN_DEAD_BLUFF_RUMOR_CHANCE = 0.15
 	const DEMON_CAUTION_FLOOR = 0.45
 	const DEMON_CAUTION_DRIFT = 0.03
 	const HEAT_FADE = 0.75
@@ -953,6 +966,32 @@ class Evil:
 	const POISON_NOISE = 1.5
 
 
+# ---------------------------------------------------------------- 8b. Burdens (docs/design/burdens.md)
+class Burden:
+	## Marked's disclosure (Michael, Nov 20): announced at the first meeting, shared privately
+	## (the share scaling with trust), or held until nominated or named in an evil reading.
+	const MARKED_SHARE = {"public": 0.15, "private": 0.40}
+	## Private sharing: a peer-talk weight of SCALE x (trust - FLOOR), as a held secret is
+	## shared; to the player, the same expression is the chance when it tells its gift.
+	## Beadle's estimates, not yet approved.
+	const MARKED_PRIVATE_SHARE_SCALE = 3.0
+	const MARKED_PRIVATE_SHARE_FLOOR = 0.5
+	## Evil's reactive burden bluff, faced with an evil reading of it: REACTIVE, plus
+	## SILENCE_PER_DAY for each day past the first with no burden claimed, halved if a
+	## Rumormonger is publicly claimed, times (1 - caution). Beadle's estimates.
+	const BLUFF_REACTIVE = 0.5
+	const BLUFF_SILENCE_PER_DAY = 0.1
+	const BLUFF_RUMORMONGER_DAMP = 0.5
+	## Evil's unprompted claim at the meeting ("bolder with silence", Michael Q16): the public
+	## share x (SILENCE_START + SILENCE_PER_DAY x silent days) x (1 - caution). With caution
+	## about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates.
+	const SILENCE_START = 0.05
+	const SILENCE_PER_DAY = 0.3
+	## The Unrequited's night visit to the beloved's door (or grave): the chance each night,
+	## and never two nights running without one (Michael, Nov 21).
+	const UNREQUITED_VISIT_CHANCE = 0.65
+
+
 # ---------------------------------------------------------------- 9. Workshop Evaluator, Bounded Reasoner & Presentation
 class Workshop:
 	## CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`)
@@ -978,14 +1017,16 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
-	## With the Delusional secret on the script, a good NPC's own readings are this unsure:
-	## its gift might be the Delusional one and give it wrong readings without it knowing
-	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
-	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
-	const DELUSIONAL_SELF_DOUBT = 0.1
+	## With the Delusional secret on the script, a good NPC's chance, before any evidence, that
+	## it is the Delusional one and its gift says anything (shared Delusion doubt, Michael,
+	## Nov 22): one doubt for all its readings, in the judge's worlds where it holds the secret
+	## (CaseEval._own_counts), so readings that agree with each other and the town lower it for
+	## every night, and clashes raise it. Retires DELUSIONAL_SELF_DOUBT (0.1 per night). Others'
+	## readings keep the deal's own share. A burden it knows it holds rules it out.
+	const OWN_DELUSION_PRIOR = 0.07
 	## The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift
-	## failed, from the reading clashing with what else it holds, starting from the poison and
-	## Delusional self-doubt) at or above which it doubts its gift for that night
+	## failed, from the reading clashing with what else it holds, starting from the poison
+	## self-doubt and OWN_DELUSION_PRIOR) at or above which it doubts its gift for that night
 	## (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4
 	## meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings
 	## and about 1 in 20 sound ones.
@@ -1100,6 +1141,26 @@ class Workshop:
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92
+	## A claimed burden (burdens prototype; Michael, Nov 21): how much likelier an evil player is
+	## to make the claim than a real holder, by whether it answers an evil reading of them
+	## (`RoleConstraints.burden_claim_factors`). Measured (Beadle, 277 passive 10-NPC games, seeds
+	## 7000-7276, 142 dealt Marked): read evil, evil bluffed Marked in 20 of 180 chances, and all
+	## 18 holders read evil claimed. Unprompted: below zero means the deal's own share (the chance
+	## a good claimant holds that burden), which leaves an unprompted claim neutral (Michael);
+	## measured, it was about 0.08 (27 claims from 831 evil players against 56 of 142 holders).
+	const BURDEN_BLUFF_REACTIVE = 0.11
+	const BURDEN_BLUFF_UNPROMPTED = -1.0
+	## Softens the reactive ratio so a claim answering an evil reading leaves its claimant about
+	## where the reading left them (Michael, Nov 21, revised: neutral against silence): within
+	## about 2 points either side after a Seer's yes in the 7- and 10-person towns.
+	const BURDEN_REACTIVE_SOFTEN = 0.68
+	## An Unrequited claim told only after its claimant was seen out at night (and with no evil
+	## reading of them first): how much likelier an evil player is to make it than a real
+	## holder. Set by feel so the claim lands about where the sighting left them (Michael, Nov
+	## 21, provisional): in the 7-person test, seen out twice on the beloved's block, 37.6% evil
+	## with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has
+	## measured it: passive games make no Unrequited claims.
+	const BURDEN_BLUFF_UNREQUITED_SIGHTED = 0.85
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01
@@ -1169,6 +1230,9 @@ class Workshop:
 	const DOUBT_GD_GOOD_TRUST_MIN = 0.60
 	const DOUBT_ARG_MISLED_SCALE = 0.8
 	const DOUBT_ARG_UNRELIABLE_SCALE = 0.5
+	## An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped
+	## at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared
+	## Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3.
 	const DOUBT_ARG_DELUSIONAL_SCALE = 0.7
 	const DOUBT_ARG_CAP = 0.9
 	const DOUBT_CHALLENGE_LYING_MIN_AGR = 0.6

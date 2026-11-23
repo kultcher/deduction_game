@@ -19,6 +19,14 @@ const HONEST = "impaired"
 ## whatever comes later. The UI reads these, so the wording changes in one place.
 const HONEST_LABEL = "Mistaken"
 const HONEST_TIP = "The reading was wrong, but honestly told: something fooled the gift."
+## The Mistaken call's two causes (Michael, Nov 22): that night's reading alone (poison, a
+## Marked soul, a Red Herring), or a Delusional gift, which counts against all of the
+## reader's readings. The labels are Michael's (Nov 22: "Mistaken that night", which covers
+## poison, a Red Herring and Marked, and "Delusional all along"); the tips are drafts.
+const NIGHT_ONLY_LABEL = "Mistaken that night"
+const NIGHT_ONLY_TIP = "Something fooled the gift that night only: poison, or a misleading registration."
+const DELUSION_ALL_ALONG_LABEL = "Delusional all along"
+const DELUSION_ALL_ALONG_TIP = "Their gift has never worked: every reading of theirs in this case is doubted."
 
 static func canonical(mode) -> String:
 	return HONEST if str(mode) == "misled" else str(mode)
@@ -33,7 +41,9 @@ const HONEST_CAUSES = ["poison", "delusion", "red_herring", "marked"]
 ## among its secrets, a Red Herring with a town gift that registers one (the Seer).
 static func script_honest_causes(minions: Array, secrets: Array, town: Array) -> Array:
 	var out: Array = []
-	if minions.is_empty() or "poisoner" in minions:
+	# An Ill-Omened hanging poisons every good gift for a night and a day (burdens rework,
+	# Michael, Nov 21), so poison is an honest cause on its scripts even with no Poisoner.
+	if minions.is_empty() or "poisoner" in minions or "ill_omened" in secrets:
 		out.append("poison")
 	if "delusional" in secrets:
 		out.append("delusion")
@@ -67,7 +77,9 @@ static func cause_reaches(cause: String, card: Dictionary, transmission: bool = 
 	if rdef == null:
 		return false
 	if cause == "red_herring":
-		return rdef.red_herring_registers
+		# The Red Herring reads falsely as the Demon, so it explains only a reading that points
+		# at someone (a Seer's "yes"), never one that clears them (docs/design/reading_interpretation.md §2.1).
+		return rdef.red_herring_registers and not rdef.implicated(card.get("data", {})).is_empty()
 	if cause == "marked":
 		var data: Dictionary = card.get("data", {})
 		return rdef.marked_registers and (not rdef.implicated(data).is_empty() or rdef.clears(data).is_empty())
@@ -84,12 +96,13 @@ static func poison_reaches(card: Dictionary, transmission: bool = false) -> bool
 
 ## Whether a Mistaken call on this reading is allowed: some cause the case's world allows
 ## reaches it. The view knows the script's minions and secrets; a Red Herring is judged by
-## the reading itself, since a Seer's reading means a Seer is on the script.
+## the reading itself, since a Seer's reading means a Seer is on the script (and it reaches
+## only a "yes").
 static func honest_allowed(view: Dictionary, card: Dictionary, attribution: String = "") -> bool:
 	var transmission: bool = card.has("relay_source") and attribution == "transmission"
 	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
 	var causes: Array = ["red_herring"]
-	if poisoner_possible(view):
+	if poisoner_possible(view) or "ill_omened" in mods:
 		causes.append("poison")
 	if "delusional" in mods:
 		causes.append("delusion")
@@ -129,10 +142,28 @@ const RELAY_ATTRIBUTIONS = ["transmission", "original"]
 ## about the reading itself, so they belong to the original.
 const TRANSMISSION_MODES = ["lying", "impaired", "delusional"]
 
+## Whether the script can deal Delusional (the view's world options; unknown keeps it).
+static func delusion_possible(view: Dictionary) -> bool:
+	return "delusional" in view.get("world_options", {}).get("modifiers", ["delusional"])
+
+## The readings a "Delusional all along" call on `id` covers: every reading in `cards` the
+## same reader told themselves (relays aside), the called one first.
+static func reader_group(cards: Array, id: String, teller: String) -> Array:
+	var out: Array = [id]
+	for c in cards:
+		if c.get("kind", "") != "report" or c.id == id or c.get("testimony_only", false):
+			continue
+		if str(c.get("source", "")) == teller and not c.has("relay_source"):
+			out.append(c.id)
+	return out
+
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
-	if value is Dictionary and value.get("mode") == "delusional" and not value.has("group"):
-		return false  # "they're Delusional" explains a source's readings together
+	# "Delusional all along" (Michael, Nov 22): on one reading it covers all of that reader's
+	# readings in the case (assess groups them), so it needs no group, but it needs Delusional
+	# on the script.
+	if value is Dictionary and value.get("mode") == "delusional" and not delusion_possible(view):
+		return false
 	if card.has("relay_source"):
 		var attribution: String = str(value.get("attribution", "")) if value is Dictionary else ""
 		if attribution not in RELAY_ATTRIBUTIONS or (attribution == "transmission" and str(value.get("mode", "")) not in TRANSMISSION_MODES):
@@ -322,7 +353,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# test asks how far the rest of the attended evidence, against chance, says the
 		# reading (or the source's readings together) is wrong, and how well the named cause
 		# explains that.
-		var group: Array = challenge.get("group", [id])
+		var group: Array = challenge.get("group", reader_group(cards, id, teller) if challenge.mode == "delusional" else [id])
 		# A Seer's honest mistake that a Red Herring or Marked registration explains (the
 		# explicit rule above) isn't discounted: the gift worked, and its registration is
 		# already in the worlds. Otherwise it's graded like any honest mistake (the merged

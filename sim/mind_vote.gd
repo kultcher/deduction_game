@@ -83,7 +83,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 			else:
 				stakes = 0.75
 		elif evil_yes:
-			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot + rescue
+			var omen_push: float = Tuning.Evil.OMEN_PUSH_STAKES if Burdens.omen_push(w, v, nominee) else 0.0  # a real Ill-Omened (Michael, Nov 21)
+			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0) + omen_push) * pivot + rescue
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]
 		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
@@ -107,6 +108,17 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
 		parts["prefers_block"] = Tuning.Meeting.VOTE_PREFERS_BLOCK_OFFSET
 	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
+	# Strong trust in the nominee blunts the social push to hang them (Michael, Nov 22): the
+	# town's consensus and the Demonologist's yes count for less, not the evidence.
+	var t_nom: float = float(v.npc_trust.get(nominee, 0.5))
+	if t_nom > Tuning.Meeting.VOTE_TRUST_DAMP_START:
+		var damp: float = Tuning.Meeting.VOTE_TRUST_DAMP_MAX * minf(1.0, (t_nom - Tuning.Meeting.VOTE_TRUST_DAMP_START) / (1.0 - Tuning.Meeting.VOTE_TRUST_DAMP_START))
+		var social: float = maxf(0.0, float(parts.get("town_pressure", 0.0))) + maxf(0.0, float(parts.get("player_votes_yes", 0.0)))
+		if social > 0.0:
+			parts["trusts_nominee"] = -damp * social
+	var omen_cost: float = Burdens.omen_vote_cost(w, nominee, v)  # a claimed Ill-Omened (burdens prototype)
+	if omen_cost != 0.0:
+		parts["ill_omened_cost"] = omen_cost
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]
@@ -182,6 +194,37 @@ static func would_vote(w, nominee: String, nominator: String = "") -> Dictionary
 	var threshold: int = w.vote_threshold()
 	return {"yes": yes, "no": no, "voters": w.voter_count(), "threshold": threshold, "crosses": yes.size() >= threshold}
 
+## How far one voter's vote on `nominee` would sit from its yes line right now (score - need),
+## as a dry run: nothing is logged, the world's random stream and the meeting are restored.
+## The player's vote isn't known yet, so it isn't counted.
+static func dry_margin(w, v, nominee: String, nominator: String = "") -> float:
+	var rng_state = w.rng.state
+	var meeting_was: Dictionary = w.meeting.duplicate(true)
+	var log_size: int = w.dlog.entries.size()
+	var log_seq = w.dlog._seq
+	var was_detailed: bool = w.dlog.detailed
+	var was_feed = w.dlog.live_feed
+	var was_echo: bool = w.dlog.echo
+	w.dlog.detailed = false
+	w.dlog.live_feed = null
+	w.dlog.echo = false
+	if not w.meeting.has("block"):
+		w.meeting["block"] = ""
+	if not w.meeting.has("block_count"):
+		w.meeting["block_count"] = 0
+	if not w.meeting.has("vote_parts"):
+		w.meeting["vote_parts"] = {}
+	_vote_impl(w, v, nominee, nominator, false, "", 0, 0)
+	var margin: float = float(w.meeting.get("vote_parts", {}).get(v.id, {}).get("margin", -99.0))
+	w.rng.state = rng_state
+	w.meeting = meeting_was
+	w.dlog.entries.resize(log_size)
+	w.dlog._seq = log_seq
+	w.dlog.detailed = was_detailed
+	w.dlog.live_feed = was_feed
+	w.dlog.echo = was_echo
+	return margin
+
 ## Whether a case catches `target` in a home lie: among `ids`, their own "I was home"
 ## for a night and something that puts them out that night (a sighting, a Night Watch
 ## report, their own walking gift's reading). The judge's own dispute rule
@@ -218,7 +261,9 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 	for vid in res.get("no", []):
 		if picked.size() >= Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS:
 			break
-		if vid == nominee or not w.by_id.has(vid):
+		# Nor whoever is on the block (playtest 51795: the Demon on the block spoke up for the
+		# counter-nominee): its "no" speaks for itself.
+		if vid == nominee or vid == str(res.get("prev_block", "")) or not w.by_id.has(vid):
 			continue
 		var v = w.by_id[vid]
 		if v.silenced or not v.alive:
@@ -246,10 +291,16 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
 		picked.append(vid)
+	# A friend who voted to hang them, only just (Michael, Nov 22): at most one, said to them.
+	var reluctant = _reluctant_friend_yes(w, res, parts_map)
+	if reluctant != null:
+		out.append(say_voiced(reluctant, "vote_yes_doubtful_friend", "Forgive me, %s. I've known you a long time... but I can't look away from this." % t.name, {"nominee": t.name}))
 	if picked.is_empty():
 		var needed: int = maxi(int(res.get("threshold", 0)), int(res.get("prev_block_count", 0)) + 1)
 		if absi(int(res.get("count", 0)) - needed) <= 1:
 			var swing = _swing_voter(w, res, parts_map, picked)
+			if swing != null and swing[0] == reluctant:
+				swing = null  # already spoke, as the friend
 			if swing != null:
 				var sv = swing[0]
 				var skey: String = swing[1]
@@ -261,6 +312,25 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 					out.append(_resistance_line(w, sv, t, skey, res))
 	return out
 
+
+## The good friend of the nominee whose yes was closest to the line, within the close margin, or
+## null: the reluctant yes (vote_yes_doubtful_friend). Never evil's cover vote, never the one
+## on the block, never the nominee.
+static func _reluctant_friend_yes(w, res: Dictionary, parts_map: Dictionary):
+	var nominee: String = str(res.get("nominee", ""))
+	var best = null
+	var best_m: float = 1e9
+	for vid in res.get("yes", []):
+		if vid == nominee or vid == str(res.get("prev_block", "")) or not w.by_id.has(vid) or not parts_map.has(vid):
+			continue
+		var v = w.by_id[vid]
+		if v.is_evil() or v.silenced or not v.alive or not (nominee in v.friends):
+			continue
+		var m: float = float(parts_map[vid].get("margin", -1.0))
+		if m >= 0.0 and m < Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN and m < best_m:
+			best_m = m
+			best = v
+	return best
 
 ## Which reason a no-voter gives, from the parts their vote actually had.
 static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: bool = false) -> String:

@@ -19,6 +19,7 @@ public partial class SolverBridge : RefCounted
     private static int[] _lastOwnOf = Array.Empty<int>();
     private static byte[] _lastOwnFlatCodes = Array.Empty<byte>();
     private static double[] _lastOwnCounts = Array.Empty<double>();
+    private static double[] _lastOwnWeights = Array.Empty<double>();
 
     public static int GetMode() => _mode;
     public static void SetMode(int mode) => _mode = Math.Clamp(mode, ModeGdscript, ModeVerify);
@@ -306,22 +307,21 @@ public partial class SolverBridge : RefCounted
 
     // --- Slice C1: RoleConstraints Entry Points (Direct & Handle-Backed) ---
 
-    public static long RoleCoarseMask(int people, long packedWorld, bool seer, int mediums, int walkers) =>
-        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), seer, mediums, walkers);
+    public static long RoleCoarseMask(int people, long packedWorld, int markedMask, int mediums) =>
+        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), markedMask, mediums);
 
-    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, bool seer, int mediums, int walkers) =>
-        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, seer, mediums, walkers);
+    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, int markedMask, int mediums) =>
+        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, markedMask, mediums);
 
     public static long[] RoleCoarseMasksByHandle(
         int people,
         int universeHandle,
         int[] subsetIndices,
         long[] fallbackWorlds,
-        bool seer,
-        int mediums,
-        int walkers) =>
+        int markedMask,
+        int mediums) =>
         RoleConstraintsKernel.CoarseMasks(
-            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), seer, mediums, walkers);
+            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), markedMask, mediums);
 
     public static double RoleSeerRhWeight(int candidatesMask, int demon, int marked, int[] readingInts) =>
         RoleConstraintsKernel.SeerRhWeight(candidatesMask, demon, marked, readingInts);
@@ -346,6 +346,10 @@ public partial class SolverBridge : RefCounted
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
             headerInts, publicRolesInts, forcedLampIndices, cardInts);
 
+    public static void ActivitySetSecretErrand(bool on) => LiveActivityKernel.SecretErrand = on;
+
+    public static void RoleSetMarkedDemonChance(double chance) => RoleConstraintsKernel.MarkedDemonChance = chance;
+
     public static int GetUniverseSize(int handle) =>
         SolverContext.GetUniverseSize(handle);
 
@@ -361,16 +365,14 @@ public partial class SolverBridge : RefCounted
         int universeHandle,
         int[] subsetIndices,
         long[] fallbackWorlds,
-        bool seer,
-        int mediums,
-        int walkers) =>
+        int markedMask,
+        int mediums) =>
         RoleConstraintsKernel.TryLookupMemo(
             memoSlot,
             people,
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
-            seer,
-            mediums,
-            walkers);
+            markedMask,
+            mediums);
 
     public static double[] RoleFitsWeightsMemoByHandle(
         int memoSlot,
@@ -392,6 +394,17 @@ public partial class SolverBridge : RefCounted
         int[] forcedLampIndices,
         int[] cardInts) =>
         RoleConstraintsKernel.FitsTable(packedWorlds, headerInts, publicRolesInts, forcedLampIndices, cardInts);
+
+    public static double[] RoleMarkedCountWeightsByHandle(
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int[] cardSpecs,
+        int[] blockMasks,
+        double markedEvilChance) =>
+        RoleConstraintsKernel.MarkedCountWeights(
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            cardSpecs, blockMasks, markedEvilChance);
 
     public static double[] RoleBluffWeightsSimple(long[] packedWorlds, int[] declaredBits, double bluffWeight) =>
         RoleConstraintsKernel.BluffWeightsSimple(packedWorlds, declaredBits, bluffWeight);
@@ -416,6 +429,20 @@ public partial class SolverBridge : RefCounted
         double bluffWeight) =>
         RoleConstraintsKernel.BluffWeightsTemporal(
             packedWorlds, whoIndices, hearingWeights, stmtTicks, hasCurse, curseFrom, curseUntil, bluffWeight);
+
+    public static double[] RoleBluffWeightsFactorsByHandle(
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int[] whoIndices,
+        double[] factors,
+        int[] stmtTicks,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil) =>
+        RoleConstraintsKernel.BluffWeightsFactors(
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            whoIndices, factors, stmtTicks, hasCurse, curseFrom, curseUntil);
 
     public static double[] RoleBluffWeightsTemporalByHandle(
         int universeHandle,
@@ -512,17 +539,21 @@ public partial class SolverBridge : RefCounted
     public static double CaseEvalPresenceScore(long packedWorld, int handle, double err) =>
         CaseEvalKernel.PresenceScore(packedWorld, SolverContext.GetPresenceWeights(handle), err);
 
+    public static double[] LiveUnrequitedProfiles(double visitChance, int[] personHomes, int[] personDeathBeforeNight,
+        int[] demonAttackEvents, int[] cardInts, double[] cardDoubles) =>
+        LiveActivityKernel.ComputeUnrequitedProfiles(visitChance, personHomes, personDeathBeforeNight, demonAttackEvents, cardInts, cardDoubles);
+
     public static int LiveRegisterMovementFactor(int[] metaInts, double[] metaDoubles) =>
         LiveActivityKernel.RegisterCompiledFactor(metaInts, metaDoubles);
 
     public static void LiveAttachContests(int factorHandle, int[] ints, double[] doubles) =>
         LiveActivityKernel.AttachContests(factorHandle, ints, doubles);
 
-    public static void LiveAttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle) =>
-        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle);
+    public static void LiveAttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, int omenMask) =>
+        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle, false, false, omenMask);
 
-    public static void LiveAttachCountMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, bool soundZero) =>
-        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle, true, soundZero);
+    public static void LiveAttachCountMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, bool soundZero, int omenMask) =>
+        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle, true, soundZero, omenMask);
 
     public static void LiveAttachGuards(int factorHandle, int[] ints, double[] doubles) =>
         LiveActivityKernel.AttachGuards(factorHandle, ints, doubles);
@@ -673,10 +704,11 @@ public partial class SolverBridge : RefCounted
         double[] q,
         int[] testTargetSpecs,
         int[] moveFactorSpecs,
-        double[] moveFactorDoubles) =>
+        double[] moveFactorDoubles,
+        int[] forbiddenSpecs) =>
         CaseEvalKernel.CompileEquivalenceClasses(
             universeHandle, fallbackWorlds, headerInts, dead, premise,
-            flatTables, flatValids, q, testTargetSpecs, moveFactorSpecs, moveFactorDoubles);
+            flatTables, flatValids, q, testTargetSpecs, moveFactorSpecs, moveFactorDoubles, forbiddenSpecs);
 
     public static int[] CaseEvalGetCompiledInts(int ccHandle) =>
         CaseEvalKernel.GetCompiledCaseInts(ccHandle);
@@ -693,15 +725,30 @@ public partial class SolverBridge : RefCounted
         int nc,
         int kOwn,
         byte[] flatTables,
-        byte[] flatValids)
+        byte[] flatValids,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int ownBurdenMe,
+        int ownBurdenMod,
+        int ownBurdenHiddenMask,
+        double ownDelusionPrior)
     {
-        var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCounts(
-            ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids);
+        var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCountsWeighted(
+            ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids,
+            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask,
+            ownDelusionPrior, out double[] weights);
         _lastOwnOf = of;
         _lastOwnFlatCodes = flatCodes;
         _lastOwnCounts = counts;
+        _lastOwnWeights = weights;
         return ns;
     }
+
+    public static double[] CaseEvalGetLastOwnWeights() => _lastOwnWeights;
+
+    /// <summary>The listener's own Delusion weight (CaseEvalKernel.OwnDelusionWeight), for tests.</summary>
+    public static double CaseEvalOwnDelusionWeight(int universeHandle, long[] fallbackWorlds, int me, int knownMod, int hiddenMask, double prior) =>
+        CaseEvalKernel.OwnDelusionWeight(SolverContext.ResolveWorlds(universeHandle, Array.Empty<int>(), fallbackWorlds), me, knownMod, hiddenMask, prior);
 
     public static int[] CaseEvalGetLastOwnOf() => _lastOwnOf;
     public static byte[] CaseEvalGetLastOwnFlatCodes() => _lastOwnFlatCodes;
@@ -747,9 +794,10 @@ public partial class SolverBridge : RefCounted
         byte[] flatOwnCodes,
         double[] routeCredits,
         double[] testLog2Ratios,
-        double biasFactor) =>
+        double biasFactor,
+        double[] ownStateWeights) =>
         CaseEvalKernel.EvaluatePosterior(
             ccHandle, universeHandle, fallbackWorlds, evalInts, tuningDoubles,
             teamPrior, fits, fitsBefore, caseErrs, ownErrs, ownQs,
-            counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor);
+            counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor, ownStateWeights);
 }

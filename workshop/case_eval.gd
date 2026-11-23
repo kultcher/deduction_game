@@ -116,7 +116,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 					break
 		return base_e
 	var cc = compile(view, _list_broken(view, _route_trusted(cards, listener), listener), case_data, own)
-	var oc = _own_counts(view, cc, own)
+	var oc = _own_counts(view, cc, own, knowledge)
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
 	# The "before" side of the case: role knowledge without the case's own cards. Role-
@@ -125,6 +125,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	var fits_before = _class_fits(view, cc, [], knowledge)
 	var fits = fits_before if (cache_enabled and Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
 	fits = _doubted_role_fits(view, cc, cards, knowledge, fits, listener)
+	fits = delusion_odds_fits(view, cc, case_data, fits)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
@@ -151,6 +152,10 @@ static func _evaluate_posterior_gd(view: Dictionary, case_data: Dictionary, card
 	var ns: int = oc.states
 	var case_like = _class_like_gd(cc, cc.reports.map(func(c): return err_for.call(c)), -1)
 	var own_like = _state_like(view, own, own.map(func(c): return err_for.call(c)), oc.codes)
+	var own_w: PackedFloat64Array = oc.get("weights", PackedFloat64Array())
+	if own_w.size() == ns:
+		for o in range(ns):
+			own_like[o] *= own_w[o]
 	# Live role uniqueness is checked per world in Roles.fits, where an evil claimant may
 	# bluff; a global "two people claimed one gift" gate would void every world.
 	var compatible: bool = true
@@ -230,7 +235,7 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 	own_qs.resize(ko)
 	for i in range(ko):
 		own_errs[i] = float(err_for.call(own[i]))
-		own_qs[i] = chance_content(view, own[i])
+		own_qs[i] = own_chance_content(view, own[i])
 
 	var flat_own_codes := PackedByteArray()
 	if ko > 0:
@@ -289,7 +294,8 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 	var raw: PackedFloat64Array = SolverBackend._bridge().CaseEvalEvaluatePosterior(
 		cc_h, u_handle, fallback, eval_ints, tuning_doubles,
 		team_prior, fits, fits_before, case_errs, own_errs, own_qs,
-		oc.counts, oc.of, flat_own_codes, route_credits, test_lrs, bias_factor
+		oc.counts, oc.of, flat_own_codes, route_credits, test_lrs, bias_factor,
+		oc.get("weights", PackedFloat64Array())
 	)
 
 	var p: int = 0

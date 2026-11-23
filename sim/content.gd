@@ -409,7 +409,7 @@ const ROLES = {
 	"registrar": {"name": "Registrar", "align": "good", "kind": "info",
 		"desc": "Starts knowing three roles on the script (at most one minion, never the Demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
 	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
-		"desc": "Starts knowing that one of two people carries a particular secret."},
+		"desc": "Starts knowing that one of two people carries a particular burden."},
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
 		"desc": "Each night, picks two people and learns if either is the Demon. One good soul reads falsely as the Demon."},
 	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",
@@ -483,12 +483,15 @@ static func is_minion(r: String) -> bool:
 ## Secret modifiers: one per case, laid on a townsfolk (two for the Lovers), on top of
 ## their gift. Good townsfolk only.
 const SECRET_MODS = {
-	"delusional": {"name": "Delusional", "desc": "Their gift does not work and gives arbitrary information. They don't know."},
-	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them."},
+	"delusional": {"name": "Delusional", "desc": "The holder of this burden does not know they carry it. Their gift does not work and gives arbitrary information."},
+	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them. They know."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
+	# Burdens prototype: the rules text is Michael's, approved Nov 21 (docs/design/burdens_wording.md).
+	"unrequited": {"name": "Unrequited", "desc": "Loves one townsperson, who doesn't know. Visits their home at night, and is slow to suspect them."},
+	"ill_omened": {"name": "Ill-Omened", "desc": "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. The evil team knows who the Ill-Omened is."},
 }
-const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
+const SECRET_MOD_LIST = ["delusional", "marked", "unrequited", "ill_omened"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired
 
 ## How sure you are of a guess (stored as 1..4).
 const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]
@@ -542,9 +545,6 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
 ## (The Secret Lovers are a secret modifier now; see SECRET_MODS.) Benched for now: with the
 ## secret modifiers in play these put too many innocents out at night.
-## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
-## almost never bluffed it, so a denial was close to proof of good.
-const ALLOW_NO_GIFT_DENIAL = Tuning.Setup.ALLOW_NO_GIFT_DENIAL
 ## Shadow good self for evil NPCs (docs/shadow_self_plan.md). Step 1: built and fed, but
 ## nothing reads it, so switching it off must not change a single case.
 const SHADOW_SELF = Tuning.Setup.SHADOW_SELF
@@ -576,7 +576,6 @@ const EVIL_CAUTION_DEMON = Tuning.Evil.EVIL_CAUTION_DEMON
 const EVIL_CAUTION_MINION = Tuning.Evil.EVIL_CAUTION_MINION
 const MINION_ID_DRIFT = Tuning.Evil.MINION_ID_DRIFT
 const MINION_CAUTION_FLOOR = Tuning.Evil.MINION_CAUTION_FLOOR
-const USE_FLAVOR_SECRETS = Tuning.Setup.USE_FLAVOR_SECRETS
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},
 	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "me": "trade contraband with the river smugglers at the docks", "dest": "docks"},

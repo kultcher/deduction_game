@@ -2,6 +2,7 @@
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
 const History = preload("res://workshop/live_history.gd")
@@ -109,9 +110,11 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 0
 		"marked":
 			return 1
-		"lovers":
+		# 2 and 3 were the Lovers and Sleepwalker 1.0; the burdens prototype reuses them
+		# (WorldEntry.ModIllOmened and ModUnrequited in SolverContext.cs).
+		"ill_omened":
 			return 2
-		"sleepwalker":
+		"unrequited":
 			return 3
 		_:
 			return -99
@@ -707,7 +710,17 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 static func _valid_table_dispatch(view: Dictionary, card: Dictionary) -> PackedByteArray:
 	var u_key: String = _universe_key(view)
 	var u_worlds: Array = universe(view)
-	return _valid_table_cs(view, u_key, u_worlds, card)
+	var out: PackedByteArray = _valid_table_cs(view, u_key, u_worlds, card)
+	var omen: int = Roles.omen_mask(person_ids(view), card)
+	if omen != 0:
+		# A reading inside a fallen omen's window is unhealthy wherever its claimant truly held
+		# Ill-Omened (burdens prototype): every good person was poisoned then.
+		out = out.duplicate()
+		for i in range(mini(out.size(), u_worlds.size())):
+			var w: Dictionary = u_worlds[i]
+			if str(w.get("modifier", "")) == "ill_omened" and (int(w.get("holders", 0)) & omen) != 0:
+				out[i] = 0
+	return out
 
 static func _valid_table_cs(view: Dictionary, u_key: String, u_worlds: Array, card: Dictionary) -> PackedByteArray:
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
@@ -762,25 +775,6 @@ static func _sig_groups_cs(view: Dictionary, u_key: String, u_worlds: Array) -> 
 	}
 
 ## Whether a card is constrained by a report table (reports, and the curse event).
-## A Lovers confession is true (evil never fakes one) and names the other: in a live view
-## with Lovers on the script, only worlds where both hold it stand (triage 5.9: there was
-## no way to prove the other half). One holder bitmask per confession.
-static func lovers_needs(view: Dictionary, cards: Array) -> Array:
-	var out: Array = []
-	if not Domain.live(view) or "lovers" not in view.get("world_options", {}).get("modifiers", []):
-		return out
-	for sc in cards:
-		if sc.get("kind", "") != "secret_claim" or sc.get("quoted", false) or str(sc.get("data", {}).get("secret_kind", "")) != "lover":
-			continue
-		var lx: int = person_index(view, str(sc.get("subject", "")))
-		var lp: int = person_index(view, str(sc.get("data", {}).get("partner", "")))
-		if lx >= 0:
-			out.append((1 << lx) | ((1 << lp) if lp >= 0 else 0))
-	return out
-
-static func lovers_ok(world: Dictionary, need: int) -> bool:
-	return world.get("modifier", "") == "lovers" and (int(world.get("holders", 0)) & need) == need
-
 static func tabled(card: Dictionary) -> bool:
 	return card.kind == "report" or (card.kind == "event" and card.get("event") == "curse")
 
@@ -841,9 +835,6 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 			if not c_act.get("quoted", false):
 				active_fids[str(c_act.get("fact_id", c_act.id))] = true
 				active_fids[str(c_act.id)] = true
-		var lovers_need: Array = lovers_needs(view, cards)
-		for need in lovers_need:
-			worlds = worlds.filter(func(w): return lovers_ok(w, int(need)))
 		for ac in cards:
 			if ac.kind == "report" and ac.get("role", "") == "augur" and not ac.get("quoted", false) and not ac.get("testimony_only", false):
 				var aspec: Dictionary = augur_day_spec(view, cards, ac, answers.get(ac.id, {}))
@@ -856,13 +847,6 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 					var fid1: String = str(pdata_s.statements[1].get("fact_id", ""))
 					if fid0 != "" and fid1 != "" and active_fids.has(fid0) and active_fids.has(fid1):
 						worlds = worlds.filter(func(w): return not source_valid(view, w, ac))
-					var pans_s: Dictionary = answers.get(ac.id, {})
-					if str(pans_s.get("false_slot", "")) in ["0", "1"] and str(pans_s.get("false_reason", "")) == "misled":
-						var st_m: Dictionary = pdata_s.statements[int(str(pans_s.get("false_slot", "0")))]
-						if str(st_m.get("kind", "")) == "alibi" and Domain.live(view) and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
-							var sw_idx: int = person_index(view, str(st_m.get("source", "")))
-							if sw_idx >= 0:
-								worlds = worlds.filter(func(w): return w.get("modifier", "") == "sleepwalker" and (int(w.get("holders", 0)) & (1 << sw_idx)) != 0)
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 
@@ -1312,6 +1296,49 @@ static func augur_world_outcome_prob(world: Dictionary, spec: Dictionary) -> flo
 	var p_yes: float = 1.0 - (1.0 - trig0) * (1.0 - trig1)
 	return p_yes if bool(spec.yes) else (1.0 - p_yes)
 
+## Which registrations of the world's Marked person a counting reading's content check tries
+## (both by default; marked_count_weight pins one to weigh it).
+static var _mark_reads_only: int = -1
+
+static func _mark_options(required: bool) -> Array:
+	if required:
+		return [true]
+	if _mark_reads_only >= 0:
+		return [_mark_reads_only == 1]
+	return [false, true]
+
+## Whether a reading counts people and a Marked person among them registers evil by chance
+## (Tuning.Setup.MARKED_EVIL_CHANCE, sim World.registers_evil): the Dowser and Hearthwitch
+## (a group count), the Surveyor (blocks, or a parity of a block), the Magistrate (parity).
+static func marked_counts(card: Dictionary) -> bool:
+	if str(card.get("kind", "")) != "report" or card.get("quoted", false):
+		return false
+	var role: String = str(card.get("role", ""))
+	if role in ["surveyor", "magistrate"]:
+		return true
+	var rdef = C.role_def(role)
+	return rdef != null and ((rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count") or (rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"))
+
+## How well a counting reading fits this world when its content holds only under one
+## registration of the world's Marked person: the chance of that registration (Michael's
+## design: Marked registers evil half the time), as the Seer's Marked weight does. 1 when the
+## Marked person doesn't change the count, or there's none; the content table handles a miss.
+## Measurement switch: on in play; off, a counting reading takes either registration in full.
+static var marked_count_weighting: bool = true
+
+static func marked_count_weight(view: Dictionary, world: Dictionary, card: Dictionary) -> float:
+	if not marked_count_weighting or int(world.get("marked", -1)) < 0 or not marked_counts(card):
+		return 1.0
+	_mark_reads_only = 1
+	var as_evil: bool = _report_content(view, world, card, {})
+	_mark_reads_only = 0
+	var as_good: bool = _report_content(view, world, card, {})
+	_mark_reads_only = -1
+	if as_evil == as_good:
+		return 1.0
+	var p: float = Tuning.Setup.MARKED_EVIL_CHANCE
+	return p if as_evil else 1.0 - p
+
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	return _report_content_impl(view, world, card, answer, false)
@@ -1518,7 +1545,7 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 				p_evil_bits |= (1 << int(world.converted))
 		var grp_sz: int = popcount(p_group_m)
 		var want_same: bool = bool(d.get("same", false))
-		for mark_reads in ([true] if not p_req_marked.is_empty() else [false, true]):
+		for mark_reads in _mark_options(not p_req_marked.is_empty()):
 			var pos_m: int = p_evil_bits | ((1 << int(world.marked)) if (mark_reads and int(world.marked) >= 0) else 0)
 			if not p_ans_pos.is_empty() and (pos_m & p_ans_m) != p_ans_m:
 				continue
@@ -1561,7 +1588,7 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 	for id in required_marked:
 		if person_index(view, id) != world.marked:
 			return false
-	for mark_reads in ([true] if not required_marked.is_empty() else [false, true]):
+	for mark_reads in _mark_options(not required_marked.is_empty()):
 		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
 		if (pos_mask & ans_mask) != ans_mask:
 			continue

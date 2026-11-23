@@ -225,31 +225,83 @@ internal static class CaseEvalKernel
         double[] q,
         int[] testTargetSpecs,
         int[] moveFactorSpecs,
-        double[] moveFactorDoubles)
+        double[] moveFactorDoubles,
+        int[] forbiddenSpecs)
     {
-        // headerInts layout (11 ints):
+        // headerInts layout (13 ints):
         //  [0] nPeople
         //  [1] isLive (0/1)
         //  [2] rolesOn (0/1)
         //  [3] hasCurse (0/1)
-        //  [4] seer (0/1)
+        //  [4] markedMask (per-person bitmask of people whose Marked status is read)
         //  [5] mediums
-        //  [6] walkers
+        //  [6] unrequitedMove (0/1): a movement factor scores Unrequited holders on their own
+        //      column (burdens prototype), so Unrequited worlds split by touched holder
         //  [7] currentEpochConvEvil (0/1)
         //  [8] conclEpochConvEvil (0/1)
         //  [9] k (reports count)
         // [10] movementOk (0/1)
+        // [11] curseFrom
+        // [12] curseUntil
         int nPeople = headerInts[0];
         bool isLive = headerInts[1] != 0;
         bool rolesOn = headerInts[2] != 0;
         bool hasCurse = headerInts[3] != 0;
-        bool seer = headerInts[4] != 0;
+        int markedMask = headerInts[4];
         int mediums = headerInts[5];
-        int walkers = headerInts[6];
+        bool unrequitedMove = headerInts[6] != 0;
         bool currentEpochConvEvil = headerInts[7] != 0;
         bool conclEpochConvEvil = headerInts[8] != 0;
         int k = headerInts[9];
         bool movementOk = headerInts[10] != 0;
+        int curseFrom = headerInts.Length > 11 ? headerInts[11] : 0;
+        int curseUntil = headerInts.Length > 12 ? headerInts[12] : 0;
+
+        // Augment markedMask and compute unrequitedMask from movement factors so CoarseMask
+        // and the Unrequited split only distinguish people the movement model actually reads.
+        int unrequitedMask = 0;
+        int mfCount = moveFactorSpecs.Length / 4;
+        for (int f = 0; f < mfCount; f++)
+        {
+            int off = f * 4;
+            int fKind = moveFactorSpecs[off];
+            if (fKind == 0 && unrequitedMove && isLive)
+            {
+                var factor = SolverContext.GetMovementFactor(moveFactorSpecs[off + 1]);
+                if (factor != null && factor.ProfUnrequited.Length == factor.PeopleCount)
+                {
+                    for (int p = 0; p < factor.PeopleCount; p++)
+                    {
+                        if (factor.ProfUnrequited[p] != factor.ProfGood[p])
+                        {
+                            unrequitedMask |= (1 << p);
+                        }
+                    }
+                }
+            }
+            else if (fKind == 2) // augur_crossing
+            {
+                int slot0Codes = moveFactorSpecs[off + 2];
+                int slot1Codes = moveFactorSpecs[off + 3];
+                for (int p = 0; p < nPeople; p++)
+                {
+                    if (((slot0Codes >> (p * 2)) & 3) != 0 || ((slot1Codes >> (p * 2)) & 3) != 0)
+                    {
+                        markedMask |= (1 << p);
+                    }
+                }
+            }
+            else if (fKind == 1) // single-target factor (old movement_model markedRatio)
+            {
+                int targetIdx = moveFactorSpecs[off + 1];
+                bool isMm = moveFactorSpecs[off + 3] != 0;
+                if (isMm && targetIdx >= 0 && moveFactorDoubles[f * 2 + 1] != 1.0)
+                {
+                    markedMask |= (1 << targetIdx);
+                }
+            }
+        }
+        bool hasForbidden = isLive && rolesOn && forbiddenSpecs.Length > 0;
 
         long[] worlds = SolverContext.ResolveWorlds(universeHandle, Array.Empty<int>(), fallbackWorlds);
         int n = worlds.Length;
@@ -265,11 +317,18 @@ internal static class CaseEvalKernel
             rmBound = (1L << nPeople)
                 * (nPeople + 2L)
                 * (nPeople + 2L)
-                * (mediums != 0 ? (1L << nPeople) : 1L)
-                * (walkers != 0 ? (1L << nPeople) : 1L);
+                * (mediums != 0 ? (1L << nPeople) * 5L : 1L);
             if (hasCurse)
             {
                 rmBound *= (nPeople + 1L);
+            }
+            if (unrequitedMask != 0)
+            {
+                rmBound *= (nPeople + 1L);
+            }
+            if (hasForbidden)
+            {
+                rmBound *= 2L;
             }
         }
         bool wide = k > MaxPackedDigits;
@@ -313,9 +372,9 @@ internal static class CaseEvalKernel
                 rms[i] = i;
             }
         }
-        else if (rolesOn || seer)
+        else if (rolesOn || markedMask != 0)
         {
-            rms = RoleConstraintsKernel.CoarseMasks(nPeople, worlds, seer, mediums, walkers);
+            rms = RoleConstraintsKernel.CoarseMasks(nPeople, worlds, markedMask, mediums);
         }
         else if (hasCurse)
         {
@@ -330,6 +389,43 @@ internal static class CaseEvalKernel
         else
         {
             rms = evilBits;
+        }
+
+        bool rmsOwned = !ReferenceEquals(rms, evilBits);
+        if (unrequitedMask != 0 && isLive)
+        {
+            // The movement factor reads who holds Unrequited (LiveActivityKernel.UnrequitedHolder):
+            // only Unrequited worlds whose holder's movement profile differs from good split.
+            long np1 = nPeople + 1L;
+            if (!rmsOwned)
+            {
+                rms = (long[])rms.Clone();
+                rmsOwned = true;
+            }
+            for (int i = 0; i < n; i++)
+            {
+                var w = new WorldEntry(worlds[i]);
+                long h = w.EffectiveModifier == WorldEntry.ModUnrequited && (w.Holders & unrequitedMask) != 0
+                    ? System.Numerics.BitOperations.TrailingZeroCount((uint)w.Holders) + 1L : 0L;
+                rms[i] = rms[i] * np1 + h;
+            }
+        }
+
+        if (hasForbidden)
+        {
+            // Impossible pairs for unclaimed holders: pure 1-bit kill state so live worlds
+            // never split on forbidden_burdens claimants or global Marked.
+            if (!rmsOwned)
+            {
+                rms = (long[])rms.Clone();
+                rmsOwned = true;
+            }
+            for (int i = 0; i < n; i++)
+            {
+                long hit = RoleConstraintsKernel.HasForbiddenPair(
+                    new WorldEntry(worlds[i]), forbiddenSpecs, isLive, false, hasCurse, curseFrom, curseUntil) ? 1L : 0L;
+                rms[i] = rms[i] * 2L + hit;
+            }
         }
 
         int mTests = testTargetSpecs.Length / 2;
@@ -815,32 +911,137 @@ internal static class CaseEvalKernel
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool OwnBurdenOk(WorldEntry w, int me, int knownMod, int hiddenMask)
+    {
+        int mine = w.Marked == me
+            ? WorldEntry.ModMarked
+            : (((w.Holders & (1 << me)) != 0) ? w.EffectiveModifier : -1);
+        return mine == knownMod || (knownMod < 0 && mine >= 0 && (hiddenMask & (1 << mine)) != 0);
+    }
+
     /// <summary>
-    /// 1:1 port of CaseEval._own_counts.
-    /// Populates sparse own-reading states in exact first-appearance order.
-    /// Returns serialized int[] header+of: [ns, of[0..n-1]]; caller reads counts and flatCodes via out helpers
-    /// or single tuple wrapper on SolverBridge.
+    /// 1:1 port of CaseEval._own_counts, plus optional per-listener own-burden world filtering
+    /// so CompiledCaseEntry stays shared across listeners.
+    /// Populates sparse own-reading states in exact first-appearance order; worlds ruled out
+    /// by ownBurdenMe get of[i] = -1 and are excluded from counts (and expandedPost).
     /// </summary>
+    /// <summary>
+    /// Whether the listener `me` is the world's Delusional holder (not Marked: one burden a person).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ListenerDeluded(WorldEntry w, int me) =>
+        w.Marked != me && w.EffectiveModifier == WorldEntry.ModDelusional && (w.Holders & (1 << me)) != 0;
+
+    /// <summary>
+    /// The weight on the listener's own Delusional-holder worlds that sets its chance of being the
+    /// Delusional, before any evidence, to `prior` (Tuning.Workshop.OWN_DELUSION_PRIOR; shared
+    /// Delusion doubt, Michael, Nov 22): over the worlds its own-burden knowledge allows with it
+    /// good, odds(prior) over the worlds' own odds. 1 when it holds in none or every one of them,
+    /// or when prior is negative (no reweight); 0 for a listener that can't be Delusional.
+    /// </summary>
+    public static double OwnDelusionWeight(long[] worlds, int me, int knownMod, int hiddenMask, double prior)
+    {
+        if (prior < 0.0 || me < 0)
+        {
+            return 1.0;
+        }
+        long good = 0, held = 0;
+        for (int i = 0; i < worlds.Length; i++)
+        {
+            var w = new WorldEntry(worlds[i]);
+            if ((w.Evil & (1 << me)) != 0 || !OwnBurdenOk(w, me, knownMod, hiddenMask))
+            {
+                continue;
+            }
+            good++;
+            if (ListenerDeluded(w, me))
+            {
+                held++;
+            }
+        }
+        if (held == 0 || held == good)
+        {
+            return 1.0;
+        }
+        if (prior <= 0.0)
+        {
+            return 0.0;
+        }
+        double s = (double)held / good;
+        return (prior / (1.0 - prior)) * ((1.0 - s) / s);
+    }
+
     public static (int Ns, int[] Of, byte[] FlatCodes, double[] Counts) CompileOwnCounts(
         int ccHandle,
         int[] fallbackClassOf,
         int nc,
         int kOwn,
         byte[] flatTables,
-        byte[] flatValids)
+        byte[] flatValids,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int ownBurdenMe,
+        int ownBurdenMod,
+        int ownBurdenHiddenMask) =>
+        CompileOwnCountsWeighted(ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids,
+            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask, -1.0, out _);
+
+    /// <summary>
+    /// CompileOwnCounts with the listener's own Delusion prior (OwnDelusionWeight): states split by
+    /// whether the listener is the world's Delusional holder, so each class-state cell is one or
+    /// the other, and stateWeights[o] carries the weight (1 elsewhere). CaseEval multiplies it into
+    /// the state's own likelihood, on both sides of the case. A negative prior leaves the worlds as
+    /// the deal gives them (stateWeights all 1, no split).
+    /// </summary>
+    public static (int Ns, int[] Of, byte[] FlatCodes, double[] Counts) CompileOwnCountsWeighted(
+        int ccHandle,
+        int[] fallbackClassOf,
+        int nc,
+        int kOwn,
+        byte[] flatTables,
+        byte[] flatValids,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int ownBurdenMe,
+        int ownBurdenMod,
+        int ownBurdenHiddenMask,
+        double ownDelusionPrior,
+        out double[] stateWeights)
     {
         var cc = SolverContext.GetCompiledCase(ccHandle);
         int[] classOf = cc != null ? cc.ClassOf : fallbackClassOf;
         int actualNc = cc != null ? cc.Team.Length : nc;
         int n = classOf.Length;
 
+        long[]? worlds = ownBurdenMe >= 0
+            ? SolverContext.ResolveWorlds(universeHandle >= 0 ? universeHandle : (cc?.UniverseHandle ?? -1), Array.Empty<int>(), fallbackWorlds)
+            : null;
+        double dWeight = worlds != null
+            ? OwnDelusionWeight(worlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask, ownDelusionPrior)
+            : 1.0;
+        // Split the states by the listener's own Delusion only where it carries a weight.
+        bool split = dWeight != 1.0;
+
         int[] of = new int[n];
         var codesList = new List<byte[]>(16);
-
-        if (kOwn <= 39)
+        var deludedList = new List<bool>(16);
+        // States keyed by the own cards' digits (base 3) and, when split, the Delusion flag.
+        var packedIdx = new Dictionary<long, int>(32);
+        var bytesIdx = new Dictionary<byte[], int>(32, ByteArrayComparer.Instance);
+        bool packedKeys = kOwn <= 38;
+        int keyLen = kOwn + (split ? 1 : 0);
+        for (int i = 0; i < n; i++)
         {
-            var indices = new Dictionary<long, int>(32);
-            for (int i = 0; i < n; i++)
+            WorldEntry w = worlds != null ? new WorldEntry(worlds[i]) : default;
+            if (worlds != null && !OwnBurdenOk(w, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask))
+            {
+                of[i] = -1;
+                continue;
+            }
+            bool deluded = split && ListenerDeluded(w, ownBurdenMe);
+            int sIdx;
+            if (packedKeys)
             {
                 long packed = 0L;
                 for (int c = 0; c < kOwn; c++)
@@ -849,7 +1050,11 @@ internal static class CaseEvalKernel
                     long d = flatTables[off] == 1 ? 0L : (flatValids[off] == 1 ? 1L : 2L);
                     packed = packed * 3L + d;
                 }
-                if (!indices.TryGetValue(packed, out int sIdx))
+                if (split)
+                {
+                    packed = packed * 2L + (deluded ? 1L : 0L);
+                }
+                if (!packedIdx.TryGetValue(packed, out sIdx))
                 {
                     byte[] code = new byte[kOwn];
                     for (int c = 0; c < kOwn; c++)
@@ -858,44 +1063,62 @@ internal static class CaseEvalKernel
                         code[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
                     }
                     sIdx = codesList.Count;
-                    indices[packed] = sIdx;
+                    packedIdx[packed] = sIdx;
                     codesList.Add(code);
+                    deludedList.Add(deluded);
                 }
-                of[i] = sIdx;
             }
-        }
-        else
-        {
-            var indices = new Dictionary<byte[], int>(32, ByteArrayComparer.Instance);
-            for (int i = 0; i < n; i++)
+            else
             {
-                byte[] code = new byte[kOwn];
+                byte[] key = new byte[keyLen];
                 for (int c = 0; c < kOwn; c++)
                 {
                     int off = c * n + i;
-                    code[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
+                    key[c] = flatTables[off] == 1 ? (byte)0 : (flatValids[off] == 1 ? (byte)1 : (byte)2);
                 }
-                if (!indices.TryGetValue(code, out int sIdx))
+                if (split)
                 {
-                    sIdx = codesList.Count;
-                    indices[code] = sIdx;
-                    codesList.Add(code);
+                    key[kOwn] = deluded ? (byte)1 : (byte)0;
                 }
-                of[i] = sIdx;
+                if (!bytesIdx.TryGetValue(key, out sIdx))
+                {
+                    byte[] code = new byte[kOwn];
+                    Array.Copy(key, code, kOwn);
+                    sIdx = codesList.Count;
+                    bytesIdx[key] = sIdx;
+                    codesList.Add(code);
+                    deludedList.Add(deluded);
+                }
             }
+            of[i] = sIdx;
+        }
+
+        if (codesList.Count == 0)
+        {
+            codesList.Add(new byte[kOwn]);
+            deludedList.Add(false);
         }
 
         int ns = codesList.Count;
         double[] counts = new double[actualNc * ns];
         for (int i = 0; i < n; i++)
         {
-            counts[classOf[i] * ns + of[i]] += 1.0;
+            int o = of[i];
+            if (o >= 0)
+            {
+                counts[classOf[i] * ns + o] += 1.0;
+            }
         }
 
         byte[] flatCodes = new byte[ns * kOwn];
+        stateWeights = new double[ns];
         for (int s = 0; s < ns; s++)
         {
-            Array.Copy(codesList[s], 0, flatCodes, s * kOwn, kOwn);
+            if (kOwn > 0)
+            {
+                Array.Copy(codesList[s], 0, flatCodes, s * kOwn, kOwn);
+            }
+            stateWeights[s] = deludedList[s] ? dWeight : 1.0;
         }
 
         return (ns, of, flatCodes, counts);
@@ -1050,7 +1273,8 @@ internal static class CaseEvalKernel
         byte[] flatOwnCodes,
         double[] routeCredits,
         double[] testLog2Ratios,
-        double biasFactor)
+        double biasFactor,
+        double[] ownStateWeights)
     {
         // evalInts layout (9 ints):
         //  [0] ns (own states count)
@@ -1128,7 +1352,8 @@ internal static class CaseEvalKernel
             {
                 v *= Factor(flatOwnCodes[oBase + c], ownErrs[c], ownQs[c]);
             }
-            ownLike[o] = v;
+            // The listener's own Delusion prior (CompileOwnCountsWeighted), on both sides.
+            ownLike[o] = ownStateWeights.Length == ns ? v * ownStateWeights[o] : v;
         }
 
         // 2. Test-factor likelihoods:
@@ -1397,9 +1622,16 @@ internal static class CaseEvalKernel
         if (needExpandedPost)
         {
             int[] classOf = cc.ClassOf;
+            bool hasOwnOf = ownOf.Length == nWorlds;
             for (int i = 0; i < nWorlds; i++)
             {
-                int idx = classOf[i] * ns + (ns > 1 ? ownOf[i] : 0);
+                int o = hasOwnOf ? ownOf[i] : 0;
+                if (o < 0)
+                {
+                    outBuf[p++] = 0.0;
+                    continue;
+                }
+                int idx = classOf[i] * ns + o;
                 outBuf[p++] = counts[idx] > 0.0 ? (postArr[idx] / counts[idx]) : 0.0;
             }
         }

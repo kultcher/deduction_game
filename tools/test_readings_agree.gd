@@ -10,6 +10,9 @@ const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const MindVote = preload("res://sim/mind_vote.gd")
+const Tuning = preload("res://sim/tuning.gd")
+const MindPodium = preload("res://sim/mind_podium.gd")
+const Gifts = preload("res://sim/gifts.gd")
 
 var checks = 0
 var fails = 0
@@ -24,6 +27,10 @@ func _check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_opinion()
 	_vote()
+	_playtest_51795()
+	_doubtful_friend()
+	_reluctant_yes()
+	_trust_damp()
 	print("Readings agree: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -91,3 +98,116 @@ func _vote() -> void:
 	var res2: Dictionary = {"nominee": t.id, "no": [v2.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
 	v2.workshop_state["confirmed_readings"] = {}
 	_check(MindVote.vote_resistance_lines(w, res2).filter(func(x): return "readings agree" in str(x.get("statement", ""))).is_empty(), "no record, nothing said")
+
+## Playtest 51795 (Coroner): whoever is on the block doesn't voice resistance to the
+## counter-nomination, a reading naming only me isn't cited for its reader, and a claimant who
+## never told a reading of the claimed gift can still be pressed for one.
+func _playtest_51795() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var blk = goods[0]
+	var t = goods[1]
+	blk.workshop_state["confirmed_readings"] = {t.id: _rec("known")}
+	var res: Dictionary = {"nominee": t.id, "no": [blk.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id, "prev_block": blk.id}
+	var said: Array = MindVote.vote_resistance_lines(w, res)
+	res.erase("prev_block")
+	var control: Array = MindVote.vote_resistance_lines(w, res)
+	_check(said.is_empty() and not control.is_empty(), "the one on the block doesn't speak against the counter-nomination (it would otherwise)")
+	# A reading about only the listener confirms what it knows of itself, but isn't kept to cite.
+	var l = goods[3]
+	var reader = goods[4]
+	var card: Dictionary = {"id": "c1", "kind": "report", "source": reader.id, "role": "martyr", "night": 1, "data": {"target": l.id}}
+	_check(Gifts.subjects({"role": card["role"], "data": card["data"]}) == [l.id], "a Martyr reading naming only the listener is seen as about it alone, so it isn't cited")
+	# The podium: an Archivist claim with no reading behind it can be pressed.
+	var c = goods[5]
+	c.claim_public = true
+	c.claimed_role = "archivist"
+	c.info_log = []
+	_check(MindPodium.options(w, c)["gift"] == "readings", "a claimant who never told a reading of its gift can be pressed for one")
+
+## A friend of the nominee whose vote sits close to the yes line defends them with doubt, in
+## the support turn (Michael, Nov 22: support_doubt_for, Herald's key).
+func _doubtful_friend() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var f = goods[0]
+	var t = goods[1]
+	if not (t.id in f.friends):
+		f.friends.append(t.id)
+	var nominator: String = goods[2].id
+	w.begin_meeting()
+	w.meeting["pending"] = {"nominee": t.id, "by": nominator}
+	var MindSupport = load("res://sim/mind_support.gd")
+	var rng_before = w.rng.state
+	var m0: float = MindVote.dry_margin(w, f, t.id, nominator)
+	_check(w.rng.state == rng_before, "the dry run leaves the world's random stream as it was")
+	# Find a suspicion that puts it near the line, and one far below.
+	var near: float = -1.0
+	var far: float = -1.0
+	for k in range(0, 101, 2):
+		f.suspicion[t.id] = k / 100.0
+		var m: float = MindVote.dry_margin(w, f, t.id, nominator)
+		if near < 0.0 and absf(m) < Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN:
+			near = k / 100.0
+		if far < 0.0 and m < -Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN:
+			far = k / 100.0
+	var speak := func(susp: float) -> String:
+		f.suspicion[t.id] = susp
+		var out: Dictionary = {"lines": [], "facts": [], "speakers": []}
+		var ctx: Dictionary = {"for_ids": [], "accused": 0, "spoken": [], "nominator": nominator, "case_facts": []}
+		MindSupport._speak(w, f, t, {"move": "vibes", "side": "for"}, ctx, out)
+		return " ".join(PackedStringArray(out["lines"].map(func(x): return str(x.get("statement", x.get("text", ""))))))
+	_check(near >= 0.0 and "would they?" in speak.call(near), "a friend near the yes line speaks up with doubt (suspicion %.2f, dry margin %.2f)" % [near, m0])
+	_check(far >= 0.0 and not ("would they?" in speak.call(far)), "a friend far from it speaks up plainly")
+	var unvoiced: Array = []
+	for vid in load("res://sim/dialogue_voices.gd").VOICES.keys():
+		var said: String = load("res://sim/dialogue.gd").voice_line(vid, "support_doubt_for", "", {"target": t.name})
+		if said == "" or not (t.name in said) or "{" in said:
+			unvoiced.append(vid)
+	_check(unvoiced.is_empty(), "every voice says the doubting defence in its own words, naming the nominee (Herald, Michael's set) %s" % [unvoiced])
+	var unvoiced_yes: Array = []
+	for vid in load("res://sim/dialogue_voices.gd").VOICES.keys():
+		var said: String = load("res://sim/dialogue.gd").voice_line(vid, "vote_yes_doubtful_friend", "", {"nominee": t.name})
+		if said == "" or not (t.name in said) or "{" in said:
+			unvoiced_yes.append(vid)
+	_check(unvoiced_yes.is_empty(), "and the reluctant friend's yes, in each voice (Michael's set) %s" % [unvoiced_yes])
+	f.friends.erase(t.id)
+	_check(near < 0.0 or not ("would they?" in speak.call(near)), "someone who isn't their friend speaks up plainly")
+
+## A friend who voted to hang the nominee, only just, says so to them (Michael, Nov 22).
+func _reluctant_yes() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var f = goods[0]
+	var t = goods[1]
+	if not (t.id in f.friends):
+		f.friends.append(t.id)
+	var said := func(margin: float) -> String:
+		var res: Dictionary = {"nominee": t.id, "no": [], "yes": [f.id], "voter_parts": {f.id: {"parts": {}, "margin": margin, "yes": true}}, "threshold": 6, "count": 1, "by": goods[2].id}
+		return " ".join(PackedStringArray(MindVote.vote_resistance_lines(w, res).map(func(x): return str(x.get("statement", x.get("text", ""))))))
+	_check("Forgive me" in said.call(0.05) or t.name in said.call(0.05), "a friend whose yes was close speaks to them (%s)" % said.call(0.05))
+	_check(said.call(0.6) == "", "not one whose yes was firm")
+	f.friends.erase(t.id)
+	_check(said.call(0.05) == "", "nor someone who isn't their friend")
+
+## Strong trust in the nominee blunts the town's pressure and the player's yes (Michael, Nov 22).
+func _trust_damp() -> void:
+	var w = _world()
+	w.begin_meeting()
+	var goods: Array = w.living_good()
+	var v = goods[0]
+	var t = goods[1]
+	v.suspicion[t.id] = 0.18
+	v.consensus_pressure[t.id] = 0.20
+	var parts_at := func(trust: float) -> Dictionary:
+		v.npc_trust[t.id] = trust
+		w.meeting["vote_parts"] = {}
+		MindVote.vote(w, v, t.id, goods[2].id, true, "", 0)
+		return w.meeting["vote_parts"].get(v.id, {}).get("parts", {})
+	var low: Dictionary = parts_at.call(0.6)
+	var high: Dictionary = parts_at.call(0.95)
+	_check(not low.has("trusts_nominee"), "below the trust level, nothing is damped")
+	var social: float = maxf(0.0, float(high.get("town_pressure", 0.0))) + maxf(0.0, float(high.get("player_votes_yes", 0.0)))
+	var expect: float = -Tuning.Meeting.VOTE_TRUST_DAMP_MAX * 0.8 * social
+	_check(high.has("trusts_nominee") and is_equal_approx(float(high["trusts_nominee"]), expect), "at trust 0.95, the town's pressure and the player's yes count for less (%.3f)" % float(high.get("trusts_nominee", 0.0)))
+	_check(is_equal_approx(float(high.get("suspicion", 0.0)), float(low.get("suspicion", 0.0))), "suspicion from evidence isn't damped")

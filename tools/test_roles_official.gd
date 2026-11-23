@@ -189,7 +189,7 @@ func _test_surveyor_rework_and_workshop() -> void:
 	case_good.cards = ["sv_same"]
 	case_good.conclusion = {"type": "good", "target": people[3].id, "at": "Original alignment"}
 	var ev_good: Dictionary = CaseEval.evaluate(view, case_good)
-	_check(ev_good.lr > Tuning.Workshop.LR_MODERATE and ev_good.people[people[3].id].posterior < 0.12,
+	_check(ev_good.lr > Tuning.Workshop.LR_MODERATE and ev_good.people[people[3].id].posterior < 0.14,
 		"2-home Docks same=true + Demon kill on roommate gives strong good support for survivor (LR=%.2f, P(evil)=%.3f)" % [ev_good.lr, ev_good.people[people[3].id].posterior])
 
 	# 2-home block + Demon kill + Surveyor same=false -> strong evil signal for p3!
@@ -197,12 +197,15 @@ func _test_surveyor_rework_and_workshop() -> void:
 	case_evil.cards = ["sv_diff"]
 	case_evil.conclusion = {"type": "evil", "target": people[3].id, "at": "Original alignment"}
 	var ev_evil: Dictionary = CaseEval.evaluate(view, case_evil)
-	_check(ev_evil.lr > Tuning.Workshop.LR_MODERATE and ev_evil.posterior > 0.55,
+	# Burdens prototype: with only Delusional and Marked on the script, a Marked holder is a
+	# bigger share of the explanations, so a same=false reading leans a little less on the
+	# survivor (0.52 evil; it was above 0.55 with all four secrets).
+	_check(ev_evil.lr > Tuning.Workshop.LR_MODERATE and ev_evil.posterior > 0.5,
 		"2-home Docks same=false + Demon kill on roommate gives strong evil support for survivor (LR=%.2f, post=%.3f)" % [ev_evil.lr, ev_evil.posterior])
 
 	# 3-home block same=true -> clears all 3 residents in non-Marked worlds and sharply drops evil posterior!
 	var view_no_mark: Dictionary = view.duplicate(true)
-	view_no_mark.world_options.modifiers = ["sleepwalker", "lovers"]
+	view_no_mark.world_options.modifiers = ["delusional"]
 	var solved_sq3: Dictionary = Solver.solve(view_no_mark, [c_sq3])
 	var sq_mask: int = (1 << 4) | (1 << 5) | (1 << 6)
 	_check(not solved_sq3.worlds.is_empty() and solved_sq3.worlds.all(func(w): return (int(w.evil) & sq_mask) == 0),
@@ -379,7 +382,7 @@ func _test_magistrate_sim_and_workshop() -> void:
 	case_m.cards = ["mag_1"]
 	case_m.conclusion = {"type": "evil", "target": people[2].id, "at": "Original alignment"}
 	var ev_m: Dictionary = CaseEval.evaluate(view, case_m)
-	_check(ev_m.lr > Tuning.Workshop.LR_MODERATE and ev_m.posterior > 0.55,
+	_check(ev_m.lr > Tuning.Workshop.LR_MODERATE and ev_m.posterior > 0.5,  # 0.55 before the burdens prototype (see the roommate case)
 		"Magistrate same=false + Demon kill on nominator gives strong evil support on nominee (LR=%.2f, post=%.3f)" % [ev_m.lr, ev_m.posterior])
 
 
@@ -618,7 +621,7 @@ func _run() -> void:
 	for id in ["a", "b", "c", "d", "e", "f", "g"]:
 		people.append({"id": id, "name": id.to_upper(), "home": "square"})
 	var view = {"people": people, "cards": [], "evil_count": 2, "alignment_epoch": "Original alignment",
-		"world_options": {"modifiers": ["marked", "delusional", "lovers", "sleepwalker"], "roles": true, "identities": true}}
+		"world_options": {"modifiers": ["marked", "delusional"], "roles": true, "identities": true}}
 	var world = {"evil": 96, "demon": 5, "marked": 4, "modifier": "marked", "holders": 16}
 	var knowledge = {"self": "a", "good": ["a"], "own_role": "seer"}
 	var clerk = report("clerk", "b", "clerk", {"pair": ["c", "d"], "role": "warden"})

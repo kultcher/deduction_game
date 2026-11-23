@@ -16,6 +16,11 @@ const Bridge = preload("res://game/workshop_bridge.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
+## Whether the listener's doubts are derived as a refresh derives them (on in play): poison
+## on other people's readings (the shared Delusion doubt, Michael, Nov 22), argued premises
+## and the rest. Off, the listener holds no doubt (before Nov 22), for comparison.
+static var derived_doubt: bool = true
 
 ## The average listener (Michael, Nov 19): credibility 0.5 in the player, trust 0.5 in
 ## everyone, middling traits, nothing first-hand.
@@ -147,7 +152,7 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 		"posterior_before": before.posterior, "posterior_after": after.posterior, "case": entry,
 		"floors": after.cases.get("floors", []).duplicate(true),
 		"requested_before": before.get("requested", {}), "requested_after": after.get("requested", {}),
-		"plan_before": before.plan, "plan_after": after.plan,
+		"plan_before": before.plan, "plan_after": after.plan, "doubt_before": before.get("doubt", {}), "doubt_after": after.get("doubt", {}),
 		"counted_before": before.cases.get("entries", []), "counted_after": after.cases.get("entries", [])}
 
 
@@ -251,7 +256,10 @@ static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Di
 	var plan: Dictionary = Shared.prepare(current, presentations, ledger, {}, focus)
 	if not plan.get("ready", false):
 		return {"ready": false, "issues": plan.get("issues", []).duplicate(), "prior": {}, "cases": {}, "plan": {}}
-	var proposal: Dictionary = Shared.evaluate(plan, {}, {}, {}, {})
+	# The same doubts a refresh would hold about these readings (SourceDoubt.derive), so the
+	# average listener weighs poison on others' readings, as the town does.
+	var doubt: Dictionary = SourceDoubt.derive(plan, ledger) if derived_doubt else {}
+	var proposal: Dictionary = Shared.evaluate(plan, {}, doubt.get("pre_eval", {}), doubt.get("full", {}), doubt.get("honest", {}))
 	var cx: Dictionary = proposal.get("connections", {})
 	# A person nothing held touches keeps the prior (the model reports no posterior for them).
 	var post: Dictionary = cx.get("prior", {}).duplicate()
@@ -259,4 +267,4 @@ static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Di
 	var requested: Dictionary = {}
 	for id in proposal.get("effects", {}):
 		requested[id] = float(proposal.effects[id].get("requested", 0.0))
-	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {}), "requested": requested, "plan": plan}
+	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {}), "requested": requested, "plan": plan, "doubt": doubt}

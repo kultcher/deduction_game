@@ -13,7 +13,8 @@ static func premise_details(m, node: Dictionary) -> void:
 		epoch.select(epochs.find(conclusion.at))
 		epoch.item_selected.connect(func(i): conclusion.at = epochs[i]; m._edit())
 	if conclusion.get("type") == "secret_mod":
-		var kinds: Array = Live.Assess.C.SECRET_MOD_LIST
+		# Only the hidden burden (burdens rework): a known one is argued through its claim.
+		var kinds: Array = Live.Assess.HIDDEN_BURDENS
 		var choice = m._option(m.case_box, kinds.map(func(kind): return Live.Assess.C.secret_name(kind)))
 		if not conclusion.has("mod"):
 			conclusion["mod"] = kinds[0]
@@ -143,7 +144,7 @@ static func default_detail(m, node: Dictionary) -> void:
 				conclusion["role"] = claims[0].role if not claims.is_empty() else roles[0]
 		"secret_mod":
 			if not conclusion.has("mod"):
-				conclusion["mod"] = m.C.SECRET_MOD_LIST[0]
+				conclusion["mod"] = Live.Assess.HIDDEN_BURDENS[0]
 		"inconsistent":
 			if not conclusion.has("cause"):
 				conclusion["cause"] = "any"
@@ -162,7 +163,7 @@ static func detail_label(m, node: Dictionary) -> Dictionary:
 				"tip": "The gift this premise is about. It judges the person's own declaration; it doesn't assign an unclaimed role."}
 		"secret_mod":
 			return {"field": "mod", "text": m.C.secret_name(conclusion.get("mod", "")), "icon": m.WorkshopSkin.tex("ui/roles/" + conclusion.get("mod", ""), 0.06),
-				"tip": "Which secret modifier you're arguing they hold."}
+				"tip": "Which hidden burden you're arguing they hold, unknown even to them."}
 		"inconsistent":
 			return {"field": "cause", "text": m.INCONSISTENT_CAUSE_NAMES.get(conclusion.get("cause", "any"), "Any cause"),
 				"tip": "Link two or more of their readings. The cause decides the blame: a lie raises suspicion of them, poisoning points at whoever was out that night, Delusional clears them."}
@@ -342,7 +343,13 @@ static func set_evidence_field(m, id: String, field: String) -> void:
 	m._edit()
 
 ## Why someone seen at night was out: unexplained, a walking gift (citing their
-## claim), an evil errand, or a private errand (citing their errand claim).
+## claim), an evil errand, or love (citing their own Unrequited claim). The private errand
+## retired with the Burdens rework (Michael, Q22).
+## The walker reason an Unrequited claim gives (Michael, Nov 21: approved).
+const UNREQUITED_REASON = "For love (their Unrequited claim)"
+## The canvas tag for that reason, was "errand" (Michael, Nov 21: approved).
+const UNREQUITED_TAG = "love"
+
 static func reason_menu(m, id: String, card: Dictionary, person: String) -> void:
 	m.field_menu.clear()
 	var key: String = "%s:%d" % [person, card.get("night", -1)]
@@ -354,8 +361,8 @@ static func reason_menu(m, id: String, card: Dictionary, person: String) -> void
 	m.field_menu.add_item("Evil errand", options.size())
 	options.append(["evil", ""])
 	if m.board.view.get("live_activity", false):
-		for claim in m.board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
-			m.field_menu.add_item("Private errand (their own account)", options.size())
+		for claim in m.board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person and str(c.get("data", {}).get("secret_kind", "")) == "unrequited"):
+			m.field_menu.add_item(UNREQUITED_REASON, options.size())
 			options.append(["secret", claim.id])
 	m._field_target = {"id": id, "field": "why", "values": options, "key": key}
 	m.field_menu.position = Vector2i(m.get_viewport().get_mouse_position())

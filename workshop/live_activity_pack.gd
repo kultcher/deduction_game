@@ -172,6 +172,14 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 				flags |= (1 << 13)  # FlagTellerAtHome: from their window
 			if teller_told_cursed(curse, card):
 				flags |= (1 << 14)  # FlagTellerToldCursed
+		if kind_code == 9 and claim_walks(card):
+			flags |= (1 << 15)  # FlagClaimWalks: an Unrequited claim
+		if kind_code == 5 and bool(card.get("known_self", false)) and card.has("route"):
+			flags |= (1 << 16)  # FlagKnownRoute: the listener's own walk that night
+			var r_mask: int = 0
+			for b in card.route:
+				r_mask |= 1 << _block_code(str(b))
+			card_ints[off + 17] = r_mask
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))
@@ -255,6 +263,10 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			var app: Dictionary = card.get("applies", {})
 			card_ints[off + 18] = int(app.get("from", 0))
 			card_ints[off + 19] = int(app.get("through", -1))
+			# The beloved an Unrequited claim names (LiveActivityKernel.UnrequitedLikelihood), or -1.
+			card_ints[off + 16] = ids.find(str(data.get("beloved", ""))) if claim_walks(card) else -1
+			# The night an announced spell break stops the visits (the meeting's day), or -1.
+			card_ints[off + 17] = int(card.get("observed_at", {}).get("day", -1)) if bool(data.get("spell_broken", false)) else -1
 
 		card_doubles[c_i * 2] = (1.0 - float(card.get("self_doubt", 0.0))) if card.get("known_self", false) else float(card.get("hearing_weight", 1.0))
 		# The second slot: a report's error, or an alibi's good out-rate (out_rate, an excused lie).

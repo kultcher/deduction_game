@@ -174,6 +174,7 @@ func _init() -> void:
 	_draw_and_bare()
 	_top_tier()
 	_lines()
+	_hidden_burden()
 	_done()
 
 
@@ -242,6 +243,42 @@ func _lines() -> void:
 	check(Live.lie_call_line({"kind": "unestablished", "teller": "t", "witnesses": ["w"]}, name_of) == "Nothing you've cited shows the reading is wrong; the town will still believe it.", "the unestablished line")
 	check(Live.lie_call_line({"kind": "bare", "teller": "t", "witnesses": []}, name_of) == "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong.", "the bare line")
 
+
+## "Carries a hidden burden: Delusional" is graded on the listener's chance that the subject
+## is Delusional (Michael, Nov 22, the shared Delusion doubt), not their chance of being good:
+## a Seer's own readings that clash count for it.
+func _hidden_burden() -> void:
+	var found: Dictionary = _deal()
+	if found.is_empty():
+		return
+	var g = found.g
+	if g.w.case_script != null and not ("delusional" in g.w.case_script.secrets):
+		g.w.case_script.secrets.append("delusional")
+	var seer = found.seer
+	var a = found.innocent
+	var b = found.other
+	var yes_n: int = GameBoard.add_card(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "text": "%s's Seer (night 1): %s or %s is the Demon" % [seer.name, a.name, b.name]})
+	var no_n: int = GameBoard.add_card(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": false}, "text": "%s's Seer (night 2): neither %s nor %s is the Demon" % [seer.name, a.name, b.name]})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+	var view: Dictionary = Live.view(g)
+	var model = CanvasModel.new(view)
+	model.contradiction_links = true
+	model.marked_answers = false
+	var p: String = model.add_premise(seer.id, "secret_mod", Vector2(0, 0))
+	model.nodes[p].conclusion["mod"] = "delusional"
+	_link(model, view, p, [_id(g, view, yes_n), _id(g, view, no_n)])
+	var r: Dictionary = Live.test_juror(g, model.compile(p))
+	var heard: Dictionary = r.get("listener", {})
+	print("hidden burden: Delusional %.3f -> %.3f (x%.2f, %s)" % [float(heard.get("chance_before", -1.0)), float(heard.get("chance", -1.0)), float(r.get("lr", 0.0)), str(r.get("category", ""))])
+	check(r.get("ready", false) and float(heard.get("chance_before", 1.0)) < 0.2, "the hidden-burden premise reads the chance of being Delusional, low before the case (%.3f)" % float(heard.get("chance_before", -1.0)))
+	check(float(heard.get("chance", 0.0)) > float(heard.get("chance_before", 1.0)) and float(r.get("lr", 0.0)) > 1.0, "and a Seer's clashing readings raise it (x%.2f)" % float(r.get("lr", 0.0)))
+	# "Is Marked" reads the chance of the mark too (Michael, Nov 22), not of being good: low before.
+	var mp: String = model.add_premise(a.id, "marked", Vector2(0, 200))
+	_link(model, view, mp, [_id(g, view, yes_n)])
+	var rm: Dictionary = Live.test_juror(g, model.compile(mp))
+	var mheard: Dictionary = rm.get("listener", {})
+	print("is Marked: %.3f -> %.3f (x%.2f, %s)" % [float(mheard.get("chance_before", -1.0)), float(mheard.get("chance", -1.0)), float(rm.get("lr", 0.0)), str(rm.get("category", ""))])
+	check(rm.get("ready", false) and float(mheard.get("chance_before", 1.0)) < 0.2, "the Marked premise reads the chance of being Marked, low before the case (%.3f)" % float(mheard.get("chance_before", -1.0)))
 
 func _done() -> void:
 	print("Juror as listener: %d checks, %d failures" % [checks, fails])

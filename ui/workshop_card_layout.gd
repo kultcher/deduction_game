@@ -68,10 +68,20 @@ static func evidence_layout(m, id: String) -> Dictionary:
 			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
 				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES) \
 				or (mode == RCh.HONEST and not RCh.honest_allowed(m.model.view, card, side))
-			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": preload("res://workshop/reading_challenges.gd").canonical(node.mode) == mode, "disabled": disabled, "field": "mode:" + mode,
+			var is_on: bool = RCh.canonical(node.mode) == mode or (mode == RCh.HONEST and node.mode == "delusional")
+			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": is_on, "disabled": disabled, "field": "mode:" + mode,
 				"tip": {"lying": "The reader is lying about this result.", RCh.HONEST: RCh.HONEST_TIP, "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
 		y += 36.0
+		# Mistaken's cause (Michael, Nov 22): that night only, or Delusional all along, where
+		# the script can deal Delusional and the passing-on isn't what's challenged.
+		if (RCh.canonical(node.mode) == RCh.HONEST or node.mode == "delusional") and RCh.delusion_possible(m.model.view) and side != "transmission":
+			# One per row, as the relay's sides are: the card is too narrow for both labels.
+			for cause in [[RCh.HONEST, RCh.NIGHT_ONLY_LABEL, RCh.NIGHT_ONLY_TIP], ["delusional", RCh.DELUSION_ALL_ALONG_LABEL, RCh.DELUSION_ALL_ALONG_TIP]]:
+				var cause_on: bool = (node.mode == "delusional") == (cause[0] == "delusional")
+				els.append({"t": "chip", "rect": Rect2(16.0, y, m.WIDTH - 32.0, 26), "text": cause[1], "on": cause_on, "disabled": false, "field": "mode:" + cause[0], "tip": cause[2]})
+				y += 32.0
+			y += 4.0
 		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}
 	var answer: Dictionary = node.answers.get(card.get("id", ""), {})
 	var positive: Array = answer.get("positive", [])
@@ -101,7 +111,7 @@ static func evidence_layout(m, id: String) -> Dictionary:
 		y += m.FACE_R * 2 + 22.0
 		if role == "seer" and card.data.get("yes", false):
 			var x: float = 16.0
-			for reg in ([["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]] if m.model.marked_answers else [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"]]):
+			for reg in ([["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]] if m.model.marked_answers_open() else [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"]]):
 				var w: float = 58.0 if reg[0] == "" else (64.0 if reg[0] != "red_herring" else 96.0)
 				els.append({"t": "chip", "rect": Rect2(x, y, w, 24), "text": reg[1], "on": answer.get("registration", "") == reg[0], "field": "reg:" + reg[0],
 					"tip": "Why the Seer got a yes: " + {"": "any valid explanation", "demon": "the Demon is the one you picked", "red_herring": "the one you picked is the Red Herring", "marked": "the one you picked is Marked"}[reg[0]]})
@@ -154,7 +164,7 @@ static func evidence_layout(m, id: String) -> Dictionary:
 		y += 172.0
 	elif card.kind == "report" and role == "chronicler":
 		var trio: Array = card.get("data", {}).get("trio", [])
-		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Case start: 1 folk, 1 secret, 1 Minion"})
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Case start: 1 folk, 1 burden, 1 Minion"})
 		y += 26.0
 		var cx0: float = m.WIDTH / 2.0 - (trio.size() - 1) * m.FACE_STEP * 0.6
 		for i in range(trio.size()):

@@ -47,19 +47,21 @@ var progress_label: Label
 var presenting = false
 
 ## The claim menu (premises pass step 2): one entry per question the solver asks. "Is
-## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
+## Marked" was "holds a secret" with Marked (its own premise again in the burdens prototype); "bluffing" and "told the truth" were "evil" and
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
 ## "turned" (the Revenant's curse turned this person) is offered in the type menu only once
 ## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
 ## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
 ## as it is for the older off-screen picker, which selects by index.
-const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned"]
+## "marked" is appended (burdens prototype): with Marked a known burden, "holds a secret" is
+## only for the hidden one, so "is Marked" is its own premise; at the end, so indices hold.
+const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned", "marked"]
 
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "has readings that don't fit together", "was turned by the Revenant's curse"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "carries a hidden burden", "has readings that don't fit together", "was turned by the Revenant's curse", "is Marked"]
 
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
@@ -70,6 +72,7 @@ const PREMISE_TYPE_HINTS = {
 	"suspicious": "Put pressure on someone without necessarily getting them hanged. It counts for half, but leans on them to explain themselves. You pick the direction and drive it: the town won't sort out \"one of these two\" for you.",
 	"good": "Argue they're on the town's side: clear them.",
 	"demon": "Argue they're the Demon itself.",
+	"marked": "Argue they carry the mark: good, but read as evil by gifts. Cite their claim and the reading it explains.",
 }
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
 const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "delusional": "They're Delusional"}
@@ -678,13 +681,16 @@ func _refresh_case() -> void:
 			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
 			side_option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "side:" + sides[i]))
 		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
-		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
-		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
+		var RCh = preload("res://workshop/reading_challenges.gd")
+		var option = _option(case_box, [RCh.NIGHT_ONLY_LABEL if RCh.delusion_possible(board.view) else RCh.HONEST_LABEL, "Suspected lie", "Unlikely reading", RCh.HONEST_LABEL + ": " + RCh.DELUSION_ALL_ALONG_LABEL.to_lower()])
+		option.select(["impaired", "lying", "unlikely", "delusional"].find(RCh.canonical(node.mode)))
+		# "Delusional all along" (Michael, Nov 22) where the script can deal Delusional.
+		option.set_item_disabled(3, not RCh.delusion_possible(board.view) or (relay and str(node.get("attribution", "")) == "transmission"))
 		option.set_item_disabled(0, not preload("res://workshop/reading_challenges.gd").honest_allowed(board.view, _report(node.card), str(node.get("attribution", ""))))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
 			option.set_item_disabled(2, true)
-		option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
+		option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "mode:" + ["impaired", "lying", "unlikely", "delusional"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)

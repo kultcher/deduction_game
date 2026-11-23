@@ -30,20 +30,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	if tier == 2 and C.hint_package(w, role) == "":
 		tier = 1  # every family the gift is in has only it on this script: a hint would name it
 	if tier <= 1:
-		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
-		# read as a near-certain good, at the price of the gift. Refusing to say remains.
-		var lie = C.ALLOW_NO_GIFT_DENIAL and decide(w, n, "deny_or_refuse", {"confidence": (trait_of(n, "confidence") - 0.5) * 1.5, "base": -0.1},
-			"Tier 1: deny having a gift (lie) rather than refuse to say?")
-		if lie:
-			if not evil:
-				w.dlog.think(n.id, "lie", "Denied having a gift, out of caution (they are the %s)." % C.role_name(n.role), {"lie": true})
-			else:
-				w.dlog.think(n.id, "lie", "Denied having a gift.", {"lie": true})
-			n.claimed_role = "none"
-			lines.append(say_voiced(n, "deny_any_gift", "A gift? No, nothing like that. I'm only the %s." % n.occupation, {"occupation": n.occupation}))
-			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
-				"text": "%s told you privately they have no gift." % n.name})
-		elif _dialogue()._afraid(w, n):
+		if _dialogue()._afraid(w, n):
 			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
 				"text": "%s won't say whether they have a gift: afraid it would make them the Demon's next mark." % n.name}
 			var ask: Dictionary = _dialogue()._protection_request(w, n, refusal)
@@ -127,6 +114,11 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	if first_time:
 		set_trust(w, n, n.trust + Tuning.Trust.SHARED_GIFT_FIRST_TIME_BONUS, "shared their gift with the Demonologist")
 	n.max_tier = maxi(n.max_tier, 3)
+	# A known burden, told in the same breath as the gift, as trust allows (burdens prototype).
+	var told_burden: Dictionary = Burdens.tell_player(w, n)
+	if not told_burden.is_empty():
+		lines.append(told_burden["line"])
+		facts.append(told_burden["fact"])
 	var rdef = C.role_def(role)
 	if rdef != null:
 		var custom: Dictionary = rdef.answer_gift_custom(w, n, first_time, tier, lines, facts, _mind(), C.night_name, C.block_name)
@@ -240,9 +232,6 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var nd: int = w.day - 1 if night < 0 else night
 	var where: String = n.history.get(w.time_key(nd, C.NIGHT), "home:" + n.home_block)
 	var was_out = where.begins_with("night:")
-	if n.secret_mod == "sleepwalker" and was_out:
-		w.dlog.think(n.id, "unaware", "Sleepwalker: was out on %s on night %d but honestly believes they slept at home." % [where, nd])
-		was_out = false  # they truly don't know
 	var block = where.substr(where.find(":") + 1)
 	# Where they say they were: what their sightings must be told from. "" = not saying.
 	var vantage = ""
@@ -313,9 +302,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				lines.append(say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
 			vantage = block
 			how = "street"
-			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
-				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "", "partner": str(n.secret.get("with", "")) if n.secret.get("kind", "") == "lover" else "",
-				"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
+			facts.append(Burdens.with_errand(w, n, {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
+				"secret_kind": n.secret.get("kind", ""), "text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}))
 		else:
 			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
 			var prior_kind: String = prior_account.get("kind", "")

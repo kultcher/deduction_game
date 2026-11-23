@@ -14,27 +14,24 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
-| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
-| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind_cases.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
+| `SHADOW_SELF` | `true` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_cases.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
-| `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd` |
-| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd`, `workshop/case_eval_classes.gd`, `workshop/solver.gd` |
+| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd`, `workshop/cs/RoleConstraints.cs` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
 | `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
 | `FRIEND_PAIR_CUTOFF` | `0.2` |  | `sim/world.gd` |
 | `RIVAL_PAIR_CUTOFF` | `0.32` |  | `sim/world.gd` |
-| `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/world.gd` |
+| `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_SUSPICION_RIVAL` | `0.0` |  | `sim/world.gd` |
-| `INITIAL_SUSPICION_FRIEND` | `0.0` |  | `sim/world.gd` |
+| `INITIAL_SUSPICION_FRIEND` | `0.0` |  | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_TRUST_BASE` | `0.5` |  | `sim/world.gd` |
-| `INITIAL_TRUST_JITTER` | `0.05` |  | `sim/world.gd` |
+| `INITIAL_TRUST_JITTER` | `0.05` |  | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_TRUST_RIVAL` | `-0.25` |  | `sim/world.gd` |
 | `INITIAL_TRUST_FRIEND` | `0.25` |  | `sim/world.gd` |
-| `INITIAL_TRUST_LOVER` | `0.9` |  | `sim/world.gd` |
 | `PLAYER_TRUST_BASE` | `0.425` | Initial NPC-to-Player trust prior | `sim/world.gd` |
 | `PLAYER_TRUST_OPENNESS_SCALE` | `0.0` |  | `sim/world.gd` |
 | `PLAYER_TRUST_JITTER_MIN` | `-0.05` |  | `sim/world.gd` |
@@ -53,8 +50,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRE_PHASE_CHAT_CHANCE` | `0.65` |  | `sim/world.gd` |
 | `POST_PHASE_PAIR_MULT` | `0.4` |  | `sim/world.gd` |
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
-| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world_night.gd`, `workshop/source_doubt.gd` |
-| `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world_night.gd` |
 | `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world_night.gd` |
@@ -179,8 +174,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXEC_READING_MIN_EVIL_SUSP` | `0.22` |  | `sim/world_meeting.gd` |
 | `CONFIDENCE_BROKEN_BASE` | `0.05` | Broken confidence & spread secrets | `game/game_board.gd` |
 | `CONFIDENCE_BROKEN_PRIVACY` | `0.2` |  | `game/game_board.gd` |
-| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/mind_cases.gd` |
-| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/mind_cases.gd` |
+| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/burdens.gd`, `sim/mind_cases.gd` |
+| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/burdens.gd`, `sim/mind_cases.gd` |
 | `SECRET_SPREAD_REPEAT_MULT` | `0.4` |  | `sim/mind_cases.gd` |
 | `SECRET_CAP_HIGH_PRIVACY` | `0.3` |  | `sim/mind_cases.gd` |
 | `SECRET_CAP_MID_PRIVACY` | `0.6` |  | `sim/mind_cases.gd` |
@@ -373,7 +368,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SUPPORT_EVIL_PILE_STAKES` | `0.6` |  | `sim/mind_support.gd` |
 | `LATE_RELAY_TELLER_MARK` | `0.02` | Vote resistance lines (Step 6, M2d): after the tally, at most this many voters say why. Someone who accepted the Demonologist's case and still voted no explains; failing that, the voter who swung a close count. A "short of rope" no needs a close margin. | `sim/mind_meeting.gd` |
 | `MAX_VOTE_RESISTANCE_SPEAKERS` | `2` |  | `sim/mind_vote.gd` |
-| `VOTE_RESISTANCE_CLOSE_MARGIN` | `0.35` |  | `sim/mind_vote.gd` |
+| `VOTE_RESISTANCE_CLOSE_MARGIN` | `0.35` |  | `sim/mind_support.gd`, `sim/mind_vote.gd` |
 | `ALLOW_UNANCHORED_PLAYER_NOMINATION` | `true` | Player nominations: with a filed case (anchored) or without (raw). A raw nomination still counts at the formal track-record weight (unchanged; revisit in M4's sweep). | (unused) |
 | `VOLUNTEER_SIGHTING_BASE` | `1.2` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_BASE` | `-0.35` |  | `sim/mind_meeting.gd` |
@@ -393,7 +388,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `REVEAL_SUSPICION_PIVOT` | `0.45` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
 | `REVEAL_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
 | `REVEAL_CONFIDENCE_SLOPE` | `0.6` |  | `sim/mind_meeting.gd` |
-| `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/mind_meeting.gd` |
+| `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/burdens.gd`, `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_CONFIDENCE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_support.gd` |
 | `ACCUSE_PRESSURE_DEFLECT` | `0.4` |  | `sim/mind_meeting.gd` |
@@ -439,10 +434,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VOTE_DAY1_PENALTY` | `0.1` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
 | `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
 | `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_vote.gd`, `sim/social.gd` |
-| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_vote.gd` |
-| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_vote.gd` |
+| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/burdens.gd`, `sim/mind_vote.gd` |
+| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/burdens.gd`, `sim/mind_vote.gd` |
 | `PLAYER_VOTE_NO_SLOPE` | `0.12` | The player's no pushes later voters toward no, at about two-thirds of the yes push (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below a quarter it backfires, as a low-credibility yes does. | `sim/mind_vote.gd` |
 | `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_vote.gd` |
+| `VOTE_TRUST_DAMP_START` | `0.75` | Strong trust in the nominee blunts the social push to hang them (Michael, Nov 22): above this trust, the town's consensus pressure and the player's yes count for less, rising linearly to VOTE_TRUST_DAMP_MAX off at full trust. Suspicion from evidence isn't damped. | `sim/mind_vote.gd` |
+| `VOTE_TRUST_DAMP_MAX` | `0.6` |  | `sim/mind_vote.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_vote.gd` |
 | `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_vote.gd` |
 | `VOTE_PREFERS_BLOCK_OFFSET` | `-0.4` |  | `sim/mind_vote.gd` |
@@ -531,10 +528,14 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_CAUTION_MINION` | `0.7` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_ID_DRIFT` | `0.08` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_CAUTION_FLOOR` | `0.25` |  | `sim/content.gd`, `sim/evil.gd` |
+| `OMEN_PUSH_STAKES` | `0.35` | A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the usual exposure cost. Sized so that on a close vote a Minion under about the median scrutiny votes yes, and under heavy scrutiny keeps cover. | `sim/mind_meeting.gd`, `sim/mind_vote.gd` |
+| `OMEN_KNOWN_KILL_PENALTY` | `-1.5` | The evil team knows the Ill-Omened (Michael, Nov 22; burdens prototype). A mild pull away from killing them (a Seer's claim is worth 4 to the Demon, a spent first-night gift 0), and toward making them the scapegoat. | `sim/evil.gd` |
+| `OMEN_KNOWN_SCAPEGOAT_BONUS` | `0.4` |  | `sim/evil.gd` |
+| `OMEN_DEAD_BLUFF_RUMOR_CHANCE` | `0.15` | The chance evil still claims a dead holder's Ill-Omened when a Rumormonger reading has shown it in play. | `sim/burdens.gd` |
 | `DEMON_CAUTION_FLOOR` | `0.45` |  | `sim/evil.gd` |
 | `DEMON_CAUTION_DRIFT` | `0.03` |  | `sim/evil.gd` |
 | `HEAT_FADE` | `0.75` |  | `sim/evil.gd` |
-| `PUBLIC_HEAT_BASE` | `0.15` |  | `sim/evil.gd` |
+| `PUBLIC_HEAT_BASE` | `0.15` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
 | `HEAT_ACCUSATION` | `0.12` |  | `sim/evil.gd` |
 | `HEAT_NOMINATION` | `0.2` |  | `sim/evil.gd` |
 | `HEAT_READING_SCALE` | `0.4` |  | `sim/evil.gd` |
@@ -567,8 +568,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLANTER_GOSSIP_WEIGHT` | `0.8` |  | `sim/evil.gd` |
 | `PLANTER_EXPOSURE_PENALTY` | `0.6` |  | `sim/evil.gd` |
 | `PLANTER_OPENNESS_TIEBREAK` | `0.01` |  | `sim/evil.gd` |
-| `EVIL_NOMINATION_BASE_HEAT` | `0.42` |  | `sim/evil.gd` |
-| `EVIL_NOMINATION_CONFIDENCE_SCALE` | `0.16` |  | `sim/evil.gd` |
+| `EVIL_NOMINATION_BASE_HEAT` | `0.42` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
+| `EVIL_NOMINATION_CONFIDENCE_SCALE` | `0.16` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
 | `EVIL_POCKET_FRAME_BONUS` | `0.16` |  | `sim/evil.gd` |
 | `EVIL_WALKER_INTEL_BONUS` | `0.08` |  | `sim/evil.gd` |
 | `MAX_DIRECT_PLANTS` | `2` |  | `sim/social.gd` |
@@ -623,20 +624,34 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `POISON_WARDEN_OTHER` | `1.2` |  | `sim/evil.gd` |
 | `POISON_NOISE` | `1.5` |  | `sim/evil.gd` |
 
+## Burden
+
+| Constant | Value | Note | Used in |
+| --- | --- | --- | --- |
+| `MARKED_SHARE` | `{"public": 0.15, "private": 0.40}` | Marked's disclosure (Michael, Nov 20): announced at the first meeting, shared privately (the share scaling with trust), or held until nominated or named in an evil reading. | `sim/burdens.gd` |
+| `MARKED_PRIVATE_SHARE_SCALE` | `3.0` | Private sharing: a peer-talk weight of SCALE x (trust - FLOOR), as a held secret is shared; to the player, the same expression is the chance when it tells its gift. Beadle's estimates, not yet approved. | `sim/burdens.gd` |
+| `MARKED_PRIVATE_SHARE_FLOOR` | `0.5` |  | `sim/burdens.gd` |
+| `BLUFF_REACTIVE` | `0.5` | Evil's reactive burden bluff, faced with an evil reading of it: REACTIVE, plus SILENCE_PER_DAY for each day past the first with no burden claimed, halved if a Rumormonger is publicly claimed, times (1 - caution). Beadle's estimates. | `sim/burdens.gd` |
+| `BLUFF_SILENCE_PER_DAY` | `0.1` |  | `sim/burdens.gd` |
+| `BLUFF_RUMORMONGER_DAMP` | `0.5` |  | `sim/burdens.gd` |
+| `SILENCE_START` | `0.05` | Evil's unprompted claim at the meeting ("bolder with silence", Michael Q16): the public share x (SILENCE_START + SILENCE_PER_DAY x silent days) x (1 - caution). With caution about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates. | `sim/burdens.gd` |
+| `SILENCE_PER_DAY` | `0.3` |  | `sim/burdens.gd` |
+| `UNREQUITED_VISIT_CHANCE` | `0.65` | The Unrequited's night visit to the beloved's door (or grave): the chance each night, and never two nights running without one (Michael, Nov 21). | `sim/burdens.gd`, `workshop/live_activity.gd`, `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd` |
+
 ## Workshop
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/source_doubt.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd`, `workshop/source_doubt.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |
 | `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity_factors.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity_factors.gd` |
-| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval_classes.gd`, `workshop/source_doubt.gd` |
-| `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
-| `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
+| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `workshop/source_doubt.gd` |
+| `OWN_DELUSION_PRIOR` | `0.07` | With the Delusional secret on the script, a good NPC's chance, before any evidence, that it is the Delusional one and its gift says anything (shared Delusion doubt, Michael, Nov 22): one doubt for all its readings, in the judge's worlds where it holds the secret (CaseEval._own_counts), so readings that agree with each other and the town lower it for every night, and clashes raise it. Retires DELUSIONAL_SELF_DOUBT (0.1 per night). Others' readings keep the deal's own share. A burden it knows it holds rules it out. | `workshop/case_eval_classes.gd`, `workshop/cs/CaseEvalKernel.cs`, `workshop/cs/RoleConstraints.cs`, `workshop/source_doubt.gd` |
+| `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison self-doubt and OWN_DELUSION_PRIOR) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_HIGH` | `0.8` |  | `workshop/source_doubt.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
@@ -677,6 +692,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
+| `BURDEN_BLUFF_REACTIVE` | `0.11` | A claimed burden (burdens prototype; Michael, Nov 21): how much likelier an evil player is to make the claim than a real holder, by whether it answers an evil reading of them (`RoleConstraints.burden_claim_factors`). Measured (Beadle, 277 passive 10-NPC games, seeds 7000-7276, 142 dealt Marked): read evil, evil bluffed Marked in 20 of 180 chances, and all 18 holders read evil claimed. Unprompted: below zero means the deal's own share (the chance a good claimant holds that burden), which leaves an unprompted claim neutral (Michael); measured, it was about 0.08 (27 claims from 831 evil players against 56 of 142 holders). | `workshop/role_constraints.gd` |
+| `BURDEN_BLUFF_UNPROMPTED` | `-1.0` |  | `workshop/role_constraints.gd` |
+| `BURDEN_REACTIVE_SOFTEN` | `0.68` | Softens the reactive ratio so a claim answering an evil reading leaves its claimant about where the reading left them (Michael, Nov 21, revised: neutral against silence): within about 2 points either side after a Seer's yes in the 7- and 10-person towns. | `workshop/role_constraints.gd` |
+| `BURDEN_BLUFF_UNREQUITED_SIGHTED` | `0.85` | An Unrequited claim told only after its claimant was seen out at night (and with no evil reading of them first): how much likelier an evil player is to make it than a real holder. Set by feel so the claim lands about where the sighting left them (Michael, Nov 21, provisional): in the 7-person test, seen out twice on the beloved's block, 37.6% evil with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has measured it: passive games make no Unrequited claims. | `workshop/role_constraints.gd` |
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval_content.gd` |
 | `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity_base.gd` |
 | `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity_base.gd` |
@@ -709,7 +728,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DOUBT_GD_GOOD_TRUST_MIN` | `0.60` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_MISLED_SCALE` | `0.8` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_UNRELIABLE_SCALE` | `0.5` |  | `workshop/source_doubt.gd` |
-| `DOUBT_ARG_DELUSIONAL_SCALE` | `0.7` |  | `workshop/source_doubt.gd` |
+| `DOUBT_ARG_DELUSIONAL_SCALE` | `0.7` | An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3. | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_CAP` | `0.9` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_STRONG_AGR` | `0.75` |  | `workshop/source_doubt.gd` |

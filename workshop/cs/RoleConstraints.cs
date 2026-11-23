@@ -51,7 +51,7 @@ internal static class RoleConstraintsKernel
     public const int FlagMarkedRegisters = 1 << 8;
     public const int FlagReadRoleEvil = 1 << 9;
     public const int FlagSeerYes = 1 << 10;
-    public const int FlagSecretSleepwalker = 1 << 11;
+    // 1 << 11 was FlagSecretSleepwalker (retired, burdens rework).
     public const int FlagSextonEnvOk = 1 << 12;
     public const int FlagExecutorDeadOk = 1 << 13;
     public const int FlagExecutorRoleRead = 1 << 14;
@@ -63,27 +63,43 @@ internal static class RoleConstraintsKernel
     /// (role_constraints.gd): it carries FlagMartyrEvil's check (which, like every reading's
     /// content, a world whose Delusional holder is the Martyr skips in play).
     public const int FlagMartyrPromise = 1 << 17;
+    /// A reading inside a hanged Ill-Omened claimant's window (burdens prototype); header[14]
+    /// holds those claimants.
+    public const int FlagOmenWindow = 1 << 18;
+    /// A burden claim after a missed forced trigger (role_constraints.gd missed_forced_trigger;
+    /// Michael, Nov 22): the claimant let the trigger pass unclaimed, so they don't hold it.
+    public const int FlagMissedTrigger = 1 << 19;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
+    // A KindSecretClaim card's burden (slot 19; role_constraints.gd): the world modifier code
+    // plus one, 0 for none.
+
     public const int PoolGood = 0;
     public const int PoolMinion = 1;
     public const int PoolDemon = 2;
     public const int PoolAny = 3;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long CoarseMask(int people, WorldEntry w, bool seer, int mediums, int walkers)
+    public static long CoarseMask(int people, WorldEntry w, int markedMask, int mediums)
     {
         long n = people + 1L;
-        long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + (seer ? ((long)w.Marked + 1L) : 0L);
+        long m = (markedMask != 0 && w.Marked >= 0 && (markedMask & (1 << w.Marked)) != 0)
+            ? ((long)w.Marked + 1L)
+            : 0L;
+        long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + m;
         if (mediums != 0)
         {
-            long deluded = (w.EffectiveModifier == WorldEntry.ModDelusional) ? (w.Holders & mediums) : 0L;
-            mask = mask * (1L << people) + deluded;
-        }
-        if (walkers != 0)
-        {
-            long asleep = (w.EffectiveModifier == WorldEntry.ModSleepwalker) ? (w.Holders & walkers) : 0L;
-            mask = mask * (1L << people) + asleep;
+            // Which of these people hold a one-holder burden, and which burden. The low 16 bits
+            // are the relayers and tellers, whose holding matters only as the Delusional; the
+            // high 16 are burden and omen claimants, whose holding of any burden but Marked
+            // matters (role_constraints.gd relay_mediums; Argon, Nov 21: keying every
+            // teller's Unrequited or Ill-Omened split classes the role check never reads).
+            int mod = w.EffectiveModifier;
+            int tellers = mediums & 0xFFFF;
+            int claimants = (int)((uint)mediums >> 16);
+            int relevant = mod == WorldEntry.ModDelusional ? (tellers | claimants) : mod == WorldEntry.ModMarked ? 0 : claimants;
+            long held = w.Holders & relevant;
+            mask = (mask * (1L << people) + held) * 5L + (held != 0 ? (long)(mod + 1) : 0L);
         }
         if (w.HasConverted)
         {
@@ -92,14 +108,98 @@ internal static class RoleConstraintsKernel
         return mask;
     }
 
-    public static long[] CoarseMasks(int people, long[] packedWorlds, bool seer, int mediums, int walkers)
+    public static long[] CoarseMasks(int people, long[] packedWorlds, int markedMask, int mediums)
     {
         long[] outMasks = new long[packedWorlds.Length];
         for (int i = 0; i < packedWorlds.Length; i++)
         {
-            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums, walkers);
+            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), markedMask, mediums);
         }
         return outMasks;
+    }
+
+    /// <summary>
+    /// Extracts [source, relayer, stmtTick, forbiddenBits] quads for every unquoted, non-contentOnly
+    /// KindClaim card with a non-zero forbidden-burden mask.
+    /// </summary>
+    public static int[] ExtractForbiddenSpecs(int[] cardInts, int baseCardCount)
+    {
+        List<int>? list = null;
+        for (int c = 0; c < baseCardCount; c++)
+        {
+            int off = c * CardStride;
+            if (cardInts[off] != KindClaim)
+            {
+                continue;
+            }
+            int flags = cardInts[off + 1];
+            if ((flags & (FlagQuoted | FlagContentOnly)) != 0)
+            {
+                continue;
+            }
+            int forbidden = cardInts[off + 13];
+            if (forbidden == 0)
+            {
+                continue;
+            }
+            list ??= new List<int>(16);
+            list.Add(cardInts[off + 2]); // source
+            list.Add((flags & FlagHasRelaySource) != 0 ? cardInts[off + 6] : -1); // relayer
+            list.Add(cardInts[off + 12]); // stmtTick
+            list.Add(forbidden);
+        }
+        return list != null ? list.ToArray() : Array.Empty<int>();
+    }
+
+    /// <summary>
+    /// True iff any good claimant (good at claim time, not behind an evil relayer in play)
+    /// holds a burden forbidden for their claimed role (impossible pairs; Michael, Nov 21).
+    /// Pure binary kill: lets CoarseMask omit forbidden-burden claimants and global Marked splits.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasForbiddenPair(
+        WorldEntry world,
+        int[] forbiddenSpecs,
+        bool live,
+        bool viewIsEmpty,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil)
+    {
+        int evil = world.Evil;
+        bool worldHasConverted = world.HasConverted;
+        int worldConverted = worldHasConverted ? world.ConvertedRaw : -1;
+        int count = forbiddenSpecs.Length;
+        for (int i = 0; i < count; i += 4)
+        {
+            int source = forbiddenSpecs[i];
+            if (source < 0)
+            {
+                continue;
+            }
+            int relayer = forbiddenSpecs[i + 1];
+            if (live && relayer >= 0 && (evil & (1 << relayer)) != 0)
+            {
+                continue;
+            }
+            bool sourceEvil = (evil & (1 << source)) != 0;
+            if (worldHasConverted && !viewIsEmpty && !sourceEvil && worldConverted == source && hasCurse)
+            {
+                int stmtTick = forbiddenSpecs[i + 2];
+                sourceEvil = stmtTick >= curseFrom && stmtTick < curseUntil;
+            }
+            if (sourceEvil)
+            {
+                continue;
+            }
+            int held = world.Marked == source ? WorldEntry.ModMarked
+                : ((world.Holders & (1 << source)) != 0 ? world.EffectiveModifier : -1);
+            if (held >= 0 && (forbiddenSpecs[i + 3] & (1 << held)) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
@@ -108,7 +208,15 @@ internal static class RoleConstraintsKernel
     /// reasonCode: 0 = "", 1 = "demon", 2 = "red_herring", 3 = "marked".
     /// Preserves exact ascending r_bit summation order and final division.
     /// </summary>
-    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts)
+    /// The chance a Marked person registers as the Demon to the Seer (Tuning.Setup.MARKED_DEMON_CHANCE,
+    /// set from GDScript when the bridge loads; SolverBackend._bridge).
+    public static double MarkedDemonChance = 0.5;
+
+    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts) =>
+        SeerRhWeight(candidatesMask, demon, marked, readingInts, ReadOnlySpan<int>.Empty);
+
+    /// demons: the Demon of each reading's night, or empty for `demon` throughout.
+    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts, ReadOnlySpan<int> demons)
     {
         if (candidatesMask == 0)
         {
@@ -131,6 +239,10 @@ internal static class RoleConstraintsKernel
             for (int r = 0; r < rCount; r++)
             {
                 int b = r * 4;
+                if (r < demons.Length)
+                {
+                    demonBit = demons[r] >= 0 ? (1 << demons[r]) : 0;
+                }
                 bool yes = readingInts[b] != 0;
                 int pair = readingInts[b + 1];
                 if (!yes)
@@ -142,7 +254,7 @@ internal static class RoleConstraintsKernel
                     }
                     if ((pair & markedBit) != 0)
                     {
-                        w *= 0.5;
+                        w *= 1.0 - MarkedDemonChance;
                     }
                 }
                 else
@@ -178,7 +290,7 @@ internal static class RoleConstraintsKernel
                         }
                         if (!demonIn && !rhIn)
                         {
-                            w *= 0.5;
+                            w *= MarkedDemonChance;
                         }
                     }
                     else
@@ -189,7 +301,7 @@ internal static class RoleConstraintsKernel
                         }
                         else if (markedIn)
                         {
-                            w *= 0.5;
+                            w *= MarkedDemonChance;
                         }
                         else
                         {
@@ -206,18 +318,166 @@ internal static class RoleConstraintsKernel
         return nCandidates > 0 ? totalWeight / (double)nCandidates : 0.0;
     }
 
-    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, bool seer, int mediums, int walkers)
+    /// <summary>
+    /// Vectorised 1:1 port of CaseEval._marked_count_weight + Solver.marked_count_weight
+    /// over a class-representative universe (or subset).
+    /// cardSpecs stride = 7 ints per counting card:
+    ///   [0] mode: 0 = site_group (Dowser/Hearthwitch), 1 = parity_group (Magistrate / block-parity Surveyor), 2 = block_count Surveyor
+    ///   [1] srcIdx: person index of card.source (-1 if unknown)
+    ///   [2] flags: bit 0 (1) = srcConvEvil, bit 1 (2) = contentConvEvil, bit 2 (4) = skipDeludedSrc
+    ///   [3] omenMask: bitmask of card.omen_claimants
+    ///   [4] groupMask: bitmask of group/pair/block members (modes 0 and 1)
+    ///   [5] targetOrSame: target count (modes 0 and 2) or want_same 0/1 (mode 1)
+    ///   [6] groupSize: popcount(groupMask) (mode 1)
+    /// </summary>
+    public static double[] MarkedCountWeights(
+        long[] packedWorlds,
+        int[] cardSpecs,
+        int[] blockMasks,
+        double markedEvilChance)
     {
-        var memo = SolverContext.GetRoleConstraintMemo(memoSlot);
-        if (memo == null || memo.Count == 0)
+        int uLen = packedWorlds.Length;
+        double[] outWeights = new double[uLen];
+        if (uLen == 0)
+        {
+            return outWeights;
+        }
+        int nCards = cardSpecs.Length / 7;
+        if (nCards == 0)
+        {
+            Array.Fill(outWeights, 1.0);
+            return outWeights;
+        }
+        double asGoodWeight = 1.0 - markedEvilChance;
+
+        for (int i = 0; i < uLen; i++)
+        {
+            var w = new WorldEntry(packedWorlds[i]);
+            int marked = w.Marked;
+            if (marked < 0)
+            {
+                outWeights[i] = 1.0;
+                continue;
+            }
+            int markedBit = 1 << marked;
+            int evil = w.Evil;
+            bool hasConv = w.HasConverted;
+            int convIdx = hasConv ? w.ConvertedRaw : -1;
+            int mod = w.EffectiveModifier;
+            int holders = w.Holders;
+            double weight = 1.0;
+
+            for (int c = 0; c < nCards; c++)
+            {
+                int off = c * 7;
+                int mode = cardSpecs[off];
+                int groupMask = cardSpecs[off + 4];
+                if (mode != 2 && (groupMask & markedBit) == 0)
+                {
+                    continue;
+                }
+                int srcIdx = cardSpecs[off + 1];
+                int flags = cardSpecs[off + 2];
+                if (srcIdx >= 0)
+                {
+                    bool srcEvil = (evil & (1 << srcIdx)) != 0
+                        || (hasConv && convIdx == srcIdx && SolverKernel.EvilIndex(w, convIdx, (flags & 1) != 0));
+                    if (srcEvil)
+                    {
+                        continue;
+                    }
+                    if ((flags & 4) != 0 && mod == WorldEntry.ModDelusional && (holders & (1 << srcIdx)) != 0)
+                    {
+                        continue;
+                    }
+                }
+                int omenMask = cardSpecs[off + 3];
+                if (omenMask != 0 && mod == WorldEntry.ModIllOmened && (holders & omenMask) != 0)
+                {
+                    continue;
+                }
+
+                int evilBits = evil;
+                if (hasConv && convIdx >= 0 && SolverKernel.EvilIndex(w, convIdx, (flags & 2) != 0))
+                {
+                    evilBits |= (1 << convIdx);
+                }
+                if ((evilBits & markedBit) != 0)
+                {
+                    continue;
+                }
+
+                int targetOrSame = cardSpecs[off + 5];
+                bool asGood;
+                bool asEvil;
+                if (mode == 0)
+                {
+                    int cntGood = System.Numerics.BitOperations.PopCount((uint)(evilBits & groupMask));
+                    int cntEvil = cntGood + 1;
+                    asGood = cntGood == targetOrSame;
+                    asEvil = cntEvil == targetOrSame;
+                }
+                else if (mode == 1)
+                {
+                    int grpSz = cardSpecs[off + 6];
+                    bool wantSame = targetOrSame != 0;
+                    int cntGood = System.Numerics.BitOperations.PopCount((uint)(evilBits & groupMask));
+                    int cntEvil = cntGood + 1;
+                    asGood = (cntGood == 0 || cntGood == grpSz) == wantSame;
+                    asEvil = (cntEvil == 0 || cntEvil == grpSz) == wantSame;
+                }
+                else
+                {
+                    int cntGood = 0;
+                    int cntEvil = 0;
+                    int posEvil = evilBits | markedBit;
+                    for (int b = 0; b < blockMasks.Length; b++)
+                    {
+                        int bm = blockMasks[b];
+                        if ((evilBits & bm) != 0)
+                        {
+                            cntGood++;
+                        }
+                        if ((posEvil & bm) != 0)
+                        {
+                            cntEvil++;
+                        }
+                    }
+                    asGood = cntGood == targetOrSame;
+                    asEvil = cntEvil == targetOrSame;
+                }
+
+                if (asEvil != asGood)
+                {
+                    weight *= asEvil ? markedEvilChance : asGoodWeight;
+                }
+            }
+            outWeights[i] = weight;
+        }
+        return outWeights;
+    }
+
+    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, int markedMask, int mediums)
+    {
+        var entry = SolverContext.GetRoleConstraintMemo(memoSlot);
+        if (entry == null || !entry.Populated)
         {
             return Array.Empty<double>();
         }
+        var memo = entry.Weights;
+        var forbiddenSpecs = entry.ForbiddenSpecs;
+        bool hasForbidden = forbiddenSpecs.Length > 0;
         int n = packedWorlds.Length;
         var outWeights = new double[n];
         for (int i = 0; i < n; i++)
         {
-            long mask = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums, walkers);
+            var world = new WorldEntry(packedWorlds[i]);
+            if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, entry.Live, entry.ViewIsEmpty, entry.HasCurse, entry.CurseFrom, entry.CurseUntil))
+            {
+                outWeights[i] = 0.0;
+                continue;
+            }
+            long mask = CoarseMask(people, world, markedMask, mediums);
             if (!memo.TryGetValue(mask, out double val))
             {
                 return Array.Empty<double>();
@@ -243,10 +503,14 @@ internal static class RoleConstraintsKernel
         }
 
         int peopleCount = headerInts[0];
+        bool live = headerInts[1] != 0;
+        bool viewIsEmpty = headerInts[2] != 0;
+        bool hasCurse = headerInts[3] != 0;
+        int curseFrom = headerInts[5];
+        int curseUntil = headerInts[6];
         bool reuseMemo = headerInts[11] != 0;
-        bool seerFlag = headerInts[12] != 0;
+        int markedMask = headerInts[12];
         int mediumsMask = headerInts[13];
-        int walkersMask = headerInts[14];
 
         int baseCardCount = cardInts.Length / CardStride;
         var relayInferredSources = new List<int>(4);
@@ -259,15 +523,23 @@ internal static class RoleConstraintsKernel
             }
         }
         int[] relayMediumSourceIndices = relayInferredSources.Count > 0 ? relayInferredSources.ToArray() : Array.Empty<int>();
+        int[] forbiddenSpecs = ExtractForbiddenSpecs(cardInts, baseCardCount);
+        bool hasForbidden = forbiddenSpecs.Length > 0;
 
-        var persistentMemo = SolverContext.GetRoleConstraintMemo(memoSlot);
-        bool useMemo = reuseMemo || persistentMemo != null;
+        var persistentEntry = SolverContext.GetRoleConstraintMemo(memoSlot);
+        bool useMemo = reuseMemo || persistentEntry != null;
         if (!useMemo)
         {
             for (int i = 0; i < uLen; i++)
             {
+                var world = new WorldEntry(packedWorlds[i]);
+                if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, live, viewIsEmpty, hasCurse, curseFrom, curseUntil))
+                {
+                    outWeights[i] = 0.0;
+                    continue;
+                }
                 outWeights[i] = FitsViewSingle(
-                    new WorldEntry(packedWorlds[i]),
+                    world,
                     headerInts,
                     publicRolesInts,
                     forcedLampIndices,
@@ -278,11 +550,27 @@ internal static class RoleConstraintsKernel
             return outWeights;
         }
 
-        var memo = persistentMemo ?? new Dictionary<long, double>(Math.Min(uLen, 256));
+        if (persistentEntry != null && !persistentEntry.Populated)
+        {
+            persistentEntry.ForbiddenSpecs = forbiddenSpecs;
+            persistentEntry.Live = live;
+            persistentEntry.ViewIsEmpty = viewIsEmpty;
+            persistentEntry.HasCurse = hasCurse;
+            persistentEntry.CurseFrom = curseFrom;
+            persistentEntry.CurseUntil = curseUntil;
+            persistentEntry.Populated = true;
+        }
+
+        var memo = persistentEntry?.Weights ?? new Dictionary<long, double>(Math.Min(uLen, 256));
         for (int i = 0; i < uLen; i++)
         {
             var world = new WorldEntry(packedWorlds[i]);
-            long mask = CoarseMask(peopleCount, world, seerFlag, mediumsMask, walkersMask);
+            if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, live, viewIsEmpty, hasCurse, curseFrom, curseUntil))
+            {
+                outWeights[i] = 0.0;
+                continue;
+            }
+            long mask = CoarseMask(peopleCount, world, markedMask, mediumsMask);
             if (!memo.TryGetValue(mask, out double w))
             {
                 w = FitsViewSingle(
@@ -336,17 +624,8 @@ internal static class RoleConstraintsKernel
         int ownRoleId = headerInts[8];
         bool routesAvailable = headerInts[9] != 0;
         bool routesOkay = headerInts[10] != 0;
-        int walkersMask = headerInts[14];
-
-        // 1. Sleepwalker secret claim check (lines 139-143)
-        if (walkersMask != 0)
-        {
-            int asleep = world.EffectiveModifier == WorldEntry.ModSleepwalker ? world.Holders : 0;
-            if ((walkersMask & ~world.Evil & ~asleep) != 0)
-            {
-                return 0.0;
-            }
-        }
+        // The Minion roles on the script (0: unknown), for the Seer's Scion odds below.
+        int scriptMinionCount = headerInts.Length > 15 ? headerInts[15] : 0;
 
         // 2. Medium relay source health, alive_at_night, and duplicate visit checks (lines 144-153)
         if (relayMediumSourceIndices.Length > 0)
@@ -515,8 +794,13 @@ internal static class RoleConstraintsKernel
         int seerSourceToken = -1;
         int seerSourceIdx = -1;
         Span<int> seerReadingsStack = stackalloc int[128];
+        // The Demon of each Seer reading's night (a Scion may have risen since; slots 20-23).
+        Span<int> seerDemonStack = stackalloc int[32];
+        List<int>? seerDemonOverflow = null;
         List<int>? seerReadingsOverflow = null;
         int seerReadingCount = 0;
+        bool seerDemonShifted = false;
+        int seerShiftedTo = 0;
         int veteranNight = -1;
         int martyrTargetToken = 0;
         int executorTargetToken = 0;
@@ -581,6 +865,62 @@ internal static class RoleConstraintsKernel
                 }
                 continue;
             }
+            if (kind == KindSecretClaim)
+            {
+                // A claimed burden (docs/design/burdens.md). A good claimant knows their own
+                // burden, so their claim holds; an evil claimant (by alignment when they spoke,
+                // as for readings) may be bluffing, so the claim says nothing. Two claims to a
+                // one-holder burden then can't both come from good people.
+                int claimant = cardInts[off + 2];
+                int burden = cardInts[off + 19];
+                if (claimant < 0 || burden == 0 || (flags & FlagContentOnly) != 0)
+                {
+                    continue;
+                }
+                bool claimantEvil = (evil & (1 << claimant)) != 0;
+                if (worldHasConverted && !viewIsEmpty)
+                {
+                    int claimTick = cardInts[off + 12];
+                    claimantEvil = claimantEvil || (worldConverted == claimant && hasCurse && claimTick >= curseFrom && claimTick < curseUntil);
+                }
+                int burdenMod = burden - 1;
+                bool holds = burdenMod == WorldEntry.ModMarked
+                    ? world.Marked == claimant
+                    : world.EffectiveModifier == burdenMod && (world.Holders & (1 << claimant)) != 0;
+                if ((flags & FlagMissedTrigger) != 0)
+                {
+                    // A missed forced trigger: a real holder would have claimed it then, turned
+                    // or not, so they don't hold it; and a good claimant can't claim a burden
+                    // they don't hold. Only an evil non-holder is left.
+                    if (holds || !claimantEvil)
+                    {
+                        return 0.0;
+                    }
+                    continue;
+                }
+                if (claimantEvil)
+                {
+                    continue;
+                }
+                // Impossible pairs (slot 13; RoleConstraints.forbidding_claim_tick): the deal
+                // never puts this burden on a gift the claimant also claimed, so a good
+                // claimant (good when they claimed the gift too) can't truly claim both.
+                int forbidTick = cardInts[off + 13];
+                if (forbidTick >= 0)
+                {
+                    bool roleClaimEvil = worldHasConverted && !viewIsEmpty && worldConverted == claimant && hasCurse
+                        && forbidTick >= curseFrom && forbidTick < curseUntil;
+                    if (!roleClaimEvil)
+                    {
+                        return 0.0;
+                    }
+                }
+                if (!holds)
+                {
+                    return 0.0;
+                }
+                continue;
+            }
             if (kind != KindReport && kind != KindClaim)
             {
                 continue;
@@ -630,6 +970,19 @@ internal static class RoleConstraintsKernel
 
             if (kind == KindClaim)
             {
+                // Impossible pairs for unclaimed holders (slot 13; role_constraints.gd
+                // forbidden_burdens): a good claimant (good when they claimed it) holds the
+                // gift, and the deal never puts these burdens on it (Michael, Nov 21).
+                int forbidden = cardInts[off + 13];
+                if (forbidden != 0 && !contentOnly)
+                {
+                    int held = world.Marked == source ? WorldEntry.ModMarked
+                        : ((world.Holders & (1 << source)) != 0 ? world.EffectiveModifier : -1);
+                    if (held >= 0 && (forbidden & (1 << held)) != 0)
+                    {
+                        return 0.0;
+                    }
+                }
                 continue;
             }
 
@@ -655,12 +1008,19 @@ internal static class RoleConstraintsKernel
             // checking it as well charged a Delusional teller's wrong reading twice (Codex,
             // #183). They still hold the gift (the claim above), and the gift's own acts stay
             // checked: a Martyr's or Executor's one chosen target, a Veteran's one night. The
-            // listener's own readings keep their check: they read them themself, and only a
-            // listener's own reading is strong alone (DESIGN), so "I may be the Delusional one"
-            // doesn't excuse them (Bailiff's run of test_connections_pairings, #194).
-            bool deludedReader = live && !contentOnly && source != ownPersonIdx
+            // listener's own readings too (shared Delusion doubt, Michael, Nov 22): in its worlds
+            // as the Delusional holder they say anything, priced by CaseEval at the gift's draw,
+            // and those worlds start at Tuning.Workshop.OWN_DELUSION_PRIOR (CaseEval._own_counts),
+            // so agreement lowers the doubt and a clash raises it, instead of a clash ruling the
+            // world out (#194's check, which kept "I may be the Delusional one" from mattering).
+            bool deludedReader = live && !contentOnly
                 && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
-            if (deludedReader && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
+            // A reading under a fallen omen (burdens prototype): every good person was poisoned
+            // that night, the listener too, so its content says nothing in worlds where the
+            // hanged claimant truly held Ill-Omened.
+            bool omenReader = live && !contentOnly && (flags & FlagOmenWindow) != 0
+                && world.EffectiveModifier == WorldEntry.ModIllOmened && (world.Holders & headerInts[14]) != 0;
+            if ((deludedReader || omenReader) && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
             {
                 continue;
             }
@@ -910,6 +1270,37 @@ internal static class RoleConstraintsKernel
                 int ping = selectedMask != 0 ? selectedMask : pairMask;
                 int yesInt = (flags & FlagSeerYes) != 0 ? 1 : 0;
                 int reasonCode = cardInts[off + 19];
+                int demonThen = demon;
+                for (int k = 0; k < 2; k++)
+                {
+                    int hx = cardInts[off + 20 + 2 * k];
+                    int hAlive = cardInts[off + 21 + 2 * k];
+                    if (hx >= 0 && hx != demonThen && demonThen >= 0 && (evil & (1 << hx)) != 0 && (hAlive & (1 << demonThen)) != 0)
+                    {
+                        demonThen = hx;
+                    }
+                }
+                if (demonThen != demon)
+                {
+                    seerDemonShifted = true;
+                    seerShiftedTo |= 1 << demonThen;
+                }
+                if (seerDemonOverflow == null && seerReadingCount < seerDemonStack.Length)
+                {
+                    seerDemonStack[seerReadingCount] = demonThen;
+                }
+                else
+                {
+                    if (seerDemonOverflow == null)
+                    {
+                        seerDemonOverflow = new List<int>(seerReadingCount + 4);
+                        for (int k = 0; k < seerReadingCount; k++)
+                        {
+                            seerDemonOverflow.Add(seerDemonStack[k]);
+                        }
+                    }
+                    seerDemonOverflow.Add(demonThen);
+                }
 
                 if (seerReadingsOverflow == null && (seerReadingCount + 1) * 4 <= seerReadingsStack.Length)
                 {
@@ -1002,7 +1393,31 @@ internal static class RoleConstraintsKernel
             ReadOnlySpan<int> readingsSpan = seerReadingsOverflow != null
                 ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(seerReadingsOverflow)
                 : seerReadingsStack.Slice(0, seerReadingCount * 4);
-            seerWeight = SeerRhWeight(good & ~(1 << seerSourceIdx), demon, world.Marked, readingsSpan);
+            ReadOnlySpan<int> demonsSpan = seerDemonOverflow != null
+                ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(seerDemonOverflow)
+                : seerDemonStack.Slice(0, seerReadingCount);
+            int rhPool = good & ~(1 << seerSourceIdx);
+            // A: every reading read the Demon now (a hanged evil soul was a Minion).
+            seerWeight = SeerRhWeight(rhPool, demon, world.Marked, readingsSpan, ReadOnlySpan<int>.Empty);
+            bool bPossible = seerDemonShifted
+                && !RoleHeldByOther(assignRoles.Slice(0, assignCount), assignMasks.Slice(0, assignCount), RoleScion, demon);
+            for (int hb = seerShiftedTo; bPossible && hb != 0; hb &= hb - 1)
+            {
+                // A hanged soul whose role is pinned (a public Revenant, say) wasn't the Demon.
+                int hIdx = System.Numerics.BitOperations.TrailingZeroCount(hb);
+                bPossible = !RoleHeldByOther(assignRoles.Slice(0, assignCount), assignMasks.Slice(0, assignCount), RoleDemon, hIdx);
+            }
+            if (bPossible)
+            {
+                // B: the hanged soul was the Demon then and the Demon now is its risen Scion. Its
+                // prior odds against A on this evil team: the original Demon is any of the team
+                // alike, and B also needs the Demon now dealt the Scion, one Minion role of the
+                // script's (unknown script: one of the team's Minion places).
+                int minionRoles = scriptMinionCount > 0 ? scriptMinionCount : Math.Max(1, System.Numerics.BitOperations.PopCount((uint)evil) - 1);
+                double r = 1.0 / minionRoles;
+                double wB = SeerRhWeight(rhPool, demon, world.Marked, readingsSpan, demonsSpan);
+                seerWeight = (seerWeight + r * wB) / (1.0 + r);
+            }
             if (seerWeight <= 0.0)
             {
                 return 0.0;
@@ -1337,6 +1752,31 @@ internal static class RoleConstraintsKernel
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    /// Whether someone else's role already pins `person`, so they can't also be `roleId`.
+    private static bool RoleHeldByOther(ReadOnlySpan<int> roles, ReadOnlySpan<int> masks, int roleId, int person)
+    {
+        if (person < 0)
+        {
+            return true;
+        }
+        int bit = 1 << person;
+        for (int i = 0; i < roles.Length; i++)
+        {
+            if (roles[i] == roleId)
+            {
+                if ((masks[i] & bit) == 0)
+                {
+                    return true;
+                }
+            }
+            else if (masks[i] == bit)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static bool AssignRole(Span<int> roles, Span<int> masks, ref int count, int roleId, int candidates)
     {
         for (int i = 0; i < count; i++)
@@ -1410,7 +1850,21 @@ internal static class RoleConstraintsKernel
         {
             factors[d] = SolverBridge.GodotLerpf(1.0, bluffWeight, hearingWeights[d]);
         }
+        return BluffWeightsFactors(packedWorlds, whoIndices, factors, stmtTicks, hasCurse, curseFrom, curseUntil);
+    }
 
+    /// Each declaration's own factor on the worlds where its declarer was evil when they spoke
+    /// (BluffWeightsTemporal's, and a claimed burden's: role_constraints.gd burden_claim_factors).
+    public static double[] BluffWeightsFactors(
+        long[] packedWorlds,
+        int[] whoIndices,
+        double[] factors,
+        int[] stmtTicks,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil)
+    {
+        int dLen = whoIndices.Length;
         int uLen = packedWorlds.Length;
         double[] outWeights = new double[uLen];
         for (int i = 0; i < uLen; i++)

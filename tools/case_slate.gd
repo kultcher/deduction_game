@@ -72,11 +72,46 @@ const CASES = {
 	"lie_seer_innocent": "The real Seer's \"no\" on two innocents, called a lie on a Minion's \"yes\" (subject: the real Seer)",
 	"lie_gravedigger_innocent": "The real Gravedigger's reading of the hanged innocent, called a lie on a Minion's \"a Minion\"",
 	"lie_seer_reversed_innocent": "The real Seer's \"yes\" on the Demon and an innocent, called a lie on a Minion's \"no\"",
+	# Burdens (Quill, Nov 21): "I've carried the mark since birth" against a
+	# reading that calls its holder evil, argued as "is Marked". The rescue is true (a good,
+	# Marked townsperson M); the bluff is the Demon's, against the real Seer's true "yes".
+	"marked_rescue": "The real Seer's \"yes\" on a Marked good townsperson M and another + M's Marked claim, argued \"M is Marked\" (subject M)",
+	"marked_bluff": "The real Seer's \"yes\" on S and another + S's Marked claim (a bluff), argued \"S is Marked\"",
+	# Burden claims bind (Michael's option B, Nov 21): a counter-claim to the one burden, and a
+	# clash between two different burdens when only one is dealt. Each "_wrong" twin files the
+	# same cards against the real holder M instead.
+	"marked_counter": "The real Seer's \"yes\" on S and another + S's Marked claim (bluff) + the real holder M's Marked claim, argued \"S is evil\"",
+	"marked_counter_wrong": "The same cards, argued \"M is evil\" (subject M, the real Marked holder)",
+	"burden_clash": "S claims Ill-Omened (a bluff) + the real holder M claims Marked, one burden dealt, argued \"S is evil\"",
+	"burden_clash_wrong": "The same cards, argued \"M is evil\" (subject M, the real Marked holder)",
+	# Michael's scenario (Nov 21): the real Marked holder M dies on night 1, the Demon S is the
+	# Seer's "yes" (night 1) and bluffs Marked unopposed, and one more reading names S by day 3.
+	# Argued "S is evil"; his bar is that further evidence lets the player get S hanged.
+	"marked_dead_seer": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Seer's \"yes\" on S and a third, night 2",
+	"marked_dead_dowser": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Dowser's \"1 evil\" among S and two others, day 3",
+	# Burdens, playtestable pass (Quill, Nov 21): an Ill-Omened claimant nominated, real and
+	# bluffed, and an Unrequited seen walking, real and the Demon's bluff.
+	"omen_bluff": "The real Seer's \"yes\" on S and another, night 1 + S's Ill-Omened claim (a bluff, after the reading), argued \"S is evil\"",
+	"omen_real": "A Minion's Seer bluff \"yes\" on M and another + M's Ill-Omened claim (real, day 1), argued \"M is evil\" (subject M)",
+	# The Dowser's "0" (reading_interpretation.md 2.2; Michael watches whether it clears too hard).
+	"dowser_zero_good": "The real Dowser's \"0 evil\" among G and two other good, day 2, argued \"G is good\" (subject G)",
+	"dowser_zero_bluff": "A Minion's Dowser bluff \"0 evil\" among S (the Demon) and two good + its Dowser claim, argued \"S is good\"",
+	# Shared Delusion doubt (Michael, Nov 22): a reader's own readings that clash, argued as
+	# Delusion two ways. The framed reader's correction is lie_seer_reversed.
+	"seer_contradiction": "The real Seer G's \"yes\" on A and B, night 1, then \"no\" on A and B, night 2, argued \"G's readings don't fit together: Delusional\"",
+	"seer_contradiction_burden": "The same cards, argued \"G carries a hidden burden: Delusional\"",
+	"seer_once": "The real Seer's \"yes\" on S and G + its claim, alone (the control for seer_dowser_zero)",
+	"seer_dowser_zero": "The real Seer's \"yes\" on S and G + the real Dowser's \"0 evil\" among G and two good, argued \"S is evil\"",
+	"unrequited_walk": "A sighting of U on their beloved's block, night 1 + U's Unrequited claim (real, day 1), argued \"U is evil\" (subject U)",
+	"unrequited_bluff": "A sighting of S on the victim's block on the kill night + S's Unrequited claim naming someone on another block (a bluff, after the sighting), argued \"S is evil\"",
 }
 
 var _texts: Dictionary = {}
 
 func _init() -> void:
+	# SLATE_NO_DERIVED_DOUBT=1: the average listener holds no derived doubt (before Nov 22).
+	if OS.get_environment("SLATE_NO_DERIVED_DOUBT") == "1":
+		preload("res://game/profile_judge.gd").derived_doubt = false
 	var args: Array = OS.get_cmdline_user_args()
 	var per_case: int = 10
 	var path: String = "user://case_slate.jsonl"
@@ -164,6 +199,153 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var other := "market" if s.home_block != "market" else "docks"
 	var lie_calls: Dictionary = {}  # board number of the reading called a lie -> its grounds' numbers
 	match base:
+		"marked_rescue", "marked_bluff":
+			# The subject is the one who claims the mark: a real good holder (rescue), or the
+			# Demon bluffing it (bluff). The real Seer reads them with another good soul.
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			if base == "marked_rescue":
+				s = pool[-1]
+				pool = pool.filter(func(n): return n != s)
+				_give_burden(w, s, "marked")
+			var mate = pool[0]
+			var names: String = "%s or %s" % [s.name, mate.name]
+			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
+				"text": "%s's Seer: %s is the Demon" % [seer.name, names]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			var mark: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "marked", "day": 2, "phase": 1,
+				"text": "%s: I've carried the mark since birth" % s.name})
+			cited += [reading, claim_s, mark]
+			sources += [seer, s]
+			premise = "marked"
+		"marked_counter", "marked_counter_wrong", "burden_clash", "burden_clash_wrong":
+			# S is the Demon, bluffing a burden; M, a good townsperson, really holds Marked and
+			# says so. The "_wrong" twins argue against M instead.
+			var counter: bool = base.begins_with("marked_counter")
+			var seer = _holder(goods, "seer", []) if counter else null
+			if counter and seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			var holder = pool[-1]
+			_give_burden(w, holder, "marked")
+			if not counter and w.case_script != null and not ("ill_omened" in w.case_script.secrets):
+				w.case_script.secrets.append("ill_omened")
+			if counter:
+				var mate = pool[0]
+				var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, mate.id], "yes": true},
+					"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, mate.name]})
+				var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+				cited += [reading, claim_s]
+				sources.append(seer)
+			var bluff_kind: String = "marked" if counter else "ill_omened"
+			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": bluff_kind, "day": 2, "phase": 0,
+				"text": "%s: %s" % [dem.name, "I've carried the mark since birth" if counter else "hang me and you'll all pay for it"]})
+			var real: int = _add(g, {"kind": "secret", "source": holder.id, "subject": [holder.id], "owner": holder.id, "secret_kind": "marked", "day": 2, "phase": 1,
+				"text": "%s: no, it's I who carry the mark" % holder.name})
+			cited += [bluff, real]
+			sources += [dem, holder]
+			if base.ends_with("_wrong"):
+				s = holder
+		"marked_dead_seer", "marked_dead_dowser":
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var dowser = _holder(goods, "dowser", [seer]) if base == "marked_dead_dowser" else null
+			if base == "marked_dead_dowser" and dowser == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer and n != dowser)
+			if pool.size() < 4:
+				return {}
+			var holder = pool[-1]
+			pool = pool.filter(func(n): return n != holder)
+			_give_burden(w, holder, "marked")
+			_kill(w, holder, 1)
+			var first: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[0].id], "yes": true},
+				"text": "%s's Seer (night 1): %s or %s is the Demon" % [seer.name, dem.name, pool[0].name]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			# The afternoon after the Seer's night-1 "yes" was heard: the claim answers it.
+			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": "marked", "day": 2, "phase": 1,
+				"text": "%s: I've carried the mark since birth" % dem.name})
+			cited += [first, claim_s, bluff]
+			sources.append(seer)
+			if base == "marked_dead_seer":
+				cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[1].id], "yes": true},
+					"text": "%s's Seer (night 2): %s or %s is the Demon" % [seer.name, dem.name, pool[1].name]}))
+			else:
+				cited.append(_add(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 3, "phase": C.MORNING, "data": {"group": [dem.id, pool[1].id, pool[2].id], "count": 1},
+					"text": "%s's Dowser (day 3): 1 evil among %s, %s and %s" % [dowser.name, dem.name, pool[1].name, pool[2].name]}))
+				cited.append(_add(g, {"kind": "claim", "subject": [dowser.id], "role": "dowser", "source": dowser.id, "text": "%s claims the Dowser" % dowser.name}))
+				sources.append(dowser)
+		"omen_bluff", "omen_real":
+			# The omen: hanging a claimed holder poisons the town's gifts (burdens.md). The
+			# bluff is the Demon's, answering the real Seer's "yes"; the real claim is M's, made
+			# on the first day, before a Minion's false Seer "yes" names them.
+			_add_burden(w, "ill_omened")
+			var real_omen: bool = base == "omen_real"
+			if real_omen and min_ev == null:
+				return {}
+			var seer = min_ev if real_omen else _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			if real_omen:
+				s = pool[-1]
+				pool = pool.filter(func(n): return n != s)
+				_give_burden(w, s, "ill_omened")
+			var mate = pool[0]
+			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
+				"text": "%s's Seer: %s or %s is the Demon" % [seer.name, s.name, mate.name]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			var omen: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "ill_omened",
+				"day": 1 if real_omen else 2, "phase": 1, "text": "%s: hang me and you'll all pay for it" % s.name})
+			cited += [reading, claim_s, omen]
+			sources += [seer] if real_omen else [seer, s]
+		"unrequited_walk", "unrequited_bluff":
+			# The walk: U, good and Unrequited, goes to the beloved's door on night 1 and owned
+			# to it on the first day; the bluff is the Demon's, seen on the kill night and
+			# answering with a love after the sighting is told.
+			_add_burden(w, "unrequited")
+			var real_love: bool = base == "unrequited_walk"
+			if real_love:
+				s = goods[-1]
+				goods = goods.filter(func(n): return n != s)
+			var b = null
+			for n in goods:
+				if n.home_block != s.home_block:
+					b = n
+					break
+			if b == null:
+				return {}
+			if real_love:
+				_give_burden(w, s, "unrequited")
+				s.beloved = b.id
+			else:
+				_kill(w, b, 1)
+			var wit = goods.filter(func(n): return n != b)[0]
+			# Whom the claim names: the real beloved, or for the bluff a living soul on another
+			# block than the kill's (burdens.md section 11: a bluff answers only a sighting on
+			# the claimed beloved's block).
+			var named = b
+			if not real_love:
+				named = null
+				for n in goods:
+					if n != wit and n.home_block != b.home_block and n.home_block != s.home_block:
+						named = n
+						break
+				if named == null:
+					return {}
+			cited.append(_add(g, _sight(wit, s, b.home_block, 1)))
+			cited.append(_add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "unrequited", "beloved": named.id,
+				"day": 1 if real_love else 2, "phase": 1, "text": "%s admitted they have an unrequited love for %s." % [s.name, named.name]}))
+			sources += [wit] if real_love else [wit, b]
 		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
 			# Word against word: the Minion bluffs the gift, the real holder reads, the player
 			# calls one of them a liar on the other's reading.
@@ -232,6 +414,61 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			var a_wit = min_ev if innocent else goods[0]
 			cited.append(_add(g, _sight(a_wit, s, other, 1)))
 			sources += [a_wit]
+		"seer_contradiction", "seer_contradiction_burden":
+			_add_burden(w, "delusional")
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			var a = pool[0]
+			var b = pool[1]
+			var names: String = "%s or %s" % [a.name, b.name]
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "text": "%s's Seer (night 1): %s is the Demon" % [seer.name, names]}))
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": false}, "text": "%s's Seer (night 2): neither %s is the Demon" % [seer.name, names]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+			s = seer
+			premise = "inconsistent:delusional" if base == "seer_contradiction" else "secret_mod:delusional"
+		"seer_once":
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 3:
+				return {}
+			var cleared = pool[-1]
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, cleared.id], "yes": true},
+				"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, cleared.name]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+			sources.append(seer)
+		"dowser_zero_good", "dowser_zero_bluff", "seer_dowser_zero":
+			var bluff_zero: bool = base == "dowser_zero_bluff"
+			var seer = _holder(goods, "seer", []) if base == "seer_dowser_zero" else null
+			if base == "seer_dowser_zero" and seer == null:
+				return {}
+			var dowser = min_ev if bluff_zero else _holder(goods, "dowser", [seer] if seer != null else [])
+			if dowser == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer and n != dowser)
+			if pool.size() < 3:
+				return {}
+			var cleared = pool[-1]
+			var group: Array = [dem.id if bluff_zero else cleared.id, pool[0].id, pool[1].id]
+			var names: String = ", ".join(PackedStringArray(group.map(func(id): return w.by_id[id].name)))
+			cited.append(_add(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 2, "phase": C.AFTERNOON, "data": {"group": group, "count": 0, "block": dowser.home_block},
+				"text": "%s's Dowser (day 2): 0 evil among %s" % [dowser.name, names]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [dowser.id], "role": "dowser", "source": dowser.id, "text": "%s claims the Dowser" % dowser.name}))
+			sources.append(dowser)
+			if seer != null:
+				cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, cleared.id], "yes": true},
+					"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, cleared.name]}))
+				cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+				sources.append(seer)
+			if base == "dowser_zero_good":
+				s = cleared
+			if base != "seer_dowser_zero":
+				premise = "good"
 		"converging":
 			var seer = _holder(goods, "seer", [])
 			var dowser = _holder(goods, "dowser", [seer])
@@ -419,7 +656,11 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
 	model.marked_answers = false
-	var p_id: String = model.add_premise(s.id, premise, Vector2(400, 40))
+	# "type:detail" sets the premise's cause ("inconsistent") or burden ("secret_mod").
+	var premise_parts: PackedStringArray = premise.split(":")
+	var p_id: String = model.add_premise(s.id, premise_parts[0], Vector2(400, 40))
+	if premise_parts.size() > 1:
+		model.nodes[p_id].conclusion["cause" if premise_parts[0] == "inconsistent" else "mod"] = premise_parts[1]
 	for num in cited:
 		for id in model.nodes:
 			var nd = model.nodes[id]
@@ -489,6 +730,24 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 		row["issues"] = tj.get("issues", [])
 		print("  %s seed %d: not ready: %s" % [name, sd, row.issues])
 	return row
+
+
+## Puts `kind` on the script's burden list, so the judge's worlds can deal it.
+func _add_burden(w, kind: String) -> void:
+	if w.case_script != null and not (kind in w.case_script.secrets):
+		w.case_script.secrets.append(kind)
+
+
+## Makes `n` the case's one burden holder (one burden is dealt): whoever the deal gave a
+## burden to loses it, so a case never has two holders.
+func _give_burden(w, n, kind: String) -> void:
+	for m in w.npcs:
+		if m.secret_mod != "":
+			m.secret_mod = ""
+			m.beloved = ""
+			m.secret = {}
+	n.secret_mod = kind
+	w.burden_holder_id = n.id
 
 
 func _sight(witness, s, block: String, night: int) -> Dictionary:

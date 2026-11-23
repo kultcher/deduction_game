@@ -12,7 +12,7 @@ namespace Demonologist.Workshop;
 ///   bits 18..35 (18 bits): Holders bitmask (supports up to 18 people)
 ///   bits 36..41 ( 6 bits): Marked + 2 (-1 = none, 0..17 = index)
 ///   bits 42..45 ( 4 bits): ModifierCode + 2 (-2 = absent/default "marked", -1 = custom,
-///                          0 = "delusional", 1 = "marked", 2 = "lovers", 3 = "sleepwalker"; 4 was the Muddler, removed Nov 20)
+///                          0 = "delusional", 1 = "marked", 2 = "ill_omened", 3 = "unrequited" (the Lovers and Sleepwalker 1.0 before the burdens prototype); 4 was the Muddler, removed Nov 20)
 ///   bits 46..51 ( 6 bits): DemonRaw + 2 (-2 = key absent, -1 = explicit -1, 0..17 = index)
 ///   bits 52..57 ( 6 bits): ConvertedRaw + 2 (-2 = key absent, -1 = explicit -1, 0..17 = index)
 /// </summary>
@@ -23,8 +23,9 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
     public const int ModUnknownExplicit = -1;
     public const int ModDelusional = 0;
     public const int ModMarked = 1;
-    public const int ModLovers = 2;
-    public const int ModSleepwalker = 3;
+    // 2 and 3 were the Lovers and Sleepwalker 1.0 (retired, burdens prototype).
+    public const int ModIllOmened = 2;
+    public const int ModUnrequited = 3;
 
     public readonly long Raw;
 
@@ -147,8 +148,8 @@ public readonly struct WorldEntry : IEquatable<WorldEntry>
     {
         "delusional" => ModDelusional,
         "marked" => ModMarked,
-        "lovers" => ModLovers,
-        "sleepwalker" => ModSleepwalker,
+        "ill_omened" => ModIllOmened,
+        "unrequited" => ModUnrequited,
         _ => ModUnknownExplicit
     };
 
@@ -194,7 +195,19 @@ internal static class SolverContext
     private static readonly Dictionary<int, UniverseMeta> UniverseMetaByHandle = new(64);
     private static readonly List<LiveActivityKernel.CompiledMovementFactor> MovementFactors = new(64);
     private static readonly List<CaseEvalKernel.CompiledCaseEntry> CompiledCases = new(64);
-    private static readonly List<Dictionary<long, double>> RoleConstraintMemos = new(256);
+    internal sealed class RoleConstraintMemoEntry
+    {
+        public readonly Dictionary<long, double> Weights = new(256);
+        public int[] ForbiddenSpecs = Array.Empty<int>();
+        public bool Live;
+        public bool ViewIsEmpty;
+        public bool HasCurse;
+        public int CurseFrom;
+        public int CurseUntil;
+        public bool Populated;
+    }
+
+    private static readonly List<RoleConstraintMemoEntry> RoleConstraintMemos = new(256);
 
     public static void Clear()
     {
@@ -309,11 +322,11 @@ internal static class SolverContext
     public static int CreateRoleConstraintMemo()
     {
         int slot = RoleConstraintMemos.Count;
-        RoleConstraintMemos.Add(new Dictionary<long, double>(256));
+        RoleConstraintMemos.Add(new RoleConstraintMemoEntry());
         return slot;
     }
 
-    public static Dictionary<long, double>? GetRoleConstraintMemo(int slot) =>
+    public static RoleConstraintMemoEntry? GetRoleConstraintMemo(int slot) =>
         (slot >= 0 && slot < RoleConstraintMemos.Count) ? RoleConstraintMemos[slot] : null;
 
     private static readonly List<double[]> PresenceWeights = new(16);

@@ -111,13 +111,11 @@ func _init() -> void:
 		# In log-odds, as the relay check below: a planter the rest already holds near certain
 		# has no 15 points left to gain (seed 100074 on #454: 0.894 without it, 0.993 with).
 		var lift1: float = _logit(e.with) - _logit(e.without)
-		# Interim, as Michael's Nov 20 call for #139 (extended here on his behalf, Nov 21): the
-		# overall change is printed, not checked, until "being lied about can pull in evidence
-		# that clears the liar" is settled. Seed 100100 on #506: the wrong sighting seeds the
-		# listener's core (Connections.firsthand), which pulls in a correction that clears the
-		# planter (Lantern; options with Michael).
-		print("NOTE: %s: the fake sighting moves the planter %+.2f log-odds (%+.3f); %s" % [label, lift1, e.with - e.without,
-			"at least 15 points from even" if lift1 >= _logit(0.65) - _logit(0.5) else "LESS than 15 points from even (interim: not checked)"])
+		# The strict check is back with the Burdens landing (#516): a wrong sighting no longer
+		# seeds the listener's core (Michael, Nov 21, Connections.seed_wrong_sightings), so being
+		# lied about raises the liar at least as much as 15 points from even.
+		print("NOTE: %s: the fake sighting moves the planter %+.2f log-odds (%+.3f)" % [label, lift1, e.with - e.without])
+		check(lift1 >= _logit(0.65) - _logit(0.5), "%s: the fake sighting raises the planter at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label, lift1, e.with - e.without])
 	# 2. An evil Medium's invented relay of the listener, out on a night they were home.
 	var r: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	if r.is_empty():
@@ -133,27 +131,6 @@ func _init() -> void:
 		# 0.97 without the relay; the earlier 100055 shows the same +25 points either way).
 		var lift: float = _logit(e2.with) - _logit(e2.without)
 		check(lift >= _logit(0.65) - _logit(0.5), "%s: the invented relay raises the relayer at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label2, lift, e2.with - e2.without])
-	# 3. A real Sleepwalker, honestly seen out: its known-home cards carry the doubt.
-	var s: Dictionary = Seeds.sleepwalker_sighting(2)
-	if s.is_empty():
-		_missing("a Sleepwalker honestly seen")
-	else:
-		var e3: Dictionary = _effect(s.g, s.subject, s.sighter, func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")]))
-		var label3: String = "seed %d: Sleepwalker %s, seen by %s" % [s.seed, s.subject, s.sighter]
-		print("%s: %.3f with the sighting, %.3f without" % [label3, e3.with, e3.without])
-		var own3: Array = _own_cards(e3.view, s.subject)
-		# The doubt starts at SLEEPWALK_SELF_DOUBT and moves with the Rumormonger readings the
-		# Sleepwalker holds (SourceDoubt.sleepwalk_doubt, #459), so it is read off the view.
-		var sleep_d: float = float(e3.view.get("own_home", {}).get("sleep_doubt", Tuning.Workshop.SLEEPWALK_SELF_DOUBT))
-		print("%s: home-night doubt %.3f (starting %.3f)" % [label3, sleep_d, Tuning.Workshop.SLEEPWALK_SELF_DOUBT])
-		check(not own3.is_empty() and sleep_d > 0.0 and sleep_d <= 0.5 and own3.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - sleep_d) < 1e-9), "%s: its known-home cards carry the Sleepwalker's doubt (%.3f)" % [label3, sleep_d])
-		# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
-		# Nov 20): an end state ("< 0.7") depends on the game's other cards.
-		var sight3 = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")])
-		var p3: Dictionary = _effect(s.g, s.subject, s.sighter, sight3, true)
-		var lift3: float = _logit(e3.with) - _logit(e3.without)
-		var plain3: float = _logit(p3.with) - _logit(p3.without)
-		print("%s: lift %+.2f log-odds with the doubt, %+.2f without (%.3f / %.3f)" % [label3, lift3, plain3, p3.with, p3.without])
-		check(lift3 < plain3, "%s: the sighting counts less against the sighter than it would with no sleepwalking doubt (%+.2f against %+.2f log-odds)" % [label3, lift3, plain3])
+	# 3. (The Sleepwalker case retired with the burdens prototype.)
 	print("Own night knowledge: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

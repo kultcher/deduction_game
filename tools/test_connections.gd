@@ -61,20 +61,27 @@ func _proposal(g, n) -> Dictionary:
 
 
 func _game(seed_v: int, npcs: int, day: int) -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, npcs)
-	var guard := 0
-	while g.state != "over" and guard < 600 and not (g.state == "meeting" and g.w.day >= day):
-		guard += 1
-		match g.state:
-			"approach": g.command("decline")
-			"day": g.command("wait")
-			"meeting": g.command("done" if g.town_quiet else "wait")
-			"talk": g.command("bye")
-			"nomination": g.command("vote no")
-			"night": g.command("sleep")
-			_: break
+	# From seed_v on, the first game that reaches the meeting (seed 900 ends on day 2 since the
+	# burdens deal moved its game; tools/fixture_seeds.gd practice).
+	var g = null
+	for s_try in range(seed_v, seed_v + 10):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s_try, npcs)
+		var guard := 0
+		while g.state != "over" and guard < 600 and not (g.state == "meeting" and g.w.day >= day):
+			guard += 1
+			match g.state:
+				"approach": g.command("decline")
+				"day": g.command("wait")
+				"meeting": g.command("done" if g.town_quiet else "wait")
+				"talk": g.command("bye")
+				"nomination": g.command("vote no")
+				"night": g.command("sleep")
+				_: break
+		if g.state == "meeting":
+			seed_v = s_try
+			break
 	var tag: String = "seed %d" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])

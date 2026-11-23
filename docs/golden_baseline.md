@@ -44,7 +44,72 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 22, approved wording): `baseline_35d96b9`
+### Current baseline (Nov 23, Codex's second review of #547): `baseline_14f5b7d`
+
+`tools/golden/baseline_14f5b7d/` is the capture from `claude/burdens` at `14f5b7d`: `baseline_d7d2e3a` plus
+the two findings from Codex's second review. It supersedes `baseline_d7d2e3a`.
+- **What changed:**
+  - **The content priors (Lantern, 8eaccb5f)** now count every burden on the script. Unrequited and
+    Ill-Omened each place a holder among the good, as Marked does
+    (`CaseEval._healthy_modifier_worlds_per_team`, the Chronicler's numerator). So a Rumormonger's or
+    Chronicler's reading is weighed against the right number of burden worlds.
+  - **An Ill-Omened turned evil before it claimed (Beadle, 9dfd20ae)** still claims at its first
+    nomination. Beadle measured this as golden-identical on its own.
+- **Divergence from `baseline_d7d2e3a`:** every seed, from day 1: 42, 692 and 900 at record 1, and 54875
+  and 98933 at record 0, where the run's random state differs. Suspicion moves wherever a Rumormonger
+  or Chronicler reading is held (on 42, Kiran's suspicion of Agnes on day 1 goes from −0.113 to −0.125).
+- **Outcomes:**
+
+| Seed | `baseline_d7d2e3a` | `baseline_14f5b7d` |
+|---|---|---|
+| 42 (7 NPCs) | good wins day 2; Agnes hanged day 2 | the same |
+| 900 (7) | good wins day 3; Odette hanged day 3 | **unfinished at day 4**; Lian hanged day 3 |
+| 54875 (10) | unfinished; Odette (day 2), Edda (day 3) | unfinished; Odette (day 2) |
+| 692 (10) | unfinished; Lian (day 2), Merrin (day 3) | unfinished; Constance (day 3) |
+| 98933 (10) | unfinished; Bart (day 1), Dorian (day 2), Lian (day 3) | unfinished; Bart (day 2), Dorian (day 3) |
+
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, Codex's fixes on #547): `baseline_d7d2e3a`
+
+`tools/golden/baseline_d7d2e3a/` is the capture from `claude/burdens` at `d7d2e3a`: `baseline_6504029` plus
+Codex's three findings on #547. It supersedes `baseline_6504029`, which stays below as the record of the
+Burdens landing's diff against main.
+- **What changed:**
+  - an NPC's own outing that ends on its own block is no longer read as a tour of every block, unless
+    it's a real Lamplighter or Sexton;
+  - a Magistrate reading splits Marked classes on its nominator and nominee;
+  - an announced Unrequited spell break stops the holder's visits in the movement model from that night.
+- **Divergence from `baseline_6504029`:** 900 at record 150 (day 3) and 98933 at record 257 (day 3),
+  in suspicion values at about the seventh decimal place. Both match at `--tol 1e-5`; 42, 54875 and 692 are
+  identical. I haven't isolated which of the three fixes moves them.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings as `baseline_6504029`.
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, the Burdens landing): `baseline_6504029`
+
+`tools/golden/baseline_6504029/` is the capture from `claude/burdens` at `6504029`: `mock/burdens-slot`
+with main merged in (0 behind main at `e049f6fd`), plus #546 (Argon's vectorised counting pass,
+zero drift on its own). It's the one re-baseline for the whole Burdens prototype (burdens.md §10):
+the four burdens (Delusional, Marked, Unrequited, Ill-Omened) replace the Lovers, the Sleepwalker
+and the secret errand. The belief model gains the shared Delusion doubt, own-burden and own-route
+knowledge, teller grouping, the Seer's Scion succession, and the player's word at its credibility
+(option b′).
+- **Divergence from `baseline_35d96b9`:** every seed, from the deal (record 0 or 1), because the
+  burdens change what's dealt.
+- **Outcomes,** with the cap at day 4 ("unfinished" means the game was still going at the cap):
+
+| Seed | Main (`baseline_35d96b9`) | Burdens |
+|---|---|---|
+| 42 (7 NPCs) | good wins on day 2; Agnes hanged on day 2 | the same: good wins on day 2, Agnes hanged on day 2 (now nominated by Fenwick) |
+| 900 (7) | unfinished; Isolde hanged on day 2 | **good wins on day 3**; Odette hanged on day 3 |
+| 54875 (10) | unfinished; Dorian (day 2), Odette (day 3) | unfinished; Odette (day 2), Edda (day 3) |
+| 692 (10) | unfinished; Constance (day 3) | unfinished; Lian (day 2), Merrin (day 3) |
+| 98933 (10) | unfinished; Agnes (day 2) | unfinished; Bart (day 1), Dorian (day 2), Lian (day 3) |
+
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 22, approved wording): `baseline_35d96b9`
 
 `tools/golden/baseline_35d96b9/` is the capture from `claude/herald-51795-wording` at `35d96b9` (main at
 `64669cf`, merged in). Michael's approved wording, Nov 22: four `public_claim` lines that fit any
