@@ -106,5 +106,25 @@ func _init() -> void:
 	_reading(sr2, 0, [o2[0].id, o2[1].id], true)
 	_reading(sr2, 1, [o2[1].id, o2[2].id], false)
 	_check(C.role_def("seer")._narrowing_pick(w2, sr2, o2, {}, {o2[0].id: 1}).is_empty(), "once one of the two is cleared, the \"yes\" is narrowed down")
+	# The likeliest Demon, not the likeliest evil (Lantern's DemonCandidates): one it's sure is
+	# evil but the joint judgement puts outside the Demon's seat ranks below a half-suspect.
+	var wsd = _seer(9661)
+	var wd = wsd[0]
+	var srd = wsd[1]
+	var od: Array = wd.living().filter(func(m): return m != srd)
+	for m in od:
+		srd.suspicion[m.id] = 0.2
+	srd.suspicion[od[0].id] = 0.9
+	srd.suspicion[od[1].id] = 0.5
+	var dmap: Dictionary = {}
+	for m in od:
+		dmap[m.id] = {"demon": 0.0, "evil": 0.2, "given_evil": 0.3}
+	dmap[od[0].id] = {"demon": 0.05, "evil": 0.9, "given_evil": 0.05}
+	dmap[od[1].id] = {"demon": 0.45, "evil": 0.5, "given_evil": 0.9}
+	srd.set_meta(load("res://workshop/own_gift_doubt.gd").META, {"view": {}, "listener": {}, "held": [], "demon": dmap})
+	var rd: Array = C.role_def("seer").demon_ranked(wd, srd, Mind)
+	_check(rd[0] == od[1] and rd.find(od[0]) > 0, "it ranks the likeliest Demon first, above someone it's surer is evil but not the Demon")
+	srd.remove_meta(load("res://workshop/own_gift_doubt.gd").META)
+	_check(C.role_def("seer").demon_ranked(wd, srd, Mind)[0] == od[0], "with no refresh staged, its suspicion alone")
 	print("Seer targets: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

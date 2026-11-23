@@ -73,8 +73,9 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 ##   looked at yet; once two readings have said "yes" with that suspect in them, it's settled
 ##   as far as sight can tell, so it spends its sight on two fresh people instead.
 func pick_targets(w, n, mind):
-	var by_susp: Array = mind.ranked_suspects(w, n)
-	var ranked: Array = by_susp.filter(func(m): return not n.cleared.has(m.id)) + by_susp.filter(func(m): return n.cleared.has(m.id))
+	var by_demon: Array = demon_ranked(w, n, mind)
+	var judged: bool = n.has_meta(load("res://workshop/own_gift_doubt.gd").META)
+	var ranked: Array = by_demon.filter(func(m): return not n.cleared.has(m.id)) + by_demon.filter(func(m): return n.cleared.has(m.id))
 	var asked: Array = mind.requested_targets(w, n, "seer")
 	if not asked.is_empty():
 		var pair_req: Array = asked.slice(0, 2)
@@ -141,8 +142,30 @@ func pick_targets(w, n, mind):
 		pair = [ranked[0], w.decision_pick(n, "seer_second_target", others, {"insight": ins})]
 		why = "top suspect plus %s (insight %.2f)" % ["someone unchecked" if ins >= Tuning.Roles.SEER.sharp_insight_threshold else "one other", ins]
 	var ids: Array = pair.map(func(m): return m.id)
-	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids})
+	w.dlog.think(n.id, "seer_pick", "Seer: " + why + ".", {"pair": ids, "by_demon": judged})
 	return ids
+
+
+## The living others, likeliest Demon first: its suspicion of each (its chance they're evil)
+## times the joint judgement's chance they're the Demon if evil (Lantern's DemonCandidates,
+## from its last belief refresh; reading_interpretation.md section 2.1). It looks for the Demon,
+## not just for evil: a Minion it's sure of, whom its own readings put outside the Demon's
+## seat, ranks below someone it only half suspects. With nothing staged (no refresh yet), its
+## suspicion alone. Ties keep the suspicion order.
+func demon_ranked(w, n, mind) -> Array:
+	var by_susp: Array = mind.ranked_suspects(w, n)
+	var cands: Dictionary = load("res://workshop/demon_candidates.gd").given_evil_of_npc(n)
+	if cands.is_empty():
+		return by_susp
+	var order: Dictionary = {}
+	var score: Dictionary = {}
+	for i in range(by_susp.size()):
+		var m = by_susp[i]
+		order[m.id] = i
+		score[m.id] = mind.susp(n, m.id) * float(cands.get(m.id, 0.0))
+	var out: Array = by_susp.duplicate()
+	out.sort_custom(func(a, b): return score[a.id] > score[b.id] or (score[a.id] == score[b.id] and order[a.id] < order[b.id]))
+	return out
 
 
 ## The latest "yes" not yet narrowed down: neither of the two cleared since, neither in a
