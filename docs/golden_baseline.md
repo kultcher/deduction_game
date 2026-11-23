@@ -44,7 +44,30 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 22, approved wording): `baseline_35d96b9`
+### Current baseline (Nov 23, the Burdens landing): `baseline_6504029`
+
+`tools/golden/baseline_6504029/` is the capture from `claude/burdens` at `6504029`: `mock/burdens-slot`
+with main merged in (0 behind main at `e049f6fd`), plus #546 (Argon's vectorised counting pass,
+zero drift on its own). It's the one re-baseline for the whole Burdens prototype (burdens.md §10):
+the four burdens (Delusional, Marked, Unrequited, Ill-Omened) replace the Lovers, the Sleepwalker
+and the secret errand. The belief model gains the shared Delusion doubt, own-burden and own-route
+knowledge, teller grouping, the Seer's Scion succession, and the player's word at its credibility
+(option b′).
+- **Divergence from `baseline_35d96b9`:** every seed, from the deal (record 0 or 1), because the
+  burdens change what's dealt.
+- **Outcomes,** with the cap at day 4 ("unfinished" means the game was still going at the cap):
+
+| Seed | Main (`baseline_35d96b9`) | Burdens |
+|---|---|---|
+| 42 (7 NPCs) | good wins on day 2; Agnes hanged on day 2 | the same: good wins on day 2, Agnes hanged on day 2 (now nominated by Fenwick) |
+| 900 (7) | unfinished; Isolde hanged on day 2 | **good wins on day 3**; Odette hanged on day 3 |
+| 54875 (10) | unfinished; Dorian (day 2), Odette (day 3) | unfinished; Odette (day 2), Edda (day 3) |
+| 692 (10) | unfinished; Constance (day 3) | unfinished; Lian (day 2), Merrin (day 3) |
+| 98933 (10) | unfinished; Agnes (day 2) | unfinished; Bart (day 1), Dorian (day 2), Lian (day 3) |
+
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 22, approved wording): `baseline_35d96b9`
 
 `tools/golden/baseline_35d96b9/` is the capture from `claude/herald-51795-wording` at `35d96b9` (main at
 `64669cf`, merged in). Michael's approved wording, Nov 22: four `public_claim` lines that fit any
