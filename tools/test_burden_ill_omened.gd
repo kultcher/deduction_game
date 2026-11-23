@@ -38,6 +38,7 @@ func _init() -> void:
 	_bluff()
 	_unarmed()
 	_turned()
+	_turned_unclaimed()
 	_passed()
 	_evil_knows()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
@@ -226,3 +227,15 @@ func _evil_knows() -> void:
 	Burdens.omen_early_warning(w3, o3)
 	o3.alive = false
 	_check(Burdens.omen_at_nomination(w3, e3).is_empty(), "not if the dead holder had claimed it in public")
+
+## A holder turned evil before it ever claimed still claims at its first nomination, and its
+## hanging still brings the omen (Codex on #547).
+func _turned_unclaimed() -> void:
+	var w = _case().w
+	var o = _holder(w)
+	w.turn_evil(o, "test")
+	_check(o.is_evil() and o.turned and not (o.id in Burdens.public_claimants(w, "ill_omened")), "turned before claiming")
+	var nom: Dictionary = Burdens.omen_at_nomination(w, o)
+	_check(not nom.is_empty() and not w.omen_unclaimed.has(o.id), "nominated, the turned holder claims it at its first nomination")
+	w.execute(o.id, {})
+	_check(_logged(w, "omen_poison").size() == 1, "hanged, the omen falls")
