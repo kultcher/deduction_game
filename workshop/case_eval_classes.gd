@@ -105,8 +105,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# them, WorkshopCanvas.guard_reasons).
 		key_input.append(["quiet_guards_off", Movement.Live.quiet_guards_enabled, Movement.Live.quiet_guards_skip.duplicate()])
 	# The listener's own readings (known) are read in its worlds as the Delusional holder too
-	# (shared Delusion doubt, Michael, Nov 22): its holding splits the classes, as any teller's.
-	var own_tellers: int = Solver.Roles.relay_mediums(Solver.person_ids(view), known) & 0xFFFF if Domain.live(view) and not known.is_empty() else 0
+	# (shared Delusion doubt, Michael, Nov 22). When live own_burden is present, CompileOwnCountsWeighted
+	# already splits own-states on ListenerDeluded, so only keyless test views need own_tellers here
+	# (keeping CaseEval.compile shared across listeners in town presentations).
+	var own_tellers: int = Solver.Roles.relay_mediums(Solver.person_ids(view), known) & 0xFFFF if Domain.live(view) and not known.is_empty() and view.get("own_burden", {}).is_empty() else 0
 	# An argued "X is the Delusional" premise (case_data.delusion_odds) weighs X's holder
 	# worlds on the after side (CaseEval.delusion_odds_fits), so X's holding splits the
 	# classes as a teller's does. The odds themselves act after compile; the mask keys it.
@@ -1023,7 +1025,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
 			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
 		if cache_enabled:
-			if _fits_cache.size() > 4096:
+			if _fits_cache.size() > 16384:
 				_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
@@ -1066,7 +1068,7 @@ static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, perso
 			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
 		out = _fits_over(view, cc, cards, personal, open, w_all)
 	if cache_enabled:
-		if _fits_cache.size() > 4096:
+		if _fits_cache.size() > 16384:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 		_fits_cache[key] = {"ref": ref.duplicate(true), "out": out}
@@ -1131,12 +1133,14 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		weights = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx)
 	var has_weights: bool = not weights.is_empty()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
-	# Counting readings a Marked person can sway (Solver.marked_counts): weighed by the chance
-	# of the registration that fits, in worlds where its reader is good, healthy and sound
-	# (Quill's Dowser check, Nov 21). Memoised by what the weight reads.
+	# Counting readings a Marked person can sway (Solver.marked_counts): weighed in one
+	# vectorised C# pass over the class representatives (Argon, Nov 22).
 	var counting: Array = cards.filter(func(card): return Solver.marked_counts(card))
 	var self_id: String = str(knowledge.get("self", ""))
-	var mc_memo: Dictionary = {}
+	var mc_weights := PackedFloat64Array()
+	if not counting.is_empty() and Solver.marked_count_weighting:
+		mc_weights = _marked_count_weights_cs(view, reps, counting, self_id, live, cc_reps_handle, sub_idx)
+	var has_mc: bool = not mc_weights.is_empty()
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
 	for x in range(which.size()):
@@ -1160,14 +1164,8 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			if not rel_readings.is_empty():
 				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
-		if content > 0.0 and not counting.is_empty():
-			var w_rep2: Dictionary = reps[x] if cc_reps_handle < 0 else universe[cc.rep[which[x]]]
-			if int(w_rep2.get("marked", -1)) >= 0:
-				for card in counting:
-					var mk: Array = [card.get("id", ""), int(w_rep2.evil), int(w_rep2.get("converted", -1)), int(w_rep2.marked), str(w_rep2.get("modifier", "")), int(w_rep2.get("holders", 0))]
-					if not mc_memo.has(mk):
-						mc_memo[mk] = _marked_count_weight(view, w_rep2, card, self_id)
-					content *= float(mc_memo[mk])
+		if content > 0.0 and has_mc:
+			content *= mc_weights[x]
 		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
 		out[which[x]] = content * w_mult
 	return out
@@ -1275,3 +1273,108 @@ static func _marked_count_weight(view: Dictionary, world: Dictionary, card: Dict
 			if ci >= 0 and (holders & (1 << ci)):
 				return 1.0
 	return Solver.marked_count_weight(view, world, card)
+
+## Vectorised counting pass (RoleConstraintsKernel.MarkedCountWeights) over `cc_reps_handle`
+## (`sub_indices`) or fallback `reps`: evaluates `source_valid` (pre-checking world-independent
+## gift_time / observer_alive once per card), Delusional / omen skips, and as-evil/as-good
+## content checks in one C# call with zero per-world boundary crossings.
+static func _marked_count_weights_cs(view: Dictionary, reps: Array, counting: Array, self_id: String, live: bool, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
+	var ids: Array = Solver.person_ids(view)
+	var card_specs := PackedInt32Array()
+	var block_masks := PackedInt32Array()
+	var need_blocks: bool = false
+
+	for card in counting:
+		if str(card.get("kind", "")) != "report":
+			continue
+		var src_str: String = str(card.get("source", ""))
+		var src_idx: int = ids.find(src_str)
+		var testimony_only: bool = bool(card.get("testimony_only", false))
+		var obs_at: Dictionary = card.get("observed_at", {}) if card.get("observed_at") is Dictionary else {}
+		if live and not testimony_only:
+			if src_idx < 0 or not Domain.gift_time(card) or not Solver.History.observer_alive(view, src_str, obs_at):
+				continue
+
+		var d: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
+		var role_str: String = str(card.get("role", ""))
+		var mode: int = -1
+		var group_mask: int = 0
+		var target_or_same: int = 0
+		var group_size: int = 0
+		var content_stamp = obs_at
+
+		if role_str == "magistrate":
+			if not Solver._magistrate_nomination_ok(view, card, true):
+				continue
+			var ma_i: int = ids.find(str(d.get("nominator", "")))
+			var mb_i: int = ids.find(str(d.get("nominee", "")))
+			if ma_i < 0 or mb_i < 0 or ma_i == mb_i:
+				continue
+			mode = 1
+			group_mask = (1 << ma_i) | (1 << mb_i)
+			group_size = 2
+			target_or_same = 1 if bool(d.get("same", false)) else 0
+			content_stamp = {"day": int(obs_at.get("day", -1)), "phase": "afternoon"}
+		elif role_str == "surveyor" and d.has("block") and d.has("same"):
+			var blk_id: String = str(d.get("block", ""))
+			for p_i in range(view.people.size()):
+				if str(view.people[p_i].get("home", "")) == blk_id:
+					group_mask |= (1 << p_i)
+					group_size += 1
+			if group_size < 2 or (src_idx >= 0 and (group_mask & (1 << src_idx)) != 0):
+				continue
+			mode = 1
+			target_or_same = 1 if bool(d.get("same", false)) else 0
+		else:
+			var rdef = Solver.C.role_def(role_str)
+			var is_site_group: bool = rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count" and rdef.site_group_key == "group"
+			var is_surveyor: bool = rdef != null and rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"
+			if is_site_group:
+				mode = 0
+				for pid in d.get(rdef.site_group_key, []):
+					var p_i: int = ids.find(str(pid))
+					if p_i >= 0:
+						group_mask |= (1 << p_i)
+				target_or_same = int(d.get("count", 0))
+			elif is_surveyor:
+				mode = 2
+				need_blocks = true
+				target_or_same = int(d.get("count", 0))
+			else:
+				continue
+
+		var src_stamp = TimeModel.statement_time(card) if testimony_only else obs_at
+		var src_conv: bool = Solver._curse_active_at(view, src_stamp)
+		var content_conv: bool = Solver._curse_active_at(view, content_stamp)
+		var skip_deluded: bool = (live and not testimony_only) or (src_str != self_id)
+		var flags: int = (1 if src_conv else 0) | (2 if content_conv else 0) | (4 if skip_deluded else 0)
+		var omen_m: int = Solver.Roles.omen_mask(ids, card)
+
+		card_specs.append(mode)
+		card_specs.append(src_idx)
+		card_specs.append(flags)
+		card_specs.append(omen_m)
+		card_specs.append(group_mask)
+		card_specs.append(target_or_same)
+		card_specs.append(group_size)
+
+	if card_specs.is_empty():
+		return PackedFloat64Array()
+
+	if need_blocks:
+		var blk_dict: Dictionary = {}
+		for p_i in range(view.people.size()):
+			var home_s: String = str(view.people[p_i].get("home", ""))
+			blk_dict[home_s] = int(blk_dict.get(home_s, 0)) | (1 << p_i)
+		for bm in blk_dict.values():
+			block_masks.append(int(bm))
+
+	var st: int = SolverBackend.begin_stage("world_domain") if SolverBackend.profiling_enabled else -1
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(reps) if u_handle < 0 else PackedInt64Array()
+	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
+	SolverBackend.record_boundary_call("RoleConstraints.marked_count_weights", pack_u)
+	var out: PackedFloat64Array = SolverBackend._bridge().RoleMarkedCountWeightsByHandle(u_handle, sub_indices, fallback, card_specs, block_masks, float(Tuning.Setup.MARKED_EVIL_CHANCE))
+	if st >= 0:
+		SolverBackend.end_stage(st)
+	return out
