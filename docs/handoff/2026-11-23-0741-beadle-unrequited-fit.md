@@ -20,6 +20,8 @@
 - **Every block evil could be seen on that night must lie on that walk.** That means the
   sighting it's shown, plus where it really went (`history`), since another witness may have
   seen that. With no one who fits, evil uses another excuse or none.
+- **The confession's wording follows the same night** (Codex on #548): the grave line only
+  if the beloved was dead by the night it answers for.
 - **The pick is now a pure function,** `Burdens.unrequited_bluff_beloved`, so it can be
   tested and probed without side effects.
 - **No new constant.** The draw that decides whether evil bluffs at all is unchanged.
@@ -48,8 +50,9 @@ The old check differed from the judge in three ways:
   The probe measures when the bluff is available. Whether evil takes it is the unchanged
   reactive draw, and it fires only when the player shows evil a sighting in private.
 - **Quill's slate:** unchanged, so no slate re-baseline. `unrequited_bluff` is still Damning on all 10 deals (strength 21.46) and `unrequited_walk` still Contradicts (0.53), the same as `docs/case_slate/baseline.md`. The slate builds its cards by hand, so an NPC change can't move it. Michael accepted the Damning grade standing.
-- **Tests:** `test_burden_unrequited` gains 6 checks: the true destination, a third block, a
-  housemate, and the victim's door and grave by night. It and `test_burden_unrequited_walk`
+- **Tests:** `test_burden_unrequited` gains 7 checks: the true destination, a third block, a
+  housemate, the victim's door and grave by night, and (Codex on #548) the door line, not
+  the grave, for a night the beloved was still alive. It and `test_burden_unrequited_walk`
   pass.
 - **Golden:** identical to `baseline_14f5b7d` on all five seeds at `--tol 0`. The bluff fires only when the player shows evil a sighting in private, which the golden bot never does, so there's no re-baseline. Seneschal expected golden to move; it doesn't.
 

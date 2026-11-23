@@ -165,6 +165,13 @@ func _evil_bluff() -> void:
 		_check(Burdens._visit_fits(w, e2, vv, 4, [vv.home_block]), "a Demon's victim was alive the night they died: their door fits that night")
 		_check(not Burdens._visit_fits(w, e2, vv, 3, ["hill"]), "and their grave doesn't fit a night before it")
 		_check(Burdens._visit_fits(w, e2, vv, 5, ["hill"]), "but does after")
+		# Answering for a night they were alive, it speaks of their door, not their grave.
+		w.evil_plan["unrequited_beloved"][e2.id] = vv.id
+		w.evil_plan["burden_bluffs"][e2.id] = "unrequited"
+		if str(w.evil_plan["bluffs"].get(e2.id, "")) == "":
+			w.evil_plan["bluffs"][e2.id] = "clerk"
+		var ub4: Dictionary = Burdens.evil_unrequited_bluff(w, e2, 4, vv.home_block)
+		_check(not ub4.is_empty() and "door" in str(ub4["line"].get("statement", ub4["line"].get("text", ""))), "a sighting at a dead love's door, from a night they lived, is answered with the door, not the grave (%s)" % str(ub4.get("line", {})))
 		vv.alive = true
 		vv.death_day = -1
 		vv.death_cause = ""

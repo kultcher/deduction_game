@@ -115,9 +115,11 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 		text = omen["text"]
 	elif kind == "unrequited" and w.by_id.has(str(extra.get("beloved", ""))):
 		var bl = w.by_id[str(extra["beloved"])]
-		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if not bl.alive else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
+		# The grave only if the beloved was dead by the night it answers for (Codex on #548).
+		var grave: bool = not _alive_on_night(bl, int(extra["day"])) if extra.has("day") else not bl.alive
+		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if grave else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
 		# Michael's Nov 21 lines (Herald): the door, or the grave once the beloved is dead.
-		line = _mind().say_voiced(n, "burden_unrequited_grave" if not bl.alive else "burden_unrequited_reveal", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me, "beloved": bl.name})
+		line = _mind().say_voiced(n, "burden_unrequited_grave" if grave else "burden_unrequited_reveal", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me, "beloved": bl.name})
 		text = "%s admitted they have an unrequited love for %s." % [n.name, bl.name]
 	elif not rival.is_empty() and not n.is_evil():
 		# The real holder answers a claim already made: one of them is lying.
