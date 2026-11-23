@@ -111,12 +111,11 @@ func _init() -> void:
 		# In log-odds, as the relay check below: a planter the rest already holds near certain
 		# has no 15 points left to gain (seed 100074 on #454: 0.894 without it, 0.993 with).
 		var lift1: float = _logit(e.with) - _logit(e.without)
-		# Being lied about mustn't lower the listener's suspicion of the liar (Michael, Nov 21:
-		# a wrong sighting no longer seeds the core, Connections.seed_wrong_sightings). It
-		# still counts against its teller through its night; how far depends on the rest of
-		# the board, so the floor is "doesn't clear the liar", not a fixed lift.
+		# The strict check is back with the Burdens landing (#516): a wrong sighting no longer
+		# seeds the listener's core (Michael, Nov 21, Connections.seed_wrong_sightings), so being
+		# lied about raises the liar at least as much as 15 points from even.
 		print("NOTE: %s: the fake sighting moves the planter %+.2f log-odds (%+.3f)" % [label, lift1, e.with - e.without])
-		check(lift1 >= 0.0, "%s: being lied about doesn't lower the listener's suspicion of the liar (%+.2f log-odds, %+.3f)" % [label, lift1, e.with - e.without])
+		check(lift1 >= _logit(0.65) - _logit(0.5), "%s: the fake sighting raises the planter at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label, lift1, e.with - e.without])
 	# 2. An evil Medium's invented relay of the listener, out on a night they were home.
 	var r: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	if r.is_empty():
