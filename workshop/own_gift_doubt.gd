@@ -105,8 +105,10 @@ static func delusion(view: Dictionary, listener: Dictionary, held: Array) -> Dic
 	return out
 
 ## The refresh's inputs, kept on the NPC (as metadata, outside its saved state) until asked.
-static func stage(n, view: Dictionary, listener: Dictionary, held: Array) -> void:
-	n.set_meta(META, {"view": view, "listener": listener, "held": held})
+## `posterior` is the refresh's own {id: evil chance} (the connections posterior its beliefs
+## come from), kept for DemonCandidates.demon_chances_of_npc.
+static func stage(n, view: Dictionary, listener: Dictionary, held: Array, posterior: Dictionary = {}) -> void:
+	n.set_meta(META, {"view": view, "listener": listener, "held": held, "posterior": posterior})
 
 static func clear(n) -> void:
 	if n.has_meta(META):
