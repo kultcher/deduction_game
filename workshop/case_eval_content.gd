@@ -28,13 +28,18 @@ static func _concl_type_code(c_type: String) -> int:
 
 ## Chance of this report's content arising by chance: roughly one over the number of
 ## different things the gift could have said.
+## Each burden on the script places one holder among the good (one burden a game): the known
+## burdens (Marked, Unrequited, Ill-Omened) on any of them, Delusional on any but the reader.
 static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 	var w_h: float = 0.0
-	if "marked" in mods:
-		w_h += float(g)
+	for m_kind in KNOWN_BURDENS:
+		if m_kind in mods:
+			w_h += float(g)
 	if "delusional" in mods:
 		w_h += float(maxi(0, g - 1))
 	return w_h
+
+const KNOWN_BURDENS = ["marked", "unrequited", "ill_omened"]
 
 static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
 	var n: int = view.get("people", []).size()
@@ -69,7 +74,7 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional"]:
+	for m_kind in KNOWN_BURDENS + ["delusional"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
 	var trios_one_sec: float = float((e - 1) * (g - 2))
