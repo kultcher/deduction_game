@@ -226,8 +226,9 @@ static func own_burden(n) -> Dictionary:
 ## evidence: it never enters the ledger, ownership, citations or the world domain. Each night
 ## carries only the tiny own-reading error (burdens prototype: Sleepwalker 1.0 retired).
 ## "out_nights": the nights it was out, with the blocks it walked (reading-note gap 2, Nov 21:
-## everyone knows their own whereabouts). Every block borders every other, so a walk is its
-## home and destination; one ending back home is a tour of every block (Lamplighter, Sexton).
+## everyone knows their own whereabouts), as WorldNight._walk walks them: the road from home
+## to the destination (C.route), except the Lamplighter's round and the Sexton's toll, which
+## tour every block. A same-block outing (a Warden guarding a neighbour) is its home alone.
 static func own_home(_w, n, outings: Dictionary) -> Dictionary:
 	var nights: Dictionary = {}
 	var out_nights: Dictionary = {}
@@ -237,7 +238,8 @@ static func own_home(_w, n, outings: Dictionary) -> Dictionary:
 		else:
 			var dest: String = str(n.history.get(str(k) + ":3", "")).trim_prefix("night:")
 			if dest in C.BLOCKS:
-				out_nights[str(k)] = C.BLOCKS.keys() if dest == n.home_block else [n.home_block, dest]
+				var tours: bool = dest == n.home_block and str(n.role) in ["lamplighter", "sexton"]
+				out_nights[str(k)] = C.BLOCKS.keys() if tours else C.route(n.home_block, dest)
 	return {"self": n.id, "block": n.home_block, "nights": nights, "out_nights": out_nights}
 
 

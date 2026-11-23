@@ -1349,6 +1349,18 @@ internal static class LiveActivityKernel
                 break;
             }
         }
+        // An announced spell break (Burdens.spell_breaks, slot 17: the meeting's day) stops the
+        // visits from that night on: the holder walks as anyone does (Codex, #547).
+        int breakNight = int.MaxValue;
+        for (int c = 0; c < cardCount; c++)
+        {
+            int off = c * CardStride;
+            if (cardInts[off] == KindSecretClaim && (cardInts[off + 1] & FlagQuoted) == 0
+                && cardInts[off + 2] == personIdx && cardInts[off + 3] == personIdx && cardInts[off + 17] >= 0)
+            {
+                breakNight = Math.Min(breakNight, cardInts[off + 17]);
+            }
+        }
         var beloveds = new List<int>(nPeople);
         if (named >= 0)
         {
@@ -1457,6 +1469,13 @@ internal static class LiveActivityKernel
                             fv = 0.0;
                             for (int e = 0; e < BlockCount; e++)
                                 fv += (e == haunt ? 0.7 : 0.1) * vis![n][bi][e];
+                        }
+                        if (night >= breakNight)
+                        {
+                            sN = (sN + sV + sM) * fo;
+                            sV = 0.0;
+                            sM = 0.0;
+                            continue;
                         }
                         double nN = sN * (1.0 - visitChance) * fo;
                         double nV = (sN * visitChance + sV * visitChance + sM) * fv;

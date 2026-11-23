@@ -110,8 +110,26 @@ func _init() -> void:
 	check(late_flag == [true], "an Unrequited claim told after the claimant was seen out is reactive (%s)" % [late_flag])
 	check(early_flag == [false] and told_before < named_there, "an earlier telling keeps full credit (%.3f against %.3f)" % [told_before, named_there])
 	check(marked_flag == [false], "a sighting doesn't make a Marked claim reactive (%s)" % [marked_flag])
+	# 3c. An announced spell break (Burdens.spell_breaks, at the day-2 meeting) stops the
+	# visits from night 2 on (Codex, #547). The same telling without the break leaves nights 2
+	# and 3 as missed visits; with it, the holder walks as anyone does from night 2: walks to
+	# the beloved's block after it are no longer explained by the burden.
+	var told: Dictionary = _claim("")
+	told.id = "ub"; told.fact_id = "ub"
+	told.observed_at = {"day": 2, "phase": "afternoon"}
+	var broke: Dictionary = told.duplicate(true)
+	broke.data["spell_broken"] = true
+	var col: Callable = func(cards: Array) -> float:
+		return Activity.unrequited_likelihood(_view(cards, true), cards, a) / Activity._likelihood(_view(cards, true), cards, a, "good")
+	var visited_after: Array = [_out("o1", 1, "docks"), _out("o2", 2, "docks"), _out("o3", 3, "docks")]
+	var kept_miss: float = col.call(two_miss + [told])
+	var kept_visit: float = col.call(visited_after + [told])
+	var broke_miss: float = col.call(two_miss + [broke])
+	var broke_visit: float = col.call(visited_after + [broke])
+	print("Told at the day-2 meeting: missed nights 2-3 x%.2f, visits on 2-3 x%.2f; with the spell broken: x%.2f and x%.2f" % [kept_miss, kept_visit, broke_miss, broke_visit])
+	check(broke_miss >= kept_miss - 1e-9 and broke_visit < kept_visit, "after a public spell break, missed visits count no more against holding it, and later visits no longer count for it (missed x%.2f against x%.2f; visits x%.2f against x%.2f)" % [broke_miss, kept_miss, broke_visit, kept_visit])
 	# 4. The kernel and the mirror agree.
-	var sets: Array = [twice, elsewhere, twice + [_claim("b")], elsewhere + [_claim("b")], one_miss, two_miss, []]
+	var sets: Array = [twice, elsewhere, twice + [_claim("b")], elsewhere + [_claim("b")], one_miss, two_miss, two_miss + [broke], visited_after + [broke], []]
 	var worst: float = 0.0
 	for cards in sets:
 		var view: Dictionary = _view(cards, true)

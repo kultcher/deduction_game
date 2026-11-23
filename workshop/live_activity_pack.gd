@@ -265,6 +265,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			card_ints[off + 19] = int(app.get("through", -1))
 			# The beloved an Unrequited claim names (LiveActivityKernel.UnrequitedLikelihood), or -1.
 			card_ints[off + 16] = ids.find(str(data.get("beloved", ""))) if claim_walks(card) else -1
+			# The night an announced spell break stops the visits (the meeting's day), or -1.
+			card_ints[off + 17] = int(card.get("observed_at", {}).get("day", -1)) if bool(data.get("spell_broken", false)) else -1
 
 		card_doubles[c_i * 2] = (1.0 - float(card.get("self_doubt", 0.0))) if card.get("known_self", false) else float(card.get("hearing_weight", 1.0))
 		# The second slot: a report's error, or an alibi's good out-rate (out_rate, an excused lie).

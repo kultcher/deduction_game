@@ -233,6 +233,14 @@ static func _unrequited_likelihood_gd(view: Dictionary, cards: Array, person: Di
 			named = str(card.data.beloved)
 			break
 	var beloveds: Array = [named] if named != "" else view.people.filter(func(p): return p.id != person.id).map(func(p): return p.id)
+	# An announced spell break stops the visits from that meeting's night on (as the kernel).
+	var break_night: int = 1 << 30
+	for card in cards:
+		if card.get("kind", "") == "secret_claim" and not card.get("quoted", false) and str(card.get("source", "")) == person.id \
+				and str(card.get("subject", "")) == person.id and bool(card.get("data", {}).get("spell_broken", false)):
+			var bd: int = int(card.get("observed_at", {}).get("day", -1))
+			if bd >= 0:
+				break_night = mini(break_night, bd)
 	var max_night: int = -1
 	for night in nights:
 		max_night = maxi(max_night, int(night))
@@ -307,6 +315,11 @@ static func _unrequited_likelihood_gd(view: Dictionary, cards: Array, person: Di
 						for evening in C.BLOCKS:
 							fv += (0.7 if evening == haunt else 0.1) * float(vis[n][bi][e])
 							e += 1
+					if night >= break_night:
+						s_n = (s_n + s_v + s_m) * fo
+						s_v = 0.0
+						s_m = 0.0
+						continue
 					var nn: float = s_n * (1.0 - q) * fo
 					var nv: float = (s_n * q + s_v * q + s_m) * fv
 					var nm: float = s_v * (1.0 - q) * fo

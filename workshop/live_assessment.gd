@@ -346,6 +346,10 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["data"] = {"secret_kind": e.content.secret_kind}
 		if e.content.secret_kind == "unrequited" and str(e.content.get("beloved", "")) in ids:
 			card.data["beloved"] = str(e.content.beloved)  # whom the holder visits (the movement model)
+		if e.content.secret_kind == "unrequited" and bool(e.content.get("spell_broken", false)):
+			# The holder gave the burden up at this meeting (Burdens.spell_breaks): no visits
+			# from that night on (LiveActivityKernel.UnrequitedLikelihood; Codex, #547).
+			card.data["spell_broken"] = true
 		return card
 	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):

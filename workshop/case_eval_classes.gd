@@ -205,7 +205,8 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 		if Solver.marked_counts(card):
 			var role_s: String = str(card.get("role", ""))
 			if role_s == "magistrate":
-				for person in cdata.get("group", cdata.get("pair", [])):
+				# A Magistrate's two are its nominator and nominee (Codex, #547).
+				for person in [cdata.get("nominator", ""), cdata.get("nominee", "")] + cdata.get("group", cdata.get("pair", [])):
 					var pi: int = ids.find(str(person))
 					if pi >= 0:
 						marked_m |= 1 << pi
