@@ -33,9 +33,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. Withheld readings: asking for what someone hasn't said `[decided: direction; held, Michael, Nov 23]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. \*The Gravedigger in a reluctant town `[decided]`
-    7. Caught out and pressed again: what's left `[decided]`
-    8. Good NPCs lie tactically `[open]`
+    6. Caught out and pressed again: what's left `[decided]`
+    7. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -227,16 +226,6 @@ Lantern). Nothing is open here.
 - **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
   reveal looks for protection first, from the player or a known Warden. Same source; it may
   generalise. Owner Beadle. [decided: direction]
-
-- **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
-  nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
-  I can tell you what they were"), which also gives a cautious town a reason to act.
-  Michael (Nov 17): as a hidden motive only. A good Gravedigger with nothing to read leans
-  a little more toward nominating and voting to hang, but never says so: these are real
-  people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
-  for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
-  - **Approved (Michael, Nov 20, later):** `GRAVEDIGGER.nothing_to_read_lean` = 0.08. The
-    lean is **permanent** for a good Gravedigger: it doesn't wear off.
 
 - **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
   remainders.) Owner Beadle.
