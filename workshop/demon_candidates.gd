@@ -98,6 +98,33 @@ static func given_evil_of_npc(n) -> Dictionary:
 		out[pid] = float(all[pid].given_evil)
 	return out
 
+## {person id: P(Demon)} for the NPC: its own evil chance for each person (the posterior of the
+## connections refresh that staged it, the chance its beliefs use, not its suspicion) times
+## P(Demon | evil) from the joint judgement, scaled so the chances sum to 1 over everyone but
+## the listener (there is one Demon). The connections posterior is assembled from separate
+## items, so the raw products needn't sum to 1 (on a Seer's "yes" they can reach about 1.3); the
+## scale keeps them chances and never changes their order. {} when no refresh is staged or no
+## one has a chance. Kept until the next refresh, like of_npc. What Beadle's Seer ranks by (#549).
+static func demon_chances_of_npc(n) -> Dictionary:
+	if not n.has_meta(OwnGiftDoubt.META):
+		return {}
+	var staged: Dictionary = n.get_meta(OwnGiftDoubt.META)
+	if not staged.has("demon_chances"):
+		var post: Dictionary = staged.get("posterior", {})
+		var given: Dictionary = given_evil_of_npc(n)
+		var out: Dictionary = {}
+		var total: float = 0.0
+		for pid in given:
+			if post.has(pid):
+				out[pid] = maxf(0.0, float(given[pid]) * float(post[pid]))
+				total += float(out[pid])
+		if total <= 0.0:
+			out = {}
+		for pid in out:
+			out[pid] = float(out[pid]) / total
+		staged["demon_chances"] = out
+	return staged.demon_chances.duplicate()
+
 ## P(`pid` is the Demon) for the NPC, on its own evil chance for them: P(Demon | evil) from the
 ## joint judgement times `evil_chance` (the NPC's belief, e.g. its suspicion's evil chance).
 static func demon_chance(n, pid: String, evil_chance: float) -> float:

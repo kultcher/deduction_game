@@ -350,7 +350,7 @@ static func _stage_own_gift_doubt(n, proposal: Dictionary, adjusted: Dictionary)
 	var weigher: Dictionary = Jury._eval_listener(listener, listener.get("knowledge", {}).get("own_reports", []))
 	weigher["trust"] = listener.get("trust", 0.5)
 	weigher["insight"] = listener.get("insight", 0.5)
-	OwnGiftDoubt.stage(n, adjusted.view, weigher, held)
+	OwnGiftDoubt.stage(n, adjusted.view, weigher, held, cx.get("posterior", {}).duplicate())
 	# Each reader's chance of being the Delusional, for Quill (shared Delusion doubt, Nov 22):
 	# own_delusion for a good listener holding its own readings, delusion_of for the others.
 	# It costs one judgement per refresh (measured Nov 22: about a third of a ten-NPC game's
