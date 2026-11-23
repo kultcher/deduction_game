@@ -159,7 +159,8 @@ func _test_seer_insight() -> void:
 			_give(w, sr, "seer")
 			sr.traits["insight"] = 0.95 if kind == "sharp" else 0.05
 			w.day = 2
-			var top = Mind.ranked_suspects(w, sr)[0]
+			# Its top suspect is its likeliest Demon (the Seer looks for the Demon, Nov 21).
+			var top = C.role_def("seer").demon_ranked(w, sr, Mind)[0]
 			if top.id in Mind.seer_picks(w, sr):
 				hits[kind] += 1
 	print("Seer re-checks the top suspect: sharp %d/40, dull %d/40" % [hits["sharp"], hits["dull"]])

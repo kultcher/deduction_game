@@ -32,6 +32,9 @@ func _seer(sd: int):
 	sr.traits["insight"] = 0.95
 	sr.info_log = []
 	sr.cleared = {}
+	# The readings below are written in by hand, so no refresh has judged them: rank by
+	# suspicion (the fallback) to test the pick rules alone. demon_ranked is checked below.
+	load("res://workshop/own_gift_doubt.gd").clear(sr)
 	w.day = 2
 	return [w, sr]
 
@@ -106,5 +109,53 @@ func _init() -> void:
 	_reading(sr2, 0, [o2[0].id, o2[1].id], true)
 	_reading(sr2, 1, [o2[1].id, o2[2].id], false)
 	_check(C.role_def("seer")._narrowing_pick(w2, sr2, o2, {}, {o2[0].id: 1}).is_empty(), "once one of the two is cleared, the \"yes\" is narrowed down")
+	# The likeliest Demon, not the likeliest evil (Lantern's DemonCandidates): one it's sure is
+	# evil but the joint judgement puts outside the Demon's seat ranks below a half-suspect.
+	var wsd = _seer(9661)
+	var wd = wsd[0]
+	var srd = wsd[1]
+	var od: Array = wd.living().filter(func(m): return m != srd)
+	for m in od:
+		srd.suspicion[m.id] = 0.2
+	srd.suspicion[od[0].id] = 0.9
+	srd.suspicion[od[1].id] = 0.5
+	# Its chances of each being the Demon (DemonCandidates.demon_chances_of_npc): the one it's
+	# surest is evil (od[0]) is, by its readings, a Minion; the half-suspect (od[1]) is likelier
+	# the Demon.
+	var dmap: Dictionary = {}
+	for m in od:
+		dmap[m.id] = 0.05
+	dmap[od[0].id] = 0.04
+	dmap[od[1].id] = 0.5
+	srd.set_meta(load("res://workshop/own_gift_doubt.gd").META, {"view": {}, "listener": {}, "held": [], "demon_chances": dmap})
+	var rd: Array = C.role_def("seer").demon_ranked(wd, srd, Mind)
+	_check(rd[0] == od[1] and rd.find(od[0]) > 0, "it ranks the likeliest Demon first, above someone it's surer is evil but not the Demon")
+	srd.remove_meta(load("res://workshop/own_gift_doubt.gd").META)
+	_check(C.role_def("seer").demon_ranked(wd, srd, Mind)[0] == od[0], "with no refresh staged, its suspicion alone")
+	# Narrowing beside someone trusted as good: the least suspected of evil, not the least
+	# likely Demon (Codex on #549). A Minion it's sure of ranks last as a Demon but is no
+	# trusted partner.
+	var wt = _seer(9662)
+	var wtw = wt[0]
+	var srt = wt[1]
+	var ot: Array = wtw.living().filter(func(m): return m != srt)
+	for m in ot:
+		srt.suspicion[m.id] = 0.3
+	srt.suspicion[ot[0].id] = 0.6
+	srt.suspicion[ot[1].id] = 0.5
+	srt.suspicion[ot[2].id] = 0.95  # the sure Minion
+	srt.suspicion[ot[3].id] = 0.0   # the one it trusts
+	_reading(srt, 1, [ot[0].id, ot[1].id], true)
+	var demon_order: Array = [ot[0]] + ot.slice(1).filter(func(m): return m != ot[2]) + [ot[2]]
+	var trusted_seen := false
+	var minion_seen := false
+	for k in range(12):
+		srt.dialogue_memory.clear()
+		wtw.day = 2 + k
+		var np: Array = C.role_def("seer")._narrowing_pick(wtw, srt, demon_order, {}, {ot[0].id: 1, ot[1].id: 1}, {ot[0].id: true, ot[1].id: true}, Mind.ranked_suspects(wtw, srt))
+		if np.size() == 3 and np[2] == "whom it trusts":
+			trusted_seen = trusted_seen or np[1] == ot[3]
+			minion_seen = minion_seen or np[1] == ot[2]
+	_check(trusted_seen and not minion_seen, "beside someone it trusts, it picks the least suspected, never the Minion it's sure of")
 	print("Seer targets: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
