@@ -21,6 +21,10 @@ const Connections = preload("res://workshop/connections.gd")
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
 static func readiness(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
+	var detail := _readiness_detail(g, n, card, targets, direction, venue)
+	return {"ready": detail.ready, "issues": detail.issues, "exit_point": detail.exit_point}
+
+static func _readiness_detail(g, n, card: Dictionary, targets: Array, direction: String, venue: String) -> Dictionary:
 	var snapshot = _snapshot(g, n, card, targets, direction, venue)
 	if snapshot.is_empty():
 		return {"ready": false, "issues": ["Card #%d is missing, stale, or has no supported target." % card.get("n", 0)], "exit_point": "snapshot"}
@@ -40,7 +44,7 @@ static func readiness(g, n, card: Dictionary, targets: Array, direction: String,
 		ancestor = g.board[ancestor - 1].get("revises", 0)
 	proposals[_key(card, targets, direction, snapshot)] = snapshot
 	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn, snapshot.selected)
-	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
+	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union", "snapshot": snapshot, "prepared": prepared, "proposals": proposals, "withdrawn": withdrawn}
 
 ## Has this case, already put to the town, faded for anyone since? A stored case loses
 ## weight by the day, and presenting it again restores it, so then it is assessed again
@@ -77,13 +81,14 @@ static func present(g, n, card: Dictionary, targets: Array, direction: String, v
 static func _present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
 	if n.is_evil():
 		return {}
-	var capability = readiness(g, n, card, targets, direction, venue)
+	var capability = _readiness_detail(g, n, card, targets, direction, venue)
 	if not capability.ready:
 		return _unavailable(g, n, card, capability.exit_point, capability.issues)
+	var retired := false
 	if card.has("workshop_case"):
-		GamePresentation.workshop_canvas_retire(g, n, card)
-	var snapshot = _snapshot(g, n, card, targets, direction, venue)
-	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
+		retired = GamePresentation.workshop_canvas_retire(g, n, card)
+	var snapshot: Dictionary = _snapshot(g, n, card, targets, direction, venue) if retired else capability.snapshot
+	if retired and (snapshot.is_empty() or not Assess.prepare(snapshot).ready):
 		return _unavailable(g, n, card, "snapshot", ["Evidence changed after the readiness check."])
 	var state: Dictionary = n.workshop_state
 	var signature = _signature(snapshot)
@@ -128,10 +133,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		var argued: String = str(argued_root[0].conclusion.get("a", argued_root[0].conclusion.get("target", ""))) if not argued_root.is_empty() else ""
 		if argued != "" and not g.w.meeting_arguments.any(func(e): return e.day == g.w.day and e.target == argued):
 			g.w.meeting_arguments.append({"day": g.w.day, "target": argued})
-	var current = Bridge.capture(g, [], n.id, venue, n)
-	var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
-	if not proposed.ready:
-		return _unavailable(g, n, card, "proposals", proposed.issues)
+	if retired or previous.has(key) or capability.proposals.keys() != proposals.keys() or capability.get("withdrawn", {}) != state.get("withdrawn", {}):
+		var current = Bridge.capture(g, [], n.id, venue, n)
+		var proposed = Shared.prepare(current, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
+		if not proposed.ready:
+			return _unavailable(g, n, card, "proposals", proposed.issues)
 	var earlier: Array = state.get("facts", []).duplicate()
 	var novelty_ids = Shared.endorsed_facts(snapshot, snapshot.root)
 	var headline: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
@@ -161,10 +167,15 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		Mind.refresh_beliefs(g.w, n, " (presentation refused: no shared plan)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
-	# Rebuild against final interval reliability, matching the applied union.
-	plan.input.listener.source_doubt = state.get("source_doubt", {}).duplicate(true)
-	plan.input.listener.theories = state.get("theories", {}).duplicate(true)
-	plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
+	var next_sd: Dictionary = state.get("source_doubt", {})
+	var next_th: Dictionary = state.get("theories", {})
+	if plan.input.listener.get("source_doubt", {}) != next_sd \
+			or plan.input.listener.get("theories", {}) != next_th \
+			or state.get("attention_focus", []) != snapshot.selected:
+		# Rebuild against final interval reliability, matching the applied union.
+		plan.input.listener.source_doubt = next_sd.duplicate(true)
+		plan.input.listener.theories = next_th.duplicate(true)
+		plan = Shared.prepare(plan.input, proposals, n.ledger, state.get("withdrawn", {}), snapshot.selected)
 	var response_input = [plan.prepared, snapshot.arguments, snapshot.root, snapshot.board_map, snapshot.selected,
 		snapshot.evidence.filter(func(e): return e.id in snapshot.selected), state.outside]
 	var cached: Dictionary = g._workshop_responses.get(listener_key, {})

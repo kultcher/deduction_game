@@ -313,6 +313,73 @@ static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dicti
 	known.erase("presented_reports")
 	known.erase("attention_reports")
 	who_base["knowledge"] = known
+	var has_burden := false
+	var has_nw_ll := false
+	var card_bcode: Array = []
+	card_bcode.resize(n_cards)
+	var card_is_nw_ll: Array = []
+	card_is_nw_ll.resize(n_cards)
+	for i in range(n_cards):
+		var c: Dictionary = cards_arr[i]
+		var bcode: int = Solver.Roles.burden_code(c)
+		card_bcode[i] = bcode
+		if bcode > 0:
+			has_burden = true
+		var is_nl: bool = str(c.get("kind", "")) == "report" and str(c.get("role", "")) in ["nightwatch", "lamplighter"]
+		card_is_nw_ll[i] = is_nl
+		if is_nl:
+			has_nw_ll = true
+	var card_bkey: Array = []
+	var card_bfactor: Array = []
+	var card_bmissed: Array = []
+	var card_bmissed_id: Array = []
+	if has_burden:
+		card_bkey.resize(n_cards)
+		card_bfactor.resize(n_cards)
+		card_bmissed.resize(n_cards)
+		card_bmissed_id.resize(n_cards)
+		for i in range(n_cards):
+			if int(card_bcode[i]) > 0:
+				var c: Dictionary = cards_arr[i]
+				var bf: Array = Solver.Roles.burden_claim_factors(view, [c])
+				if not bf.is_empty():
+					card_bfactor[i] = bf[0]
+					card_bkey[i] = "%d:%d" % [bf[0][0], int(card_bcode[i])]
+				card_bmissed[i] = Solver.Roles.missed_forced_trigger(view, c, [])
+				card_bmissed_id[i] = str(c.get("id", ""))
+			else:
+				card_bmissed[i] = false
+	var list_mix_max := 0
+	var card_nw_broken: Array = []
+	var card_ll_mixable: Array = []
+	var card_ll_night: Array = []
+	var card_ll_broken: Array = []
+	var card_native_mixed: Array = []
+	if has_nw_ll:
+		var SourceDoubt = preload("res://workshop/source_doubt.gd")
+		list_mix_max = SourceDoubt.LIST_MIX_MAX
+		card_nw_broken.resize(n_cards)
+		card_ll_mixable.resize(n_cards)
+		card_ll_night.resize(n_cards)
+		card_ll_broken.resize(n_cards)
+		card_native_mixed.resize(n_cards)
+		for i in range(n_cards):
+			var c: Dictionary = cards_arr[i]
+			card_nw_broken[i] = -1.0
+			card_ll_mixable[i] = false
+			card_ll_night[i] = -1
+			card_ll_broken[i] = 0.0
+			card_native_mixed[i] = c.has("broken_chance") or bool(c.get("count_mix", false))
+			if bool(card_is_nw_ll[i]):
+				var role_str: String = str(c.get("role", ""))
+				if role_str == "nightwatch":
+					card_nw_broken[i] = float(SourceDoubt.list_broken_chance(view, listener, c))
+				else:
+					var mixable: bool = SourceDoubt.count_mixable(view, listener, c)
+					card_ll_mixable[i] = mixable
+					if mixable:
+						card_ll_night[i] = int(c.get("night", -1))
+						card_ll_broken[i] = float(SourceDoubt.count_broken_chance(view, listener, c))
 	return {
 		"view": view,
 		"bare": bare,
@@ -327,6 +394,20 @@ static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dicti
 		"around_nosoft_hash": around_nosoft_hash,
 		"who_base": who_base,
 		"all_heard": listener.get("reading_reliability", {}),
+		"has_burden": has_burden,
+		"card_bcode": card_bcode,
+		"card_bkey": card_bkey,
+		"card_bfactor": card_bfactor,
+		"card_bmissed": card_bmissed,
+		"card_bmissed_id": card_bmissed_id,
+		"has_nw_ll": has_nw_ll,
+		"list_mix_max": list_mix_max,
+		"card_is_nw_ll": card_is_nw_ll,
+		"card_nw_broken": card_nw_broken,
+		"card_ll_mixable": card_ll_mixable,
+		"card_ll_night": card_ll_night,
+		"card_ll_broken": card_ll_broken,
+		"card_native_mixed": card_native_mixed,
 	}
 
 
@@ -383,7 +464,79 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 		known.erase("attention_reports")
 		who["knowledge"] = known
 		who_h = hash(who)
-	return "%d:%d:%d:%d:%d|%s|%s" % [around_h, hash(cards), tmpl_h, who_h, _mix_key(ctx.view, listener, cards), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+	return "%d:%d:%d:%d:%d|%s|%s" % [around_h, hash(cards), tmpl_h, who_h, _mix_key_fast(ctx, idxs, cards, listener), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+
+
+static func _mix_key_fast(ctx: Dictionary, idxs: Array, cards: Array, listener: Dictionary) -> int:
+	var has_b: bool = ctx.has_burden
+	var has_nl: bool = ctx.has_nw_ll
+	if not has_b and not has_nl:
+		return 0
+	var burden: int = 0
+	if has_b:
+		var any_burden := false
+		var bseen := {}
+		var bfactors: Array = []
+		var bmissed: Array = []
+		var card_bcode: Array = ctx.card_bcode
+		var card_bkey: Array = ctx.card_bkey
+		var card_bfactor: Array = ctx.card_bfactor
+		var card_bmissed: Array = ctx.card_bmissed
+		var card_bmissed_id: Array = ctx.card_bmissed_id
+		for pos in idxs:
+			if int(card_bcode[pos]) > 0:
+				any_burden = true
+				if card_bfactor[pos] != null and not bseen.has(card_bkey[pos]):
+					bseen[card_bkey[pos]] = true
+					bfactors.append(card_bfactor[pos])
+				if bool(card_bmissed[pos]):
+					bmissed.append(card_bmissed_id[pos])
+		if any_burden:
+			burden = hash([bfactors, bmissed])
+	if not has_nl:
+		return burden
+	var card_is_nw_ll: Array = ctx.card_is_nw_ll
+	var any_nl := false
+	for pos in idxs:
+		if bool(card_is_nw_ll[pos]):
+			any_nl = true
+			break
+	if not any_nl:
+		return burden
+	if listener != ctx.listener:
+		return _mix_key(ctx.view, listener, cards)
+	var cards_arr: Array = ctx.cards_arr
+	var card_nw_broken: Array = ctx.card_nw_broken
+	var card_ll_mixable: Array = ctx.card_ll_mixable
+	var card_ll_night: Array = ctx.card_ll_night
+	var card_ll_broken: Array = ctx.card_ll_broken
+	var card_native_mixed: Array = ctx.card_native_mixed
+	var lists_mixed := 0
+	var counts: Array = []
+	for pos in idxs:
+		if float(card_nw_broken[pos]) > 0.0:
+			lists_mixed += 1
+		elif bool(card_ll_mixable[pos]):
+			counts.append([int(card_ll_night[pos]), str(cards_arr[pos].get("id", "")), pos])
+	var count_pos := {}
+	if not counts.is_empty():
+		var max_counts: int = maxi(0, int(ctx.list_mix_max) - lists_mixed)
+		if max_counts > 0:
+			counts.sort_custom(func(a, b2): return a[0] > b2[0] or (a[0] == b2[0] and a[1] < b2[1]))
+			for k in range(mini(max_counts, counts.size())):
+				count_pos[int(counts[k][2])] = true
+	var mixed: Array = []
+	for pos in idxs:
+		if count_pos.has(pos):
+			var c: Dictionary = cards_arr[pos]
+			mixed.append([str(c.get("id", "")), float(card_ll_broken[pos]), true])
+		elif float(card_nw_broken[pos]) > 0.0:
+			var c: Dictionary = cards_arr[pos]
+			mixed.append([str(c.get("id", "")), float(card_nw_broken[pos]), false])
+		elif bool(card_native_mixed[pos]):
+			var c: Dictionary = cards_arr[pos]
+			mixed.append([str(c.get("id", "")), float(c.get("broken_chance", 0.0)), bool(c.get("count_mix", false))])
+	return hash(mixed) if burden == 0 else hash([hash(mixed), burden])
 
 
 ## The broken chance of each Night Watch list and Lamplighter count the judgement would mix

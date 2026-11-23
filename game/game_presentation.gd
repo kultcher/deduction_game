@@ -258,17 +258,19 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 
 ## Canvas revisions replace this listener's previous endorsement only when heard.
 ## Keep a dedicated native ledger entry so other filed arguments are untouched.
-static func workshop_canvas_retire(g, real, ded: Dictionary) -> void:
+static func workshop_canvas_retire(g, real, ded: Dictionary) -> bool:
 	if ded.n < 1 or ded.n > g.board.size() or g.board[ded.n - 1].get("workshop_case", {}) != ded.workshop_case:
-		return # An old relayed wrapper cannot retract a newer heard revision.
+		return false # An old relayed wrapper cannot retract a newer heard revision.
 	var n = real.shadow if real.is_evil() else real
 	if n == null:
-		return
+		return false
 	var st: Dictionary = n.workshop_state
+	var retracted := false
 	var ancestor: int = ded.get("revises", 0)
 	while ancestor > 0 and ancestor <= g.board.size():
 		if st.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor) or _record_cites(real, ancestor):
 			_workshop_retract(g, ancestor, n.id, new_evidence(g.board[ancestor - 1], ded))
+			retracted = true
 		ancestor = g.board[ancestor - 1].get("revises", 0)
 	if not st.has("canvas_versions"):
 		st.canvas_versions = {}
@@ -276,7 +278,9 @@ static func workshop_canvas_retire(g, real, ded: Dictionary) -> void:
 	var signature = JSON.stringify(ded.workshop_case)
 	if st.canvas_versions.get(key, signature) != signature:
 		_workshop_retract(g, ded.n, n.id)
+		retracted = true
 	st.canvas_versions[key] = signature
+	return retracted
 
 
 ## A revision of a case the town has heard, backed by new evidence, is narrated as one

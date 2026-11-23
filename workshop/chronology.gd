@@ -25,17 +25,25 @@ static func expand(view: Dictionary, world: Dictionary) -> Array:
 	if not view.get("chronology", {}).has("curse"):
 		return [world]
 	var curse: Dictionary = view.chronology.curse
-	var ids: Array = view.people.map(func(p): return p.id)
-	if not world.evil & (1 << ids.find(curse.executed)):
+	var executed_idx: int = _person_index(view, str(curse.executed))
+	if executed_idx < 0 or not (world.evil & (1 << executed_idx)):
 		return [] # Public activation identifies the executed evil Revenant.
+	var alive_map := {}
+	for a in curse.alive:
+		alive_map[a] = true
+	var is_live: bool = Domain.live(view)
+	var base_key: int = int(world["__key"]) if is_live and world.has("__key") and not world.has("converted") else -1
+	var np1: int = view.people.size() + 1
 	var result: Array = []
 	for candidate in curse.yes_voters:
-		var index: int = ids.find(candidate)
-		if candidate not in curse.alive or candidate == curse.executed or index < 0 or world.evil & (1 << index):
+		var index: int = _person_index(view, str(candidate))
+		if not alive_map.has(candidate) or candidate == curse.executed or index < 0 or world.evil & (1 << index):
 			continue
-		var alternative = world.duplicate(true)
+		var alternative = world.duplicate(false)
 		alternative["converted"] = index
-		if Domain.live(view):
+		if base_key >= 0:
+			alternative["__key"] = base_key * np1 + index + 1
+		elif is_live:
 			alternative["__key"] = Domain.key(view, alternative)
 		result.append(alternative)
 	return result
