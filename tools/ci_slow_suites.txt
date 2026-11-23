@@ -4,6 +4,7 @@
 # full run found (Michael, Nov 19). Main and the nightly run already run everything. CI deals
 # the list across the four shards in this order (suite i goes to shard i mod 4), so keep it
 # short. Keep it sorted.
+test_call_on_respond
 test_connections_cache
 test_conversation_gifts
 test_npc_interactions
