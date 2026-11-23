@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, the Burdens landing): `baseline_6504029`
+### Current baseline (Nov 23, Codex's fixes on #547): `baseline_d7d2e3a`
+
+`tools/golden/baseline_d7d2e3a/` is the capture from `claude/burdens` at `d7d2e3a`: `baseline_6504029` plus
+Codex's three findings on #547. It supersedes `baseline_6504029`, which stays below as the record of the
+Burdens landing's diff against main.
+- **What changed:**
+  - an NPC's own outing that ends on its own block is no longer read as a tour of every block, unless
+    it's a real Lamplighter or Sexton;
+  - a Magistrate reading splits Marked classes on its nominator and nominee;
+  - an announced Unrequited spell break stops the holder's visits in the movement model from that night.
+- **Divergence from `baseline_6504029`:** 900 at record 150 (day 3) and 98933 at record 257 (day 3),
+  in suspicion values at about the seventh decimal place. Both match at `--tol 1e-5`; 42, 54875 and 692 are
+  identical. I haven't isolated which of the three fixes moves them.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings as `baseline_6504029`.
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, the Burdens landing): `baseline_6504029`
 
 `tools/golden/baseline_6504029/` is the capture from `claude/burdens` at `6504029`: `mock/burdens-slot`
 with main merged in (0 behind main at `e049f6fd`), plus #546 (Argon's vectorised counting pass,
