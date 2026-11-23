@@ -183,7 +183,8 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 							challenge_errors.append("The selected speaker alignment conflicts with the Psychologist %s explanation." % fwhy.capitalize())
 						else:
 							positions[t_src] = positions.get(t_src, p_assumed)
-	var proposed = solve(view, proposed_cards, positions, case_data.answers, knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
+	var same_as_base: bool = proposed_cards == cards and positions.is_empty() and case_data.answers.is_empty() and case_data.get("temporal_positions", []).is_empty() and (case_data.conclusion.at == "" or case_data.conclusion.at == view.get("alignment_epoch", ""))
+	var proposed = base if same_as_base else solve(view, proposed_cards, positions, case_data.answers, knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
 	var errors = validate_answers(view, case_data) + case_data.get("graph_errors", [])
 	errors.append_array(challenge_errors)
 	var conclusion: Dictionary = case_data.conclusion

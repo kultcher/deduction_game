@@ -90,9 +90,8 @@ static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, 
 	factors.append_array(Movement.factors(view, accepted, considered))
 	for factor in factors:
 		factor["epoch"] = considered.conclusion.at
-	var ranks = prior_scores(view, listener, {}, considered.conclusion.at)
-	result["support_score"] = world_score(view, result.support, ranks, factors)
-	result["rival_score"] = world_score(view, result.rival, ranks, factors)
+	result["support_score"] = _single_world_score(view, listener, result.support, factors, considered.conclusion.at)
+	result["rival_score"] = _single_world_score(view, listener, result.rival, factors, considered.conclusion.at)
 	result["has_evidence"] = not Solver.selected(view, considered).is_empty()
 	result["assumption_note"] = "Search explanation grants source weight >= 0.4 and reading accuracy >= 0.5; numerical conviction averages credibility states."
 	return result
@@ -185,10 +184,7 @@ static func _prior_scores(view: Dictionary, listener: Dictionary, bias: Dictiona
 		priors[key] = {"inputs": inputs.duplicate(true), "ranks": ranks}
 	return ranks
 
-static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, factors: Array) -> float:
-	if world.is_empty():
-		return 0.0
-	var score: float = ranks.get(TimeModel.key(view, world), 0.0)
+static func _apply_factors(view: Dictionary, world: Dictionary, score: float, factors: Array) -> float:
 	for factor in factors:
 		if factor.get("joint_live", false):
 			score *= Movement.Live.score(world, factor)
@@ -199,3 +195,23 @@ static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, 
 		elif target >= 0 and factor.get("origin", "") == "movement_model" and world.marked == target:
 			score *= maxf(factor.good_marked_likelihood, 1e-12) / maxf(factor.good_likelihood, 1e-12)
 	return score
+
+static func _single_world_score(view: Dictionary, listener: Dictionary, world: Dictionary, factors: Array, epoch: String = "") -> float:
+	if world.is_empty():
+		return 0.0
+	var score: float = 1.0
+	var aligned_epoch: String = view.alignment_epoch if epoch == "" else epoch
+	for i in range(view.people.size()):
+		var id: String = view.people[i].id
+		var suspicion: float = listener.suspicion.get(id, 0.1)
+		var trust: float = listener.npc_trust.get(id, 0.5)
+		if TimeModel.evil_index(view, world, i, aligned_epoch):
+			score *= maxf(0.15 + suspicion * 1.2 - (trust - 0.5) * 0.5, 0.02)
+		else:
+			score *= maxf(0.3 + (0.6 - suspicion) * 0.6 + (trust - 0.5) * 0.4, 0.05)
+	return _apply_factors(view, world, score, factors)
+
+static func world_score(view: Dictionary, world: Dictionary, ranks: Dictionary, factors: Array) -> float:
+	if world.is_empty():
+		return 0.0
+	return _apply_factors(view, world, ranks.get(TimeModel.key(view, world), 0.0), factors)

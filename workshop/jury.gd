@@ -293,9 +293,9 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	# Live belief/attention/action never read the exhaustive minimal-conflict list.
 	# Keep it available to the explicit diagnostic UI, out of every receipt refresh.
 	var assessment = Solver.analyze(view, full_case, knowledge, false)
-	var shared = Solver.analyze(view, case_data, {}, false)
 	var reasoning = Support.explain(view, original, listener)
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
+	var shared: Dictionary = {} if bounded else Solver.analyze(view, case_data, {}, false)
 	if bounded:
 		var considered_facts: Array = reasoning.considered.map(func(id): return Solver.semantic_key(Solver.card_by_id(view, id)))
 		considered_facts.sort()
@@ -348,12 +348,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		"conclusion": conclusion.duplicate(true), "signature": signature, "report_acceptance": ev.acceptance.duplicate(true)}
 	var changes = _changes(view, previous.get("case", {}), case_data)
 	listener.case_memory[case_data.id] = {"signature": signature, "input_key": input_key, "version": case_data.version, "cards": case_data.cards.duplicate(), "strength": strength, "case": case_data.duplicate(true)}
-	var objection = _objection(view, case_data, listener, shared, assessment, best, pattern)
+	var objection: String = _bounded_objection(reasoning) if bounded else _objection(view, case_data, listener, shared, assessment, best, pattern)
 	var stance = "accept" if best.agreement >= Tuning.Workshop.STANCE_ACCEPT else ("partial" if best.agreement >= Tuning.Workshop.STANCE_PARTIAL else "reject")
 	var response = _eval_response(view, case_data, best, stance, ev, conflict, repeated)
 	if bounded:
 		# What a bounded listener says reflects their own search, never the referee's.
-		objection = _bounded_objection(reasoning)
 		if reasoning.private_checks.fatal:
 			response = reasoning.private_checks.objections[0]
 		elif best.kind == "pattern" and best.weight > 0:
@@ -635,6 +634,39 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var persistence: bool = baseline.get("confidence_mode", "scale") == "persistence"
 	var confidence: float = 1.0 if persistence else 1.4 - 0.8 * baseline.confidence
 	var theories: Dictionary = baseline.get("theories", {}).duplicate(true)
+	var base_direct_fatal: bool = invalid or ev.impossible
+	if not base_direct_fatal:
+		var base_own_check: Dictionary = belief_case.duplicate(false)
+		base_own_check.conclusion = {"type": "", "target": "", "at": value.conclusion.at}
+		base_direct_fatal = Reasoner.direct_checks(view, base_own_check, baseline.knowledge).fatal
+	var per_card_trust: bool = bool(baseline.get("per_card_source_trust", false))
+	var curse_origin: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
+	var trust_player_tells: bool = not refresh
+	var empty_trust: float = clampf(float(baseline.get("trust", 0.5)), 0.0, 1.0) if trust_player_tells else 1.0
+	var spoken_trust_sum := 0.0
+	var spoken_trust_count := 0
+	var about_trust_sum := {}
+	var about_trust_count := {}
+	var has_global_noncontext := false
+	var mentioned_noncontext := {}
+	for c in held:
+		var mentions_c: Array = _mentions(c)
+		if c.kind != "context":
+			if c.kind in ["trace", "coverage", "totem"]:
+				has_global_noncontext = true
+			for pid in mentions_c:
+				mentioned_noncontext[pid] = true
+		if _spoken(c):
+			var ct: float = _card_trust(c, baseline, trust_player_tells)
+			spoken_trust_sum += ct
+			spoken_trust_count += 1
+			var seen_p := {}
+			for pid in mentions_c:
+				if not seen_p.has(pid):
+					seen_p[pid] = true
+					about_trust_sum[pid] = float(about_trust_sum.get(pid, 0.0)) + ct
+					about_trust_count[pid] = int(about_trust_count.get(pid, 0)) + 1
+	var default_source_trust: float = (spoken_trust_sum / float(spoken_trust_count)) if spoken_trust_count > 0 else empty_trust
 	var effects = {}
 	for person in view.people:
 		var id: String = person.id
@@ -724,19 +756,15 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					poison_w = maxf(poison_w, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
 		if poison_w > 0.0:
 			net_weight = poisoner_floor(net_weight, poison_w)
-		var own_check: Dictionary = belief_case.duplicate(true)
-		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
-		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at)
+		var direct_fatal: bool = base_direct_fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at)
 		if direct_fatal:
 			net_weight = 0.0
-		var per_card_trust: bool = bool(baseline.get("per_card_source_trust", false))
-		var source_trust: float = _source_trust(held, id, baseline, not refresh)
+		var source_trust: float = (float(about_trust_sum[id]) / float(about_trust_count[id])) if about_trust_count.has(id) else default_source_trust
 		var outer_scale: float = Tuning.Workshop.JURY_BELIEF_SCALE if per_card_trust else (0.5 + source_trust)
 		var raw_req: float = net_weight * outer_scale
-		var curse_origin: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
 		var hard_proof: bool = direct_fatal or curse_origin == id or (not ev.impossible and float(odds.prior) > 0.01 and (float(odds.posterior) <= 0.0005 or float(odds.posterior) >= 0.9995))
 		# Profile context supplies premises to other evidence, but no standalone Stage 1 contribution.
-		var withdrawn_empty: bool = is_zero_approx(raw_req) and not held.any(func(c): return c.kind != "context" and (id in _mentions(c) or c.kind in ["trace", "coverage", "totem"]))
+		var withdrawn_empty: bool = is_zero_approx(raw_req) and not has_global_noncontext and not mentioned_noncontext.has(id)
 		var lean_map: Dictionary = baseline.get("lean", {})
 		var lean_val: float = float(lean_map.get(id, 0.0))
 		var final_req: float = raw_req

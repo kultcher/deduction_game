@@ -110,7 +110,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.quoted = plan.quotations.keys()
 		state.reason_visibility = _visibility(n, plan.facts)
 		state.owned = plan.owned
-		var doubt_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
+		var doubt_bundle: Dictionary = pre_bundle if same_inputs else SourceDoubt.derive(plan, n.ledger, manual_sd)
 		state.source_doubt = doubt_bundle.full.duplicate(true)
 		# Its starting doubt about each night of its own readings (poison and Delusional), the
 		# prior the judge starts from (SourceDoubt.self_doubt_prior). What it says aloud reads the
