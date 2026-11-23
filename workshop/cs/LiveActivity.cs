@@ -266,6 +266,11 @@ internal static class LiveActivityKernel
         /// only the broken branch, weighed by its chance, and the count tells against the
         /// teller by fit, as a contradicted list does. False for a Night Watch list.</summary>
         public bool ListMixSoundZero;
+        /// <summary>The hanged Ill-Omened claimants whose omen window covers this list or count
+        /// (card.omen_claimants, LiveAssessment.omen_windows). In a world where one of them truly
+        /// holds Ill-Omened, every good reader's gift was poisoned that night, so a good teller's
+        /// list or count takes the broken branch outright (Codex on #547). 0 for none.</summary>
+        public int ListMixOmenMask;
     }
 
     /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
@@ -2005,6 +2010,14 @@ internal static class LiveActivityKernel
     /// <paramref name="soundZero"/> (CompiledMovementFactor.ListMixEvilTakesAlt, ListMixSoundZero).</summary>
     public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, bool evilTakesAlt, bool soundZero)
     {
+        AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle, evilTakesAlt, soundZero, 0);
+    }
+
+    /// <summary>AttachListMix with the omen claimants whose window covers the list or count
+    /// (CompiledMovementFactor.ListMixOmenMask).</summary>
+    public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, bool evilTakesAlt, bool soundZero, int omenMask)
+    {
+        SolverContext.GetMovementFactor(factorHandle).ListMixOmenMask = omenMask;
         SolverContext.GetMovementFactor(factorHandle).ListMixToldCursed = toldCursed;
         var factor = SolverContext.GetMovementFactor(factorHandle);
         factor.ListMixEvilTakesAlt = evilTakesAlt;
@@ -2258,6 +2271,11 @@ internal static class LiveActivityKernel
         bool evilTeller = (world.Evil & (1 << factor.ListMixWatcher)) != 0
             || (factor.ListMixToldCursed && world.ConvertedOrMinusOne == factor.ListMixWatcher);
         if (evilTeller && factor.ListMixEvilTakesAlt)
+            return factor.ListMixAltScale * ScoreMixed(world, factor.ListMixAlt);
+        // A good teller's reading under a fallen omen, in a world where its claimant truly held
+        // Ill-Omened, was poisoned: the broken branch outright (its walk still counts there).
+        if (!evilTeller && factor.ListMixOmenMask != 0 && world.EffectiveModifier == WorldEntry.ModIllOmened
+            && (world.Holders & factor.ListMixOmenMask) != 0)
             return factor.ListMixAltScale * ScoreMixed(world, factor.ListMixAlt);
         double sound = factor.ListMixSoundZero ? 0.0 : ScoreMixed(world, factor.ListMixNext);
         if (evilTeller)

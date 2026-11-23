@@ -9,6 +9,7 @@ const Evil = preload("res://sim/evil.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var checks = 0
 var fails = 0
@@ -41,6 +42,7 @@ func _init() -> void:
 	_turned_unclaimed()
 	_passed()
 	_evil_knows()
+	_omen_list()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -239,3 +241,49 @@ func _turned_unclaimed() -> void:
 	_check(not nom.is_empty() and not w.omen_unclaimed.has(o.id), "nominated, the turned holder claims it at its first nomination")
 	w.execute(o.id, {})
 	_check(_logged(w, "omen_poison").size() == 1, "hanged, the omen falls")
+
+## A Night Watch list told on the night after a claimed Ill-Omened's hanging (Codex on #547):
+## in worlds where the claimant truly held the omen, the watcher's gift was poisoned, so the
+## movement model takes the list as broken there and it pulls less on the person it names
+## out than the same list on an ordinary night. Built by hand on seed 692's 7-NPC deal.
+func _list_pull(omen: bool) -> float:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.log_dir = "user://test_logs"
+	g.new_case(692, 7)
+	var w = g.w
+	if not "ill_omened" in w.case_script.secrets:
+		w.case_script.secrets.append("ill_omened")
+	var goods: Array = w.living_good()
+	var watcher = goods[0]
+	watcher.role = "nightwatch"
+	if "nightwatch" not in w.case_script.town:
+		w.case_script.town.append("nightwatch")
+	var listener = goods[1]
+	var other = goods[2]
+	var claimant = goods[3]
+	if omen:
+		w.day = 1
+		w.phase = C.EVENING
+		w.public_event("omen_hanged", [claimant.id], "world")
+	w.day = 2
+	w.phase = C.MORNING
+	listener.history[w.time_key(1, 3)] = "home:" + listener.home_block
+	var entry: Dictionary = {"day": 1, "phase": 3, "role": "nightwatch", "shared": true, "true": true,
+		"data": {"block": other.home_block, "seen": [other.id]}, "text": "watching on the first night, I saw %s out" % other.name}
+	watcher.info_log.append(entry)
+	Mind.apply_info(w, listener, watcher, entry, 0.8)
+	var key: String = listener.id + ":good"
+	g._workshop_evaluations.erase(key)
+	w.defer_beliefs = false
+	Mind.refresh_beliefs(w, listener, " (test)")
+	var eff: Dictionary = g._workshop_evaluations.get(key, {}).get("proposal", {}).get("effects", {})
+	var post: float = float(eff.get(other.id, {}).get("posterior", -1.0))
+	var prior: float = float(eff.get(other.id, {}).get("prior", -1.0))
+	return post - prior
+
+func _omen_list() -> void:
+	var plain: float = _list_pull(false)
+	var omen: float = _list_pull(true)
+	print("Night Watch list's pull on the person it names out: %+.4f on an ordinary night, %+.4f under a fallen omen" % [plain, omen])
+	_check(plain > 0.0 and omen < plain, "a Night Watch list under a fallen omen pulls less on the person it names than on an ordinary night (%+.4f < %+.4f)" % [omen, plain])

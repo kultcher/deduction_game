@@ -22,7 +22,7 @@ static func _mixed_lists(view: Dictionary, cards: Array) -> Array:
 	# step 1), whatever its broken chance: in a world where its teller is evil it says nothing
 	# (CaseEval._list_broken stamps `count_mix`). Lists and counts share one cap.
 	var lists: Array = cards.filter(func(c): return c.get("kind", "") == "report" and not c.get("quoted", false) and not c.get("duty_only", false) and ids.has(str(c.get("source", ""))) \
-		and ((str(c.get("role", "")) == "nightwatch" and float(c.get("broken_chance", 0.0)) > 0.0) or (str(c.get("role", "")) == "lamplighter" and c.get("count_mix", false))))
+		and ((str(c.get("role", "")) == "nightwatch" and (float(c.get("broken_chance", 0.0)) > 0.0 or not c.get("omen_claimants", []).is_empty())) or (str(c.get("role", "")) == "lamplighter" and c.get("count_mix", false))))
 	# At most SourceDoubt.LIST_MIX_MAX carry a broken chance (SourceDoubt.list_broken_chance
 	# picks them, so a list left out keeps the old fallback); the cap here is only a guard.
 	lists.sort_custom(func(a, b): return int(a.get("night", -1)) > int(b.get("night", -1)) or (int(a.get("night", -1)) == int(b.get("night", -1)) and str(a.id) < str(b.id)))
@@ -91,9 +91,12 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 		var routes: Dictionary = _routes_cs(view, certain, {}, {}, false)
 		sound_zero = routes.get("nights", {}).has(night_key) and int(routes.nights[night_key].get("compatible", 1)) == 0
 	var top: Dictionary = sound.duplicate(false)
+	# Under a fallen omen, in a world where its claimant truly held Ill-Omened, a good teller's
+	# list or count was poisoned outright (the kernel takes the broken branch; Codex on #547).
+	var omen: int = preload("res://workshop/role_constraints.gd").omen_mask(view.people.map(func(p): return p.id), list)
 	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "cursed": _told_cursed(view.get("chronology", {}).get("curse", {}), list), "next": sound, "alt": broken,
-		"count": is_count, "sound_zero": sound_zero,
-		"key": "%s:%s:%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), is_count, sound_zero, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
+		"count": is_count, "sound_zero": sound_zero, "omen": omen,
+		"key": "%s:%s:%s:%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), is_count, sound_zero, omen, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
 	return top
 
 ## Whether a movement card is certain enough to rule a Lamplighter's count impossible (see
@@ -796,9 +799,9 @@ static func _ensure_factor_handle(factor: Dictionary, norm: int = 0) -> int:
 		var next_h: int = _ensure_factor_handle(mix.next, norm)
 		var alt_h: int = _ensure_factor_handle(mix.alt, norm if norm != 0 else own_scale)
 		if mix.get("count", false):
-			bridge.LiveAttachCountMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h, bool(mix.get("sound_zero", false)))
+			bridge.LiveAttachCountMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h, bool(mix.get("sound_zero", false)), int(mix.get("omen", 0)))
 		else:
-			bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h)
+			bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h, int(mix.get("omen", 0)))
 	if _factor_handles.size() >= 2048:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h, "norm": norm}
