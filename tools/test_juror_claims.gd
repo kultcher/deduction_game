@@ -76,8 +76,14 @@ func _init() -> void:
 	var early_challenged: Dictionary = value.duplicate(true)
 	early_challenged["reading_challenges"] = {value.cards[0]: {"mode": "impaired", "supports": []}}
 	var early_chal: Dictionary = Live.test_juror(g, early_challenged)
-	check(early_chal.get("ready", false) and is_equal_approx(float(early_chal.get("lr", 0.0)), float(r.get("lr", 0.0))) and not ("challenge holds" in str(early_chal.get("reason", ""))),
-		"a challenge with no grounds isn't accepted by the average listener, and the badge no longer says it holds (x%.2f against x%.2f)" % [float(early_chal.get("lr", 0.0)), float(r.get("lr", 0.0))])
+	# Since the juror's listener holds a refresh's doubts (Quill, Nov 22), the player's bare
+	# Mistaken call counts as their word at their credibility, as it does in play
+	# (SourceDoubt._player_failed_gift): the case weakens a little, but the reading isn't set
+	# aside as if the challenge held (that would take the case to about x1.0).
+	var e_lr: float = float(early_chal.get("lr", 0.0))
+	var p_lr: float = float(r.get("lr", 0.0))
+	check(early_chal.get("ready", false) and e_lr <= p_lr + 1e-9 and log(e_lr) > 0.25 * log(p_lr) and not ("challenge holds" in str(early_chal.get("reason", ""))),
+		"a challenge with no grounds counts only as the player's word: the case weakens a little, isn't set aside, and the badge doesn't say it holds (x%.2f against x%.2f)" % [e_lr, p_lr])
 	# And it weighs them: the reading's teller and its subject both publicly claim the Seer,
 	# so one of them is lying, and the reading itself names the subject.
 	g.state = "meeting"
