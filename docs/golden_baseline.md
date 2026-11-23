@@ -44,7 +44,33 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, Codex's fixes on #547): `baseline_d7d2e3a`
+### Current baseline (Nov 23, Codex's second review of #547): `baseline_14f5b7d`
+
+`tools/golden/baseline_14f5b7d/` is the capture from `claude/burdens` at `14f5b7d`: `baseline_d7d2e3a` plus
+the two findings from Codex's second review. It supersedes `baseline_d7d2e3a`.
+- **What changed:**
+  - **The content priors (Lantern, 8eaccb5f)** now count every burden on the script. Unrequited and
+    Ill-Omened each place a holder among the good, as Marked does
+    (`CaseEval._healthy_modifier_worlds_per_team`, the Chronicler's numerator). So a Rumormonger's or
+    Chronicler's reading is weighed against the right number of burden worlds.
+  - **An Ill-Omened turned evil before it claimed (Beadle, 9dfd20ae)** still claims at its first
+    nomination. Beadle measured this as golden-identical on its own.
+- **Divergence from `baseline_d7d2e3a`:** every seed, from day 1: 42, 692 and 900 at record 1, and 54875
+  and 98933 at record 0, where the run's random state differs. Suspicion moves wherever a Rumormonger
+  or Chronicler reading is held (on 42, Kiran's suspicion of Agnes on day 1 goes from −0.113 to −0.125).
+- **Outcomes:**
+
+| Seed | `baseline_d7d2e3a` | `baseline_14f5b7d` |
+|---|---|---|
+| 42 (7 NPCs) | good wins day 2; Agnes hanged day 2 | the same |
+| 900 (7) | good wins day 3; Odette hanged day 3 | **unfinished at day 4**; Lian hanged day 3 |
+| 54875 (10) | unfinished; Odette (day 2), Edda (day 3) | unfinished; Odette (day 2) |
+| 692 (10) | unfinished; Lian (day 2), Merrin (day 3) | unfinished; Constance (day 3) |
+| 98933 (10) | unfinished; Bart (day 1), Dorian (day 2), Lian (day 3) | unfinished; Bart (day 2), Dorian (day 3) |
+
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, Codex's fixes on #547): `baseline_d7d2e3a`
 
 `tools/golden/baseline_d7d2e3a/` is the capture from `claude/burdens` at `d7d2e3a`: `baseline_6504029` plus
 Codex's three findings on #547. It supersedes `baseline_6504029`, which stays below as the record of the
