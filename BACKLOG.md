@@ -30,7 +30,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    3. Withheld readings: asking for what someone hasn't said `[decided: direction; held, Michael, Nov 23]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
     6. \*The Gravedigger in a reluctant town `[decided]`
@@ -181,6 +181,42 @@ Lantern). Nothing is open here.
 
   Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
   The action's name is Michael's. [decided: direction]
+
+  - **Held (Michael, Nov 23):** not to be built for now. The player's "Call on" is built (#542,
+    #545); the NPC asking, pressing and cost are not.
+  - **Beadle's proposed shape (proposed, not approved):**
+    - **Asking in private:** in an NPC-to-NPC conversation, a good NPC that heard someone claim
+      an information gift at least a day ago, and has heard no reading from them since, may
+      ask for it (Herald's `ask_reading_private` line). At most once per pair per day. A
+      first-night gift is owed from day 1; an ongoing one once a night has passed since the
+      claim.
+    - **Pressing at the meeting:** a confident NPC that suspects a public claimant who has gone
+      a day without a reading may press them (Herald's `press_withheld` line), at the existing
+      accusing level of suspicion. At most once per meeting.
+    - **The answer:** the "Call on" rules. The holder gives the reading; defers with a reason
+      (a friend, a burden, or distrust of the asker); or deflects. A bluffer with a fabricated
+      reading mostly answers. A private ask is answered to the asker only. Both pushes reuse
+      `CALL_ON_PRESSURE_BUMP`.
+    - **Five new constants, proposed, not approved:**
+
+      | Constant | Value | What it does |
+      |---|---|---|
+      | `ASK_PRIVATE_BASE` | 0.10 | the base chance to ask, per conversation with the claimant |
+      | `ASK_PRIVATE_WARY` | 0.30 | added per unit of the asker's suspicion of the claimant |
+      | `ASK_PRIVATE_INSIGHT` | 0.10 | added per unit of the asker's Insight |
+      | `PRESS_WITHHELD_CONFIDENCE_MIN` | 0.6 | how confident an NPC must be to press |
+      | `PRESS_WITHHELD_SCALE` | 0.25 | multiplied by confidence: the chance to press |
+
+      That's about 0.15 for an average asker and 0.35 for a wary, sharp one; a press about
+      0.15–0.25 when someone qualifies.
+  - **The refusal record (agreed with Lantern, Nov 23)**, for Lantern's cost:
+    - one entry per refusal: asker (an NPC, or "player" for "Call on"), claimant, the claim
+      dodged (its fact id, or its day and role), the statement tick, private or meeting,
+      deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
+    - `known_to`: the asker alone for a private ask, "public" at the meeting;
+    - `shared_at`, set when the claimant later gives that reading.
+    - Open for Michael: whether a reason-given refusal later answered stops costing, or is
+      partly refunded. A bare deflection later answered still counts.
 
 - **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
   revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
