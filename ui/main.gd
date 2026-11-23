@@ -21,6 +21,8 @@ const Roles = preload("res://ui/main_roles.gd")
 const Actions = preload("res://ui/main_actions.gd")
 const DailyGuess = preload("res://ui/daily_guess.gd")
 const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
+const PacingOverlay = preload("res://ui/pacing/pacing_overlay.gd")
+const PacingPlans = preload("res://ui/pacing/pacing_plans.gd")
 
 var g
 var out: RichTextLabel
@@ -109,9 +111,98 @@ func _ready() -> void:
 	Layout.build(self)
 
 func _consume_headlines() -> void:
+	# The execution and the night's reveal play as a sequence (Michael, Nov 22); the headlines
+	# they replace aren't shown, and the rest wait until the sequence ends.
+	var plan: Array = _pacing_plan(g.last_events) if pacing_enabled else []
+	var rest: Array = []
 	for event in g.last_events:
-		if event.k == "headline":
+		if event.k != "headline":
+			continue
+		if not plan.is_empty() and str(event.get("kind", "")) in PACED_HEADLINES:
+			continue
+		rest.append(event)
+	if plan.is_empty():
+		for event in rest:
 			headlines.enqueue(event)
+		return
+	pacing_open = true
+	# The courtroom may still be showing the condemned's last words: the sequence waits for
+	# them (Codex on #537). Deferred, so the meeting view has the events first.
+	call_deferred("_open_pacing_when_settled", plan, rest)
+
+func _open_pacing_when_settled(plan: Array, rest: Array) -> void:
+	if meeting_view != null and meeting_view.presenting():
+		meeting_view.settled.connect(func(): _open_pacing_when_settled(plan, rest), CONNECT_ONE_SHOT)
+		return
+	# A headline already showing sits on a higher canvas layer: hide the headlines while the
+	# sequence plays (Codex on #537); they come back with it.
+	if headlines != null:
+		headlines.modulate.a = 0.0
+	PacingOverlay.open(self, g.w, plan, reduced_motion, func():
+		pacing_open = false
+		if headlines != null:
+			headlines.modulate.a = 1.0
+		for event in rest:
+			headlines.enqueue(event)
+		if _reveal_after_pacing:
+			_reveal_after_pacing = false
+			open_reveal())
+
+const PACED_HEADLINES = ["execution", "martyr", "death", "quiet"]
+## Off for suites that drive the town with real mouse input and don't test the sequence.
+var pacing_enabled: bool = true
+var pacing_open: bool = false
+var _reveal_after_pacing: bool = false
+
+## True the first time `key` is asked about in this case; the case's game remembers it.
+func _first_time(key: String) -> bool:
+	var played: Dictionary = g.get_meta("paced", {})
+	if played.has(key):
+		return false
+	played[key] = true
+	g.set_meta("paced", played)
+	return true
+
+## The beats for what just happened: a hanging at the meeting's close, or the night's reveal
+## at dawn. [] for anything else.
+func _pacing_plan(events: Array) -> Array:
+	var kinds: Array = events.filter(func(e): return e.k == "headline").map(func(e): return str(e.get("kind", "")))
+	if "execution" in kinds or "martyr" in kinds:
+		var card: Dictionary = {}
+		for c in g.board:
+			if c.get("kind", "") in ["execution", "martyr"] and int(c.get("day", -1)) == g.w.day:
+				card = c
+		if card.is_empty():
+			return []
+		if not _first_time("hanging:%d" % g.w.day):
+			return []
+		if card.kind == "martyr":
+			return PacingPlans.execution(g.w, str(card.get("saved", "")), {"martyr": card.get("martyr", ""), "saved": card.get("saved", "")})
+		return PacingPlans.execution(g.w, str(card.subject[0]))
+	# A night: the next dawn, or a night whose kill ended the game (no dawn comes then: the
+	# night returns before the morning report; Codex on #537).
+	var dawned: bool = "dawn" in kinds and g.w.day >= 2
+	var night_ended: bool = g.w.game_over and "ending" in kinds and g.w.deaths_last_night.any(func(id): return g.w.by_id.has(id) and str(g.w.by_id[id].death_cause) == "demon")
+	if dawned or night_ended:
+		var result: Array = []
+		for e in events:
+			if e.k == "header" or (e.k == "headline" and str(e.get("kind", "")) == "ending"):
+				break
+			if e.k == "narration":
+				result.append(str(e.text))
+		var night_no: int = g.w.day - 1 if dawned else g.w.day
+		# Once per night: "look" repeats the morning's header, and its dawn headline with it (Codex on #537).
+		if not _first_time("night:%d" % night_no):
+			return []
+		var before: Array = g.w.npcs.filter(func(n): return n.alive or n.id in g.w.deaths_last_night).map(func(n): return n.id)
+		# The fakeout lands on the warded door only when the ward actually held that night: a
+		# spent ward isn't a save (w.ward_saves records those; Codex on #537).
+		var held: String = ""
+		for save in g.w.ward_saves:
+			if int(save.get("night", -1)) == night_no:
+				held = str(save.get("target", ""))
+		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, held)
+	return []
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
 	b.text = text
@@ -195,7 +286,9 @@ func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
 
-enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS, REDUCED_MOTION }
+enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS, REDUCED_MOTION, EXIT }
+## The More menu's last entry (Michael, Nov 22).
+const EXIT_GAME = "Exit Game"
 
 func _on_more(i: int) -> void:
 	match i:
@@ -215,6 +308,8 @@ func _on_more(i: int) -> void:
 			open_daily_guess(Callable())
 		MoreItem.REDUCED_MOTION:
 			reduced_motion = not reduced_motion
+		MoreItem.EXIT:
+			get_tree().quit()
 
 ## The daily evil-team guess (ui/daily_guess.gd). `then(confirmed)` runs once it closes.
 func open_daily_guess(then: Callable) -> void:
@@ -234,6 +329,9 @@ func open_daily_guess(then: Callable) -> void:
 ## outcome, and after an overnight ending the last locked guesses stand.
 func open_reveal() -> void:
 	if g == null or not g.w.game_over or has_node("GrimReveal"):
+		return
+	if pacing_open:
+		_reveal_after_pacing = true   # the hanging or the night plays out first
 		return
 	reveal_seen_for = g
 	RevealOverlay.open(self, g, DailyGuess.verdict(g), Callable(), reduced_motion)

@@ -187,10 +187,13 @@ func _ready() -> void:
 	field_menu.id_pressed.connect(func(index): Fields.field_chosen(self, index))
 	bg_menu = PopupMenu.new()
 	_add_subwindow(bg_menu)
+	# The name lists open as their own popups in the workshop's viewport: as submenus they were
+	# embedded in this small menu and clipped to it (Michael's playtest, Nov 22).
 	bg_from = PopupMenu.new()
 	bg_about = PopupMenu.new()
-	bg_menu.add_child(bg_from)
-	bg_menu.add_child(bg_about)
+	_add_subwindow(bg_from)
+	_add_subwindow(bg_about)
+	bg_menu.id_pressed.connect(func(i): _open_bg_list(bg_from if i == BG_FROM else bg_about))
 	bg_from.id_pressed.connect(func(i): _bg_add(i, true))
 	bg_about.id_pressed.connect(func(i): _bg_add(i, false))
 	canvas.background_context_requested.connect(_background_menu)
@@ -459,10 +462,26 @@ func _background_menu(_at: Vector2) -> void:
 		bg_from.set_item_disabled(bg_from.get_item_index(i), given == 0)
 		bg_about.add_item("%s (%d)" % [n.name, named], i)
 		bg_about.set_item_disabled(bg_about.get_item_index(i), named == 0)
-	bg_menu.add_submenu_node_item("Add readings from", bg_from)
-	bg_menu.add_submenu_node_item("Add all readings about", bg_about)
-	bg_menu.position = Vector2i(get_viewport().get_mouse_position())
+	bg_menu.add_item("Add readings from", BG_FROM)
+	bg_menu.add_item("Add all readings about", BG_ABOUT)
+	_bg_at = Vector2i(get_viewport().get_mouse_position())
+	bg_menu.position = _bg_at
 	bg_menu.popup()
+
+const BG_FROM = 0
+const BG_ABOUT = 1
+var _bg_at := Vector2i.ZERO
+
+## One name list, sized to fit every name, scrolling if taller than the workshop.
+func _open_bg_list(list: PopupMenu) -> void:
+	var room: Vector2i = Vector2i(get_viewport().get_visible_rect().size)
+	list.max_size = Vector2i(room.x, maxi(120, room.y - 16))
+	list.reset_size()
+	var at: Vector2i = _bg_at
+	at.y = clampi(at.y, 0, maxi(0, room.y - list.size.y))
+	at.x = clampi(at.x, 0, maxi(0, room.x - list.size.x))
+	list.position = at
+	list.popup()
 
 func _bg_add(index: int, from: bool) -> void:
 	if index < 0 or index >= _bg_people.size():

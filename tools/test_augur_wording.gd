@@ -45,6 +45,6 @@ func _init() -> void:
 	said = str(MindMeeting._info_intent(w, n, entry).statement)
 	check("the second day" in said, "days later it still names the second day (%s)" % said)
 	var other: Dictionary = {"role": "dowser", "day": 2, "phase": C.EVENING, "data": {}, "text": "something"}
-	check(str(MindMeeting._info_intent(w, n, other).statement).begins_with("On day 2, in the evening"), "other readings keep their lead")
+	check(str(MindMeeting._info_intent(w, n, other).statement).begins_with("On the second day, in the evening"), "other readings keep their lead, the day spoken (Coroner, 51795)")
 	print("Augur wording: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

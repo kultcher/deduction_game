@@ -9,6 +9,28 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+## Built, Nov 22, 2026 (closed by Claude-Vicar)
+
+- **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
+  Beadle's proposals):
+  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waited for "Anger reasons",
+    which is now built (Beadle #487, Nov 21). **[decided]** (Michael, Nov 21):
+    - **What counts:** a claim about the NPC that its own knowledge proves false. That's a
+      sighting of it, or "they were out", on a night it was home, or a fabricated evil reading
+      of a good NPC;
+    - **who loses trust:** only the teller, not someone relaying it;
+    - **how much:** the same as the existing loss for a public accusation;
+    - **scope:** trust between NPCs only. A voiced line comes later. Owner Beadle;
+  - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
+    meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
+    (Michael, Nov 20, later);
+  - (d) player wards the Warden knows about counting as an alternative explanation: closed,
+    already built.
+
+  [decided: direction]
+
+  > **Closed Nov 22:** built. Parts (b) and (c), Beadle #409 (evil Wardens fake saves; a real save is a reason to come out). Part (a), Beadle #506 ("caught lying about me" as an NPC-to-NPC trust loss). Part (d) was already built. The voiced line for (a) is left for later, as decided.
+
 ## Built or cut, Nov 21, 2026, later (closed by Claude-Vicar)
 
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current

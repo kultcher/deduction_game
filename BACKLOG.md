@@ -28,14 +28,19 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. \*The Gravedigger in a reluctant town `[decided]`
-    2. Caught out and pressed again: what's left `[decided]`
-    3. Good NPCs lie tactically `[open]`
-    4. \*Rapport and Warden-credit leftovers `[decided: direction]`
+    1. Legwork that shapes the meeting `[open]`
+    2. A friend's doubtful defence `[decided]`
+    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
+    5. A gift-holder seeks protection before revealing `[decided: direction]`
+    6. \*The Gravedigger in a reluctant town `[decided]`
+    7. Caught out and pressed again: what's left `[decided]`
+    8. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
-    1. \*Movement wording: "pass by" and "road" `[decided]`
+    1. Show answers carried into the next case when filing `[decided]`
+    2. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
@@ -62,7 +67,9 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Brute kills scored as hexes on custom scripts `[later]`
   3. Gift doubt for readings the judge doesn't check `[open]`
   4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  5. Observable actions as evidence (Stage 1B) `[tentative]`
+  5. \*Per-person Demon odds for gifts that target the Demon `[decided]`
+  6. "Not being seen out" as evidence `[open]`
+  7. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -121,6 +128,70 @@ Lantern). Nothing is open here.
 
 ### NPC behaviour
 
+- **Legwork that shapes the meeting** (Michael, Nov 22). Today, who the player talks to during
+  the day barely changes what's said at the meeting, so a day can feel anticlimactic when
+  what NPCs told you comes out at the meeting anyway. The aim isn't to withhold more at
+  meetings: hearing things early already helps the player plan and steer. The aim is for some
+  of the player's legwork to go public *through* them. Three options, not yet chosen:
+  1. **Headlines at the meeting, details from legwork.** Claims, readings and accusations still
+     come out at the meeting. Small things (an incidental sighting, a remark, who someone spent
+     the afternoon with) surface mostly when asked in private, as the connective tissue of a
+     case. Some of this may already be how volunteered sightings work, so check first.
+  2. **"You tell them": the confidant hands it to the player.** An NPC that trusts the player a
+     lot may leave a private reveal for the player to raise. The player raises it and gets the
+     credit, times it, or keeps the source hidden (it ties in with a hidden Seer seeding its
+     readings through someone it trusts). The safeguard: if the player stays silent, the NPC
+     speaks near the meeting's end ("Well, if you won't say it, I will…"). It's rare by design.
+     Vicar's recommendation.
+  3. **Private conversations shift what they push for:** an NPC the player has just shown a
+     case to raises it itself, or backs the player's nomination.
+
+  Owners when chosen: Beadle, with Herald for the lines. [open]
+
+- **A friend's doubtful defence** (Michael, Nov 22). When a friend of the nominee is close to
+  voting yes, it voices a doubtful defence: "I've known Kiran for a long time. He wouldn't be
+  capable of something like this... would he?" (Michael's line, approved). It's a new voice tier.
+  It replaces the proposal "a same-day defence holds back the vote", which Michael declined.
+  Grief not fading stays as intended (Oct 30). Owners: Beadle (the trigger), Herald (the lines
+  for each voice).
+  - **Revised (Michael, Nov 22): two parts.**
+    1. **The line tier,** as above (`support_doubt_for`, triggered for a friend close to yes).
+    2. **Social pressure is damped for a voter who strongly trusts the nominee,** above a trust
+       level. That covers the player's vote and consensus; evidence-based suspicion isn't
+       damped.
+  - **Why:** the Coroner found Isolde, at trust 0.95 and suspicion 0.18 toward Kiran, pushed to
+    the edge of voting yes by Michael's vote and the consensus.
+  - **Next:** Beadle proposes the shape and the constants.
+  - **Lines** (Michael, Nov 22): the doubtful-defence lines for all 15 voices are approved, and
+    use "they" for the nominee. A yes-side line is added for a friend who votes yes despite the
+    bond (the "forgive me, Kiran" beat). Herald drafts it, and Michael approves the wording.
+
+  [decided]
+
+- **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
+  Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
+  - **NPCs ask in private:** now and then, an NPC asks a claimant for a reading it should
+    already have, such as a first-night gift's.
+  - **NPCs press at the meeting:** rarely, a confident NPC presses someone it suspects of
+    holding back.
+  - **The cost:** a deferral with a reason costs a little, a bare deflection more, and the cost
+    builds by day.
+  - **The player's version:** one softer ask per meeting, outside a nomination. Refusing costs
+    some suspicion and makes a circumstantial card.
+
+  Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
+  The action's name is Michael's. [decided: direction]
+
+- **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
+  revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
+  is pointed the right way without exposing the Seer. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1; it may
+  generalise to other gifts as the note grows. Owner Beadle. [decided: direction]
+
+- **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
+  reveal looks for protection first, from the player or a known Warden. Same source; it may
+  generalise. Owner Beadle. [decided: direction]
+
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
   I can tell you what they were"), which also gives a cautious town a reason to act.
@@ -174,24 +245,6 @@ Lantern). Nothing is open here.
   gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
   [open]
 
-- **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
-  Beadle's proposals):
-  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waited for "Anger reasons",
-    which is now built (Beadle #487, Nov 21). **[decided]** (Michael, Nov 21):
-    - **What counts:** a claim about the NPC that its own knowledge proves false. That's a
-      sighting of it, or "they were out", on a night it was home, or a fabricated evil reading
-      of a good NPC;
-    - **who loses trust:** only the teller, not someone relaying it;
-    - **how much:** the same as the existing loss for a public accusation;
-    - **scope:** trust between NPCs only. A voiced line comes later. Owner Beadle;
-  - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
-    meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
-    (Michael, Nov 20, later);
-  - (d) player wards the Warden knows about counting as an alternative explanation: closed,
-    already built.
-
-  [decided: direction]
-
 ### Numbers
 
 ### Tentative social tuning (Oct 20–21 discussion)
@@ -199,6 +252,10 @@ Lantern). Nothing is open here.
 Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
+
+- **Show answers carried into the next case when filing** (Michael, Nov 22; playtest 23973).
+  An answer the player picked on a Workshop card carries into the next case without being
+  shown. Low priority. Owner Herald or Quill, as they agree. [decided]
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
@@ -296,6 +353,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     nudges Poisoner suspicion toward whoever was seen on its block, its own teammate
     included. Smarter evil could aim it (voice the doubt when an innocent was near) or avoid
     it (stay quiet when a teammate was). Owner Beadle.
+
+  - **Fewer bare accusations** (Michael, Nov 22): evil should make roughly 10% fewer accusations
+    with no evidence behind them, since they still read a little obvious.
 
   [deferred]
 
@@ -528,6 +588,17 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   refresh never read through a theory and live play didn't use it by default, so it is
   deleted with the purge. Revisit for the connections model. The code survives on the
   branch `archive/legacy-belief-final`. **[tentative]**
+- **Per-person Demon odds for gifts that target the Demon** (Michael, Nov 21). A Seer picks
+  the person most likely to be the Demon, not the most likely evil. That needs each NPC to hold
+  a per-person chance of being the Demon specifically. Being built on the Burdens prototype. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1. Owner Lantern;
+  Beadle uses it for the Seer's picks. **[decided]**
+- **"Not being seen out" as evidence** (Michael, Nov 21). Today nothing clears someone for not
+  having been seen out at night: the judge ignores the chance of being spotted, and only a
+  complete watch list or coverage says someone wasn't out. It goes under the circumstantial
+  hub, since it's hard to confirm and subject to chance. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.3. Owner
+  Lantern. **[open]**
 - **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
   broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
   tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in

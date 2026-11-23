@@ -32,11 +32,19 @@ const CONSTANCE_EXPRESSIONS = {
 }
 
 
+## The papercraft portraits (Michael, Nov 22, a try-out): each person's neutral face. Their
+## other expressions are still the older art until papercraft ones exist (Michael chose to
+## mix the two for now).
+const PAPER_DIR = "res://assets/art/portraits_paper/%s.webp"
+
+
 ## The portrait for `id` wearing `expression` (falls back to neutral, then the small portrait).
 static func texture(id: String, expression: String = "neutral") -> Texture2D:
 	var fallback: Texture2D = LARGE.get(id, UITheme.tex("art/portraits/" + id))
 	if expression not in EXPRESSIONS:
 		expression = "neutral"
+	if expression == "neutral" and ResourceLoader.exists(PAPER_DIR % id):
+		return load(PAPER_DIR % id)
 	var path: String = CONSTANCE_EXPRESSIONS.get(expression, "") if id == "constance" else "res://assets/art/cast_expressions/%s/%s-v1.png" % [id, expression]
 	if ResourceLoader.exists(path):
 		return load(path)
