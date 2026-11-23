@@ -345,17 +345,8 @@ func refusal_privacy():
 			gossip_checked = true
 			break
 	check(gossip_checked, "some seed reached the low-Gossip check (Steward Nov 19 silent skip)")
-	var sleeper = w.living_good()[1]
-	sleeper.role = "clerk"
-	sleeper.secret_mod = "sleepwalker"
-	sleeper.claimed_role = ""
-	sleeper.history[w.time_key(1, C.NIGHT)] = "night:market"
-	sleeper.beliefs = []
-	sleeper.traits.gossip = 0.0
-	sleeper.pressed_today = 0
-	state = w.rng.state
-	var unaware = Mind.answer_night(w, sleeper, 1)
-	check(unaware.facts.any(func(f): return f.kind == "alibi" and f.home) and w.rng.state == state, "an unaware Sleepwalker retains their unchanged home-account branch and RNG")
+	# The unaware-Sleepwalker home-account check is retired with the Sleepwalker (burdens,
+	# ScriptDef.RETIRED_IDS).
 
 
 func talk_fixture(g, n):
