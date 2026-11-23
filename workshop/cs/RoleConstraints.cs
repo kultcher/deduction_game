@@ -318,6 +318,145 @@ internal static class RoleConstraintsKernel
         return nCandidates > 0 ? totalWeight / (double)nCandidates : 0.0;
     }
 
+    /// <summary>
+    /// Vectorised 1:1 port of CaseEval._marked_count_weight + Solver.marked_count_weight
+    /// over a class-representative universe (or subset).
+    /// cardSpecs stride = 7 ints per counting card:
+    ///   [0] mode: 0 = site_group (Dowser/Hearthwitch), 1 = parity_group (Magistrate / block-parity Surveyor), 2 = block_count Surveyor
+    ///   [1] srcIdx: person index of card.source (-1 if unknown)
+    ///   [2] flags: bit 0 (1) = srcConvEvil, bit 1 (2) = contentConvEvil, bit 2 (4) = skipDeludedSrc
+    ///   [3] omenMask: bitmask of card.omen_claimants
+    ///   [4] groupMask: bitmask of group/pair/block members (modes 0 and 1)
+    ///   [5] targetOrSame: target count (modes 0 and 2) or want_same 0/1 (mode 1)
+    ///   [6] groupSize: popcount(groupMask) (mode 1)
+    /// </summary>
+    public static double[] MarkedCountWeights(
+        long[] packedWorlds,
+        int[] cardSpecs,
+        int[] blockMasks,
+        double markedEvilChance)
+    {
+        int uLen = packedWorlds.Length;
+        double[] outWeights = new double[uLen];
+        if (uLen == 0)
+        {
+            return outWeights;
+        }
+        int nCards = cardSpecs.Length / 7;
+        if (nCards == 0)
+        {
+            Array.Fill(outWeights, 1.0);
+            return outWeights;
+        }
+        double asGoodWeight = 1.0 - markedEvilChance;
+
+        for (int i = 0; i < uLen; i++)
+        {
+            var w = new WorldEntry(packedWorlds[i]);
+            int marked = w.Marked;
+            if (marked < 0)
+            {
+                outWeights[i] = 1.0;
+                continue;
+            }
+            int markedBit = 1 << marked;
+            int evil = w.Evil;
+            bool hasConv = w.HasConverted;
+            int convIdx = hasConv ? w.ConvertedRaw : -1;
+            int mod = w.EffectiveModifier;
+            int holders = w.Holders;
+            double weight = 1.0;
+
+            for (int c = 0; c < nCards; c++)
+            {
+                int off = c * 7;
+                int mode = cardSpecs[off];
+                int groupMask = cardSpecs[off + 4];
+                if (mode != 2 && (groupMask & markedBit) == 0)
+                {
+                    continue;
+                }
+                int srcIdx = cardSpecs[off + 1];
+                int flags = cardSpecs[off + 2];
+                if (srcIdx >= 0)
+                {
+                    bool srcEvil = (evil & (1 << srcIdx)) != 0
+                        || (hasConv && convIdx == srcIdx && SolverKernel.EvilIndex(w, convIdx, (flags & 1) != 0));
+                    if (srcEvil)
+                    {
+                        continue;
+                    }
+                    if ((flags & 4) != 0 && mod == WorldEntry.ModDelusional && (holders & (1 << srcIdx)) != 0)
+                    {
+                        continue;
+                    }
+                }
+                int omenMask = cardSpecs[off + 3];
+                if (omenMask != 0 && mod == WorldEntry.ModIllOmened && (holders & omenMask) != 0)
+                {
+                    continue;
+                }
+
+                int evilBits = evil;
+                if (hasConv && convIdx >= 0 && SolverKernel.EvilIndex(w, convIdx, (flags & 2) != 0))
+                {
+                    evilBits |= (1 << convIdx);
+                }
+                if ((evilBits & markedBit) != 0)
+                {
+                    continue;
+                }
+
+                int targetOrSame = cardSpecs[off + 5];
+                bool asGood;
+                bool asEvil;
+                if (mode == 0)
+                {
+                    int cntGood = System.Numerics.BitOperations.PopCount((uint)(evilBits & groupMask));
+                    int cntEvil = cntGood + 1;
+                    asGood = cntGood == targetOrSame;
+                    asEvil = cntEvil == targetOrSame;
+                }
+                else if (mode == 1)
+                {
+                    int grpSz = cardSpecs[off + 6];
+                    bool wantSame = targetOrSame != 0;
+                    int cntGood = System.Numerics.BitOperations.PopCount((uint)(evilBits & groupMask));
+                    int cntEvil = cntGood + 1;
+                    asGood = (cntGood == 0 || cntGood == grpSz) == wantSame;
+                    asEvil = (cntEvil == 0 || cntEvil == grpSz) == wantSame;
+                }
+                else
+                {
+                    int cntGood = 0;
+                    int cntEvil = 0;
+                    int posEvil = evilBits | markedBit;
+                    for (int b = 0; b < blockMasks.Length; b++)
+                    {
+                        int bm = blockMasks[b];
+                        if ((evilBits & bm) != 0)
+                        {
+                            cntGood++;
+                        }
+                        if ((posEvil & bm) != 0)
+                        {
+                            cntEvil++;
+                        }
+                    }
+                    asGood = cntGood == targetOrSame;
+                    asEvil = cntEvil == targetOrSame;
+                }
+
+                if (asEvil != asGood)
+                {
+                    weight *= asEvil ? markedEvilChance : asGoodWeight;
+                }
+            }
+            outWeights[i] = weight;
+        }
+        return outWeights;
+    }
+
     public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, int markedMask, int mediums)
     {
         var entry = SolverContext.GetRoleConstraintMemo(memoSlot);
