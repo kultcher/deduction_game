@@ -138,3 +138,33 @@ func _evil_bluff() -> void:
 			far = blk
 	_check(Burdens.evil_unrequited_bluff(w, e, 2, far).is_empty(), "once claimed, a sighting elsewhere doesn't fit the same beloved")
 	_check(not Burdens.evil_unrequited_bluff(w, e, 2, e.home_block).is_empty(), "but one on its own block, leaving home, does")
+	# The judge's visit rule (Michael, Nov 23: no bluff a judge would see through). A fresh
+	# evil, so no beloved is claimed yet.
+	var e2 = w.npcs.filter(func(m): return m.is_evil() and m != e)[0]
+	var dests: Array = []
+	for m in w.npcs:
+		if m.alive and m != e2 and m.home_block != e2.home_block and not (m.home_block in dests):
+			dests.append(m.home_block)
+	if dests.size() >= 2:
+		# Seen leaving home, but it really went to dests[0]: only a love there explains both.
+		e2.history[w.time_key(3, C.NIGHT)] = "night:" + str(dests[0])
+		var b3: String = Burdens.unrequited_bluff_beloved(w, e2, 3, e2.home_block)
+		_check(b3 != "" and w.by_id[b3].home_block == dests[0], "seen leaving home, it names a love on the block it really went to, which another witness may have seen")
+		_check(Burdens.unrequited_bluff_beloved(w, e2, 3, str(dests[1])) == "", "never a sighting on a third block, which no single visit explains")
+		e2.history.erase(w.time_key(3, C.NIGHT))
+	var mate = w.npcs.filter(func(m): return m != e2 and m.home_block == e2.home_block)
+	if not mate.is_empty():
+		_check(not Burdens._visit_fits(w, e2, mate[0], 3, [e2.home_block]), "a love who shares its home explains no walk at all")
+	# A beloved killed on night 4: their door fits nights up to 4, their grave only after.
+	var v = w.living_good().filter(func(m): return m.home_block != e2.home_block and m.home_block != "hill" and e2.home_block != "hill")
+	if not v.is_empty():
+		var vv = v[0]
+		vv.alive = false
+		vv.death_day = 4
+		vv.death_cause = "demon"
+		_check(Burdens._visit_fits(w, e2, vv, 4, [vv.home_block]), "a Demon's victim was alive the night they died: their door fits that night")
+		_check(not Burdens._visit_fits(w, e2, vv, 3, ["hill"]), "and their grave doesn't fit a night before it")
+		_check(Burdens._visit_fits(w, e2, vv, 5, ["hill"]), "but does after")
+		vv.alive = true
+		vv.death_day = -1
+		vv.death_cause = ""

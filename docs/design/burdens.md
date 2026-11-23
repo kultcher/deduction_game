@@ -373,6 +373,14 @@ add to sections 1 to 7, and win where they differ.
     - a "leaving home" sighting on the bluffer's own block.
 
     It never answers a sighting that puts the bluffer on some other block.
+
+    **No bluff a judge would see through** (Michael, Nov 23). The beloved must fit that
+    night by the judge's own visit rule: the walk from home to the beloved's block, to the
+    hill if the beloved was already dead that night, and no walk at all for a beloved who
+    shares the bluffer's home. Every block the bluffer could be seen on that night must lie
+    on that walk: the sighting it's shown and where it really went, since another witness may
+    have seen that. A Demon seen leaving home on a kill night can only name a love on the
+    victim's block. With no one who fits, it uses another excuse or none.
 13. **What the Unrequited withholds:** only evidence that implicates the beloved, and only a
     moderate-to-strong implication. A Dowser reading that puts the beloved as one evil among
     four isn't withheld.
