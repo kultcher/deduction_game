@@ -325,6 +325,10 @@ reveal timing across all roles at once.
 - **Michael's answers (Nov 21):**
   - **The Seer's picks:** the most likely Demon, as the note says; Beadle is fixing the code, and
     Lantern is adding per-person Demon odds.
+    - **Built (Nov 23, Beadle):** the Seer ranks people by its suspicion of each times Lantern's
+      chance they're the Demon if evil (`workshop/demon_candidates.gd`, from its last belief
+      refresh); with no refresh yet, by suspicion alone. Those its own "no" cleared still go
+      last.
   - **Narrowing after a "yes":** a "yes" target paired 50/50 with someone fresh or someone
     trusted; Beadle is fixing the code.
   - **The Red Herring defence** stays as built, after two shared yeses.

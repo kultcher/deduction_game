@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, Codex's second review of #547): `baseline_14f5b7d`
+### Current baseline (Nov 23, the Seer looks for the likeliest Demon): `baseline_ebea777`
+
+`tools/golden/baseline_ebea777/` is the capture from `claude/beadle-seer-demon-candidates` at `ebea777`:
+`baseline_14f5b7d` plus the Seer ranking its picks by Lantern's DemonCandidates (its suspicion times the
+judgement's chance each is the Demon if evil). It supersedes `baseline_14f5b7d`.
+- **Divergence from `baseline_14f5b7d`:** seed 900 only, at record 52 (day 2). Greta, the Seer, reads the
+  same pair, but names Odette before Kiran, since the new ranking puts Odette higher. That flips the
+  wording of the reading ("I looked at Odette and Kiran: neither is the Demon") in her ledger, the board
+  and the public log: 23 of 177 records. No suspicion value, vote or hanging changes. 42, 54875, 692 and
+  98933 are identical.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings as `baseline_14f5b7d`.
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, Codex's second review of #547): `baseline_14f5b7d`
 
 `tools/golden/baseline_14f5b7d/` is the capture from `claude/burdens` at `14f5b7d`: `baseline_d7d2e3a` plus
 the two findings from Codex's second review. It supersedes `baseline_d7d2e3a`.
