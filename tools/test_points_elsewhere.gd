@@ -91,5 +91,45 @@ func _init() -> void:
 	p = g3.w.npcs
 	var plain: Dictionary = _judge(g3, "evil", p[3], [[p[3], p[4], true, p[2]]])
 	check(plain.get("ready", false) and not plain.get("points_elsewhere", false), "a single pairing reading isn't flagged (%s)" % plain.get("category", ""))
+
+	# Case #21798 regression: evidence that moderately supports the target in full-weight shape
+	# (`CaseEval`), dampened to weak/negligible for an average listener, must not be flagged as
+	# "points elsewhere" even when a rival also clears the full-weight rival bar.
+	var g4 = _fresh()
+	p = g4.w.npcs
+	var s4 = p[3]
+	var rival4 = p[4]
+	var t1: int = GameBoard.add_card(g4, {"kind": "info", "source": p[2].id, "role": "archivist", "day": 0, "phase": 3,
+		"data": {"pair": [s4.id, p[9].id], "role": "poisoner"},
+		"text": "%s archivist night 0: one of %s and %s is the poisoner" % [p[2].id, s4.id, p[9].id]})
+	var t2: int = GameBoard.add_card(g4, {"kind": "info", "source": p[7].id, "role": "dowser", "day": 1, "phase": 0,
+		"data": {"block": "docks", "count": 1, "group": [rival4.id, p[5].id]},
+		"text": "%s dowser day 1: 1 evil among %s and %s" % [p[7].id, rival4.id, p[5].id]})
+	var t3: int = GameBoard.add_card(g4, {"kind": "info", "source": p[7].id, "role": "dowser", "day": 2, "phase": 0,
+		"data": {"block": "square", "count": 1, "group": [s4.id, p[6].id, p[5].id]},
+		"text": "%s dowser day 2 morning: 1 evil among %s, %s, %s" % [p[7].id, s4.id, p[6].id, p[5].id]})
+	var t4: int = GameBoard.add_card(g4, {"kind": "info", "source": p[7].id, "role": "dowser", "day": 2, "phase": 1,
+		"data": {"block": "hill", "count": 1, "group": [rival4.id, p[8].id]},
+		"text": "%s dowser day 2 afternoon: 1 evil among %s and %s" % [p[7].id, rival4.id, p[8].id]})
+	var texts4: Array = [g4.board[t1 - 1].text, g4.board[t2 - 1].text, g4.board[t3 - 1].text, g4.board[t4 - 1].text]
+	var view4: Dictionary = Live.view(g4)
+	var model4 = CanvasModel.new(view4)
+	model4.contradiction_links = true
+	model4.marked_answers = false
+	var prem4: String = model4.add_premise(s4.id, "evil", Vector2(400, 40))
+	for id in model4.nodes:
+		var nd = model4.nodes[id]
+		if nd.kind == "evidence" and Solver.card_by_id(view4, nd.card).get("text", "") in texts4:
+			model4.connect_cards(id, prem4)
+	var val4: Dictionary = model4.compile(prem4)
+	var r4: Dictionary = Live.test_juror(g4, val4)
+	var j4: Dictionary = Live.juror_case(g4, val4)
+	var ev4: Dictionary = CaseEval.evaluate(j4.prepared.view, j4.case)
+	var top4: Dictionary = ev4.rivals[0] if not ev4.get("rivals", []).is_empty() else {}
+	check(r4.get("ready", false) and r4.get("category", "") in Live.POINTS_ELSEWHERE_BANDS and not (str(ev4.get("category", "")) in Live.POINTS_ELSEWHERE_BANDS),
+		"(fixture) heard band is dampened (%s) while full-weight shape supports target (%s)" % [r4.get("category", ""), ev4.get("category", "")])
+	check(float(top4.get("shift", 0.0)) > 0.2 and float(top4.get("posterior", 0.0)) > 0.5,
+		"(fixture) a rival still clears the full-weight bar (%s)" % str(top4))
+	check(not r4.get("points_elsewhere", false), "a case whose shape supports its target is not flagged points elsewhere")
 	print("Points elsewhere: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
