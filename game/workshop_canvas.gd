@@ -276,6 +276,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var judged: Dictionary = juror.case
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+	var shape_cat: String = str(ev.get("category", ""))
 	if not ev.get("impossible", false):
 		ev.lr = heard.lr
 		# The top tier reads the listener's chance only where that chance is the premise's own
@@ -290,9 +291,12 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
 	# A weak or contrary accusation that points more at someone else (Michael, Nov 20): the
-	# rule a listener uses to say "points elsewhere", naming no one here.
+	# rule a listener uses to say "points elsewhere", naming no one here. Both the full-weight
+	# shape (`shape_cat`) and the heard band must be weak/negligible/contrary, so a case whose
+	# own shape moderately supports the target isn't flagged just because hearing weights dampen
+	# its band while full-weight `ev.rivals` still clears the rival bar (case #21798, Nov 23).
 	var c_type: String = str(value.get("conclusion", {}).get("type", ""))
-	if c_type in POINTS_ELSEWHERE_TYPES and str(result.get("category", "")) in POINTS_ELSEWHERE_BANDS:
+	if c_type in POINTS_ELSEWHERE_TYPES and shape_cat in POINTS_ELSEWHERE_BANDS and str(result.get("category", "")) in POINTS_ELSEWHERE_BANDS:
 		var Presentations = preload("res://sim/dialogue_presentations.gd")
 		if Presentations.points_elsewhere(g.w, ev.get("rivals", []), [str(value.get("conclusion", {}).get("target", ""))]) != "":
 			result["points_elsewhere"] = true

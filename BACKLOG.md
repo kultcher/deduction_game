@@ -27,6 +27,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
+    2. Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval` `[open]`
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
@@ -124,6 +125,17 @@ Lantern). Nothing is open here.
      - **Tier 3** waits for the purge.
 
   [decided]
+
+- **Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval`**
+  (Michael, Nov 23, case `#21798`). Currently `test_juror` gates `points_elsewhere` on both
+  the full-weight `CaseEval` shape band (`shape_cat`) and the `heard` band, using `CaseEval`'s
+  `ev.rivals` and the shared `shift > 0.2 / posterior > 0.5` rule from
+  `sim/dialogue_presentations.gd`. That avoids pairing a dampened `heard` band with full-weight
+  rivals, but leaves one Test juror flag reading full-weight `CaseEval`. Explore computing
+  `points_elsewhere` directly from `heard` (`ProfileJudge` posteriors) — likely with a
+  relative band/LR comparison rather than raw `0.2 / 0.5` (which dampened `heard` rarely
+  reaches), and decide whether NPC `present_points_elsewhere` should stay aligned with it.
+  [open]
 
 ### NPC behaviour
 
