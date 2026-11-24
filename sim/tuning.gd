@@ -1161,6 +1161,12 @@ class Workshop:
 	## with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has
 	## measured it: passive games make no Unrequited claims.
 	const BURDEN_BLUFF_UNREQUITED_SIGHTED = 0.85
+	## The player's word on a burden X has already claimed (`SharedLedger._add_player_words`,
+	## Michael, Nov 23): endorsing X's own claim is not an independent witness, so the
+	## player's reliability on that `word:secret` card is scaled by this factor. Leaves
+	## unclaimed-burden deductions at full credibility while keeping a reactive Marked bluff
+	## from clearing a Demon outright.
+	const PLAYER_WORD_CLAIMED_SCALE = 0.70
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01

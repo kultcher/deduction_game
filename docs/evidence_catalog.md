@@ -627,8 +627,8 @@ Premises are the player's theory. They're tested against the worlds, never added
 - **Effect:** the inverse of G1.
 
 ### G4. Secret premise ("X holds S")
-- **Effect:** the player's word. It adds a one-person secret reading told by the player, at the listener's reliability for the player (`0.5 + 0.5 × credibility`). It's always attended. It joins the player's track record.
-- **Strength:** weak to moderate, scaled by credibility.
+- **Effect:** the player's word. It adds a one-person secret reading told by the player, at the listener's reliability for the player (`0.5 + 0.5 × credibility`), scaled by `PLAYER_WORD_CLAIMED_SCALE` (`0.70`) once X has already claimed S (endorsing X's own claim is not an independent witness). It's always attended. It joins the player's track record.
+- **Strength:** weak to moderate, scaled by credibility (softer once X has already claimed the burden).
 
 ### G5. Holds their claimed gift
 - **Effect:** reduces to "X is good" plus the role table's fit.
@@ -642,7 +642,8 @@ Premises are the player's theory. They're tested against the worlds, never added
   - An accepted challenge lowers the reading's reliability.
   - A "failed gift" challenge raises Poisoner candidates by 0.12 × agreement.
   - A challenge backfires (and costs the player trust) when the rest of the evidence moves the reading toward holding by 0.25.
-- **Strength:** moderate when grounded in other cards; nothing when ungrounded.
+  - A player's "Mistaken that night" (`impaired` / `misled`) call also adds honest doubt on that teller's night at the player's credibility (`FAILED_GIFT_DOUBT_LOW`–`FAILED_GIFT_DOUBT_HIGH`, `0.20`–`0.80`, via `SourceDoubt._player_failed_gift`) whenever the script allows an honest cause, even without formal contradicting grounds — matching how the player's word counts on a burden.
+- **Strength:** moderate when grounded in other cards; when ungrounded, "Mistaken that night" counts at the player's credibility (mostly useful to break ties between conflicting readings without accusing the reader), while ungrounded "Suspected lie" and "Delusional all along" calls count for nothing.
 
 ## H. Distorters
 

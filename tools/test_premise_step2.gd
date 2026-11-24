@@ -20,6 +20,7 @@ var fails = 0
 func _init() -> void:
 	# Premises pass step 2: a 'suspicious' case halves only what its cards add together, and presses its target.
 	_secret_word()
+	_claimed_burden_word()
 	_secret_record()
 	_suspicious()
 	_contradiction_link()
@@ -96,6 +97,33 @@ func _secret_word() -> void:
 	# Headline fix (Nov 6, with recency): a faint Seer ping no longer pulls a clearing back
 	# by the whole gap, so the trusted player's word clears p3 more in suspicion too.
 	check(word.p3 < word_low.p3, "a trusted player's word clears p3 more than a doubted one's (%.3f vs %.3f)" % [word.p3, word_low.p3])
+
+func _claimed_burden_word() -> void:
+	var g = _game(0.7)
+	var n = g.w.npcs[0]
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var claim: int = GameBoard.add_card(g, {"kind": "secret", "source": p[3].id, "subject": [p[3].id], "owner": p[3].id, "secret_kind": "marked", "day": 2, "phase": 1,
+		"text": "%s: I've carried the mark since birth" % p[3].name})
+	var number: int = GameBoard.file_deduction(g, {"type": "marked", "a": p[3].id}, [seer, claim])
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
+	var rels: Dictionary = g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("listener", {}).get("reading_reliability", {})
+	var wid: String = Shared.player_word_id(p[3].id, "marked")
+	var expected_full: float = Tuning.Workshop.SOURCE_REL_BASE + Tuning.Workshop.SOURCE_REL_SLOPE * 0.7
+	var expected_scaled: float = expected_full * Tuning.Workshop.PLAYER_WORD_CLAIMED_SCALE
+	check(rels.has(wid) and is_equal_approx(float(rels[wid]), expected_scaled),
+		"player word on an already-claimed burden scales reliability by PLAYER_WORD_CLAIMED_SCALE (got %.4f, expected %.4f)" % [float(rels.get(wid, -1.0)), expected_scaled])
+	# Unclaimed burden keeps full player reliability.
+	var g2 = _game(0.7)
+	var n2 = g2.w.npcs[0]
+	var p2: Array = g2.w.npcs
+	var seer2: int = _read(g2, p2[2], "seer", 1, {"pair": [p2[3].id, p2[4].id], "yes": true})
+	var number2: int = GameBoard.file_deduction(g2, {"type": "marked", "a": p2[3].id}, [seer2])
+	GamePresentation._evaluate_deduction(g2, n2, g2.board[number2 - 1], 1.0, false)
+	var rels2: Dictionary = g2._workshop_plans.get(n2.id + ":good", {}).get("prepared", {}).get("listener", {}).get("reading_reliability", {})
+	var wid2: String = Shared.player_word_id(p2[3].id, "marked")
+	check(rels2.has(wid2) and is_equal_approx(float(rels2[wid2]), expected_full),
+		"player word on an unclaimed burden keeps full reliability (got %.4f, expected %.4f)" % [float(rels2.get(wid2, -1.0)), expected_full])
 
 func _secret_record() -> void:
 	var g = _game()
