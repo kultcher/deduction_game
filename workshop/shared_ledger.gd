@@ -610,7 +610,12 @@ static func _add_player_words(prepared: Dictionary, presentations: Dictionary, w
 				"testimony_only": true, "player_word": true, "night": -1, "observed_at": at.duplicate(true), "reported_at": at.duplicate(true),
 				"data": {"pair": [claim.target], "secret": claim.mod},
 				"text": "The Demonologist says %s carries a hidden burden: %s." % [_name(view, claim.target), Assess.C.secret_name(claim.mod)]}
-			prepared.listener.reading_reliability[id] = player_weight
+			var word_rel: float = player_weight
+			for vc in view.cards:
+				if vc.get("kind", "") == "secret_claim" and not vc.get("quoted", false) and str(vc.get("subject", "")) == claim.target and str(vc.get("data", {}).get("secret_kind", "")) == claim.mod:
+					word_rel = player_weight * Tuning.Workshop.PLAYER_WORD_CLAIMED_SCALE
+					break
+			prepared.listener.reading_reliability[id] = word_rel
 			# A new array, so Solver.card_by_id's index sees the card.
 			view.cards = view.cards + [card]
 			if id not in prepared.case.cards:
