@@ -71,12 +71,21 @@ func set_hold(hold: bool, animate: bool = true) -> void:
 
 func set_phase(phase: int, animate: bool = true) -> void:
 	var target: int = clampi(phase, C.MORNING, C.NIGHT)
-	if not animate:
+	if not animate or _owner == null or not _owner.is_inside_tree():
+		current_phase = target
 		pending_phase = -1
+		if _tween != null and _tween.is_valid():
+			_tween.kill()
+			_tween = null
+		from_phase = target
+		to_phase = target
+		progress = 1.0
+		_sync_shader()
+		return
 	if current_phase == target:
 		pending_phase = -1
 		return
-	if deferred and animate and current_phase >= 0:
+	if deferred and current_phase >= 0:
 		pending_phase = target
 		return
 	var previous: int = current_phase
@@ -85,7 +94,7 @@ func set_phase(phase: int, animate: bool = true) -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 		_tween = null
-	if previous < 0 or not animate or _owner == null or not _owner.is_inside_tree():
+	if previous < 0:
 		from_phase = target
 		to_phase = target
 		progress = 1.0

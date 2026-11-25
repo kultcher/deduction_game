@@ -78,7 +78,23 @@ func _init() -> void:
 	_check(mv._lighting.from_phase == C.NIGHT and mv._lighting.to_phase == C.MORNING and mv._lighting.progress < 1.0,
 		"releasing defer starts dawn transition from night to morning")
 
-	# 8. reduced_motion snaps immediately without tweening.
+	# 8. Non-animated refresh to the SAME target phase cancels an active wave and snaps.
+	mv.reduced_motion = true
+	mv.refresh()
+	_check(mv._lighting.from_phase == C.MORNING and mv._lighting.to_phase == C.MORNING and is_equal_approx(mv._lighting.progress, 1.0) and mv._lighting._tween == null,
+		"reduced_motion refresh during active transition to same phase cancels tween and snaps")
+
+	# 9. set_game during an active transition to the same target phase also cancels the wave.
+	mv.reduced_motion = false
+	g.w.phase = C.AFTERNOON
+	mv.refresh()
+	_check(mv._lighting.from_phase == C.MORNING and mv._lighting.to_phase == C.AFTERNOON and mv._lighting.progress < 1.0,
+		"re-entering animated transition before set_game reset")
+	mv.set_game(g)
+	_check(mv._lighting.from_phase == C.AFTERNOON and mv._lighting.to_phase == C.AFTERNOON and is_equal_approx(mv._lighting.progress, 1.0) and mv._lighting._tween == null,
+		"set_game during active transition to same phase cancels tween and snaps")
+
+	# 10. reduced_motion snaps immediately to a new phase without tweening.
 	mv.reduced_motion = true
 	g.state = "day"
 	g.w.phase = C.EVENING
