@@ -14,6 +14,7 @@ signal clicked(kind, id)
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const UITheme = preload("res://ui/theme.gd")
+const MapLighting = preload("res://ui/map_lighting.gd")
 
 # Layout in a virtual 1000 x 700 space. The Square sits in the middle, joined to the
 # others; the Market and Chapel Hill are also joined across the top.
@@ -37,6 +38,10 @@ const BLOCK_TINT = {
 	"market": Color(0.20, 0.15, 0.12), "hill": Color(0.17, 0.17, 0.20),
 	"square": Color(0.16, 0.18, 0.14), "docks": Color(0.12, 0.15, 0.20),
 }
+const HOVER_BORDER := Color(0.55, 0.90, 1.0, 0.92)
+const HOVER_INNER := Color(0.55, 0.90, 1.0, 0.28)
+const HOVER_OUTER_GLOW := Color(0.35, 0.82, 1.0, 0.24)
+const ZOOM_DURATION := 0.48
 const OVERVIEW = Rect2(0, 0, 1000, 700)
 
 # ---------------------------------------------------------------- bespoke base map (mock, Nov 7)
@@ -124,7 +129,18 @@ const BUILDING_ART = {"tavern": "tavern", "well": "well", "smithy": "smithy", "b
 const SHORT_SIGNS = {"tavern": "Tavern"}
 
 var g
-var zoom_block = ""
+var zoom_block: String = "":
+	set(v):
+		if zoom_block == v:
+			return
+		if v != "":
+			_last_zoom_block = v
+		zoom_block = v
+		_snap_zoom()
+var _last_zoom_block: String = ""
+var _current_view: Rect2 = OVERVIEW
+var _zoom_dim_alpha: float = 0.0
+var _zoom_tween: Tween
 var selected_npc = ""        # persistent highlight owned by the townsfolk panel
 var selected_block = ""
 var _hits: Array = []        # [{rect (screen), kind, id, label, hint}]
@@ -133,24 +149,79 @@ var _label_obstacles: Array = [] # Screen-space signs/accepted names, rebuilt pe
 var _name_labels: Array = [] # Visible name rectangles, also used by layout checks.
 var _scale = 1.0
 var _offset = Vector2.ZERO
+var reduced_motion: bool = false
+var _lighting: MapLighting = MapLighting.new()
+var _ui_overlay: Control
+var _ui_commands: Array = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
+	_lighting.attach(self)
+	_ui_overlay = Control.new()
+	_ui_overlay.name = "MapUIOverlay"
+	_ui_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_overlay.draw.connect(_draw_ui_overlay)
+	add_child(_ui_overlay)
 
 func set_game(game) -> void:
 	g = game
 	zoom_block = ""
 	selected_npc = ""
 	selected_block = ""
+	_hover = {}
+	_lighting.set_hold(false, false)
+	_lighting.set_phase(MapLighting.phase_for_game(g), false)
 	queue_redraw()
 
 func refresh() -> void:
+	if g != null:
+		_lighting.set_phase(MapLighting.phase_for_game(g), not reduced_motion)
 	queue_redraw()
 
-func zoom_to(block: String) -> void:
+func set_phase_lighting(phase: int, animate: bool = true) -> void:
+	_lighting.set_phase(phase, animate and not reduced_motion)
+
+func set_lighting_deferred(hold: bool) -> void:
+	_lighting.set_hold(hold, not reduced_motion)
+
+func zoom_to(block: String, animate: bool = true) -> void:
+	if zoom_block == block:
+		return
+	if block != "":
+		_last_zoom_block = block
+	var from_view: Rect2 = _current_view
+	var from_dim: float = _zoom_dim_alpha
+	# Update backing value without snapping, then tween smoothly if allowed.
+	if _zoom_tween != null and _zoom_tween.is_valid():
+		_zoom_tween.kill()
+		_zoom_tween = null
 	zoom_block = block
-	queue_redraw()
+	var to_view: Rect2 = _view_rect()
+	var to_dim: float = 0.72 if block != "" else 0.0
+	_hover = {}
+	if not animate or reduced_motion or not is_inside_tree():
+		_current_view = to_view
+		_zoom_dim_alpha = to_dim
+		queue_redraw()
+		return
+	_current_view = from_view
+	_zoom_dim_alpha = from_dim
+	_zoom_tween = create_tween()
+	_zoom_tween.set_trans(Tween.TRANS_CUBIC)
+	_zoom_tween.set_ease(Tween.EASE_OUT)
+	_zoom_tween.tween_method(func(t: float):
+		_current_view = Rect2(from_view.position.lerp(to_view.position, t), from_view.size.lerp(to_view.size, t))
+		_zoom_dim_alpha = lerpf(from_dim, to_dim, t)
+		queue_redraw(), 0.0, 1.0, ZOOM_DURATION)
+
+func _snap_zoom() -> void:
+	if _zoom_tween != null and _zoom_tween.is_valid():
+		_zoom_tween.kill()
+		_zoom_tween = null
+	_current_view = _view_rect()
+	_zoom_dim_alpha = 0.72 if zoom_block != "" else 0.0
 
 # ---------------------------------------------------------------- geometry
 
@@ -160,7 +231,7 @@ func _view_rect() -> Rect2:
 	return OVERVIEW
 
 func _fit() -> void:
-	var vr = _view_rect()
+	var vr = _current_view
 	_scale = minf(size.x / vr.size.x, size.y / vr.size.y)
 	_offset = (size - vr.size * _scale) / 2.0 - vr.position * _scale
 
@@ -319,34 +390,43 @@ func _sign(font, text: String, center: Vector2, fs: int, active: bool = false, i
 	var w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + fs * 1.6
 	var h = fs * 1.9
 	var r = Rect2(center - Vector2(w / 2.0, h / 2.0), Vector2(w, h))
-	var plaque = UITheme.nine("ui/plaque_red" if active else "ui/plaque_cream", h, [h * 0.3, h * 0.25, h * 0.3, h * 0.25])
-	if plaque != null:
-		draw_style_box(plaque, r)
-	else:
-		draw_rect(r, UITheme.color("paper"))
-	draw_string(font, Vector2(r.position.x, r.position.y + h * 0.68), text, HORIZONTAL_ALIGNMENT_CENTER, w, fs,
-		UITheme.color("paper") if active else UITheme.color("ink"))
 	if is_obstacle:
 		_label_obstacles.append(r)
+	_ui_commands.append({"kind": "sign", "rect": r, "text": text, "fs": fs, "active": active})
 	return r
+
+func _draw_sign_on(canvas: Control, font, r: Rect2, text: String, fs: int, active: bool) -> void:
+	var h: float = r.size.y
+	var plaque = UITheme.nine("ui/plaque_red" if active else "ui/plaque_cream", h, [h * 0.3, h * 0.25, h * 0.3, h * 0.25])
+	if plaque != null:
+		canvas.draw_style_box(plaque, r)
+	else:
+		canvas.draw_rect(r, UITheme.color("paper"))
+	canvas.draw_string(font, Vector2(r.position.x, r.position.y + h * 0.68), text, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, fs,
+		UITheme.color("paper") if active else UITheme.color("ink"))
 
 func _draw() -> void:
 	_hits = []
 	_label_obstacles.clear()
 	_name_labels.clear()
+	_ui_commands.clear()
 	if g == null:
 		draw_rect(Rect2(Vector2.ZERO, size), UITheme.color("bg"))
+		if _ui_overlay != null:
+			_ui_overlay.queue_redraw()
 		return
 	_fit()
 	var font = get_theme_default_font()
 	var w = g.w
 	var night = g.state == "night"
-	var tint = Color(0.5, 0.55, 0.85) if night else Color.WHITE
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.09, 0.14) if night else Color(0.12, 0.16, 0.18))
+	var tint = Color.WHITE
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.12, 0.16, 0.18))
+	var map_screen_rect: Rect2 = _r(_px_rect(Rect2(Vector2.ZERO, MAP_PX))) if BESPOKE else _r(OVERVIEW)
+	_lighting.update_bounds(size, map_screen_rect)
 	if BESPOKE:
 		var base_map = _art(MAP_IMAGE, 1.0)
 		if base_map != null:
-			draw_texture_rect(base_map, _r(_px_rect(Rect2(Vector2.ZERO, MAP_PX))), false, tint)
+			draw_texture_rect(base_map, map_screen_rect, false, tint)
 		# Lots: dirt under the buildings and the cottages.
 		for l in MAP_PADS:
 			var pad: Array = MAP_PADS[l]
@@ -398,11 +478,13 @@ func _draw() -> void:
 			if base != null:
 				_draw_art(base, R, "cover", tint)
 			else:
-				draw_rect(R, BLOCK_TINT[b] if not night else BLOCK_TINT[b].darkened(0.45))
+				draw_rect(R, BLOCK_TINT[b])
 			var border = UITheme.color("accent") if (b == selected_block or here) else Color(0.12, 0.1, 0.08, 0.8)
-			draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
+			_ui_commands.append({"kind": "rect_outline", "rect": R, "color": border, "width": 3.0 if (b == selected_block or here) else 2.0})
 		elif b == selected_block or here:
-			draw_rect(R, UITheme.color("accent"), false, 3.0)
+			_ui_commands.append({"kind": "rect_outline", "rect": R, "color": UITheme.color("accent"), "width": 3.0})
+		if zoom_block == "" and _hover.get("kind", "") == "block" and _hover.get("id", "") == b:
+			_ui_commands.append({"kind": "hover_box", "rect": R, "radius": 10, "bw": 3})
 		if zoom_block == "":
 			_hits.append({"rect": R, "kind": "block", "id": b, "label": C.block_name(b), "hint": "Click to look closer" if not night else "Click to choose it for your vigil"})
 		# Locations and player-only buildings (the Town Hall): building sprites with a name sign.
@@ -422,7 +504,7 @@ func _draw() -> void:
 					sign_txt = SHORT_SIGNS.get(l, sign_txt)
 				sign_r = _sign(font, sign_txt, Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l, false)
 			elif here_l:
-				draw_rect(drawn.grow(2), UITheme.color("accent"), false, 2.0)
+				_ui_commands.append({"kind": "rect_outline", "rect": drawn.grow(2), "color": UITheme.color("accent"), "width": 2.0})
 			var marker: String = _action_marker(l)
 			if marker != "":
 				action_markers.append({"art": marker, "at": Vector2(drawn.get_center().x, drawn.position.y + drawn.size.y * 0.25), "loc": l})
@@ -431,6 +513,8 @@ func _draw() -> void:
 			if unseen > 0:
 				unseen_badges.append({"center": Vector2(sign_r.end.x + 6, sign_r.position.y - 2), "count": unseen})
 			if zoom_block != "":
+				if _hover.get("kind", "") == "location" and _hover.get("id", "") == l:
+					_ui_commands.append({"kind": "hover_box", "rect": drawn.grow(3), "radius": 7, "bw": 2})
 				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if not g.free_move_used and w.loc_block(g.loc) == b and g.loc != l else "")
 				if g.state != "day":
 					hint = ""
@@ -458,6 +542,8 @@ func _draw() -> void:
 				draw_line(hd.position, hd.end, Color(0.2, 0.55, 0.95), 3.0)
 				draw_line(hd.position + Vector2(hd.size.x, 0), hd.position + Vector2(0, hd.size.y), Color(0.2, 0.55, 0.95), 3.0)
 			if zoom_block != "":
+				if (_hover.get("kind", "") == "home" and _hover.get("id", "") == n.id) or (_hover.get("kind", "") == "scene" and _hover.get("id", "") == sid):
+					_ui_commands.append({"kind": "hover_box", "rect": hd.grow(3), "radius": 7, "bw": 2})
 				if w.scenes.has(sid):
 					_hits.append({"rect": HR, "kind": "scene", "id": sid, "label": w.scenes[sid]["name"] + " (crime scene)", "hint": "Click to go and search it" if g.state == "day" else ""})
 				else:
@@ -473,41 +559,96 @@ func _draw() -> void:
 		# The block's name on a sign.
 		var sign_at: Vector2 = _p(_px(MAP_SIGNS[b])) + Vector2(0, _fs(16)) if BESPOKE else Vector2(R.get_center().x, R.position.y + _fs(16))
 		_sign(font, C.block_name(b).trim_prefix("the "), sign_at, _fs(15), b == selected_block)
-	if night:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.1, 0.25))
-	_draw_selection_marks()
+	_queue_selection_marks()
 	# Reserve the back control before placing names (it is painted afterwards).
 	if zoom_block != "": _label_obstacles.append(Rect2(0, 0, 150, 46))
-	# People.
+	# People (standees drawn in world layer; rings/nameplates queued onto UI overlay).
 	_draw_people(font)
 	# Building actions open now (tavern gossip, Town Hall records), over the building.
 	for mk in action_markers:
-		_draw_action_marker(font, mk)
+		_queue_action_marker(font, mk)
 	# Draw unseen (+N) location badges above standees so they are never tucked behind sprites.
 	for bdg in unseen_badges:
-		var bc: Vector2 = bdg["center"]
-		var br = maxf(9.0, 11.0 * _scale)
-		draw_circle(bc, br, UITheme.color("red"))
-		draw_arc(bc, br, 0, TAU, 20, UITheme.color("border"), 1.5)
-		draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % bdg["count"], HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
-	# Zoomed in: dim everything outside the block in view.
-	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
-		var Z: Rect2 = _r(_block_rect(zoom_block))
-		var dim = Color(0.04, 0.05, 0.08, 0.72)
-		draw_rect(Rect2(0, 0, size.x, Z.position.y), dim)
-		draw_rect(Rect2(0, Z.end.y, size.x, size.y - Z.end.y), dim)
-		draw_rect(Rect2(0, Z.position.y, Z.position.x, Z.size.y), dim)
-		draw_rect(Rect2(Z.end.x, Z.position.y, size.x - Z.end.x, Z.size.y), dim)
+		_ui_commands.append({"kind": "unseen_badge", "center": bdg["center"], "count": bdg["count"]})
+	# Zoomed in (or smoothly zooming out): dim everything outside the block in view.
+	var dim_block: String = zoom_block if zoom_block != "" else _last_zoom_block
+	if _zoom_dim_alpha > 0.01 and dim_block != "" and BLOCK_RECTS.has(dim_block):
+		_ui_commands.append({"kind": "zoom_dim", "rect": _r(_block_rect(dim_block)), "alpha": _zoom_dim_alpha})
 	# Back button and status.
 	if zoom_block != "":
 		var br = _sign(font, "◀ Whole town", Vector2(70, 24), 13)
 		_hits.push_front({"rect": br, "kind": "back", "id": "", "label": "Back to the whole town", "hint": ""})
 	if not _hover.is_empty():
 		var t2 = _hover["label"] + ((" — " + _hover["hint"]) if _hover.get("hint", "") != "" else "")
-		var tw = font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 24
-		var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
-		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
-		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
+		_ui_commands.append({"kind": "hover_bar", "text": t2})
+	if _ui_overlay != null:
+		_ui_overlay.queue_redraw()
+
+func _draw_ui_overlay() -> void:
+	if _ui_overlay == null:
+		return
+	var canvas: Control = _ui_overlay
+	var font = get_theme_default_font()
+	for cmd in _ui_commands:
+		match cmd["kind"]:
+			"sign":
+				_draw_sign_on(canvas, font, cmd["rect"], cmd["text"], cmd["fs"], cmd["active"])
+			"rect_outline":
+				canvas.draw_rect(cmd["rect"], cmd["color"], false, cmd["width"])
+			"hover_box":
+				var r_box: Rect2 = cmd["rect"]
+				var rad: int = int(cmd.get("radius", 8))
+				var bw: int = int(cmd.get("bw", 2))
+				var outer := StyleBoxFlat.new()
+				outer.bg_color = Color(0, 0, 0, 0)
+				outer.border_color = HOVER_BORDER
+				outer.set_border_width_all(bw)
+				outer.set_corner_radius_all(rad)
+				outer.shadow_color = HOVER_OUTER_GLOW
+				outer.shadow_size = 4
+				canvas.draw_style_box(outer, r_box)
+				# Subtle inner rim glow just inside the border for texture (no cloudy fill).
+				var inner_r: Rect2 = r_box.grow(-bw)
+				if inner_r.size.x > 4.0 and inner_r.size.y > 4.0:
+					var inner := StyleBoxFlat.new()
+					inner.bg_color = Color(0, 0, 0, 0)
+					inner.border_color = HOVER_INNER
+					inner.set_border_width_all(2)
+					inner.set_corner_radius_all(maxi(2, rad - bw))
+					canvas.draw_style_box(inner, inner_r)
+			"arc":
+				canvas.draw_arc(cmd["center"], cmd["radius"], 0, TAU, cmd["points"], cmd["color"], cmd["width"])
+			"name_label":
+				var label: Rect2 = cmd["rect"]
+				canvas.draw_style_box(UITheme.flat(Color(0.06, 0.07, 0.1, 0.82), Color(0.25, 0.22, 0.18, 0.65), 1, 4, 2), label)
+				canvas.draw_string(font, label.position + Vector2(0, cmd["fs"]), cmd["name"], HORIZONTAL_ALIGNMENT_CENTER, label.size.x, cmd["fs"], cmd["color"])
+			"action_marker":
+				var r: Rect2 = cmd["rect"]
+				canvas.draw_circle(Vector2(r.get_center().x, r.end.y - 2), r.size.x * 0.22, Color(0, 0, 0, 0.25))
+				canvas.draw_texture_rect(cmd["tex"], r, false)
+				if cmd.has("pill"):
+					var pill: Rect2 = cmd["pill"]
+					canvas.draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 8, 0), pill)
+					canvas.draw_string(font, pill.position + Vector2(5, cmd["pill_fs"] + 1), cmd["pill_txt"], HORIZONTAL_ALIGNMENT_LEFT, -1, cmd["pill_fs"], UITheme.color("ink"))
+			"unseen_badge":
+				var bc: Vector2 = cmd["center"]
+				var br = maxf(9.0, 11.0 * _scale)
+				canvas.draw_circle(bc, br, UITheme.color("red"))
+				canvas.draw_arc(bc, br, 0, TAU, 20, UITheme.color("border"), 1.5)
+				canvas.draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % cmd["count"], HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
+			"zoom_dim":
+				var Z: Rect2 = cmd["rect"]
+				var dim = Color(0.04, 0.05, 0.08, float(cmd.get("alpha", 0.72)))
+				canvas.draw_rect(Rect2(0, 0, size.x, Z.position.y), dim)
+				canvas.draw_rect(Rect2(0, Z.end.y, size.x, size.y - Z.end.y), dim)
+				canvas.draw_rect(Rect2(0, Z.position.y, Z.position.x, Z.size.y), dim)
+				canvas.draw_rect(Rect2(Z.end.x, Z.position.y, size.x - Z.end.x, Z.size.y), dim)
+			"hover_bar":
+				var t2: String = cmd["text"]
+				var tw = font.get_string_size(t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 24
+				var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
+				canvas.draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
+				canvas.draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
 
 ## A building's action marker while it's open: tavern gossip in the evening, the Town Hall's
 ## records in the morning and afternoon while reads are left. "" when none.
@@ -520,40 +661,40 @@ func _action_marker(l: String) -> String:
 		return "ui/map_markers/town_hall_records"
 	return ""
 
-func _draw_action_marker(font, mk: Dictionary) -> void:
+func _queue_action_marker(font, mk: Dictionary) -> void:
 	var t = UITheme.tex(mk.art, 0.25)
 	if t == null:
 		return
 	var h: float = maxf(40.0, 64.0 * _scale)
 	var wdt: float = h * t.get_width() / t.get_height()
 	var r := Rect2(mk.at - Vector2(wdt / 2.0, h), Vector2(wdt, h))
-	# A soft shadow so it reads over the building art.
-	draw_circle(Vector2(r.get_center().x, r.end.y - 2), wdt * 0.22, Color(0, 0, 0, 0.25))
-	draw_texture_rect(t, r, false)
+	var cmd := {"kind": "action_marker", "tex": t, "rect": r}
 	var tip: String = "Tavern gossip: listen to the town's talk this evening" if mk.loc == "tavern" else "Town Hall records: %d of %d reads left" % [g.w.town_hall_uses_left, Tuning.Setup.TOWN_HALL_USES_PER_CASE]
-	_hits.push_front({"rect": r, "kind": "location", "id": mk.loc, "label": tip, "hint": "click to go there" if not g.moved else ""})
+	if zoom_block != "":
+		_hits.push_front({"rect": r, "kind": "location", "id": mk.loc, "label": tip, "hint": "click to go there" if not g.moved else ""})
 	if mk.loc == "town_hall":
 		var txt: String = "%d/%d" % [g.w.town_hall_uses_left, Tuning.Setup.TOWN_HALL_USES_PER_CASE]
 		var fs: int = maxi(13, _fs(15))
 		var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 10
-		var pill := Rect2(Vector2(r.end.x - tw * 0.4, r.position.y - 2), Vector2(tw, fs + 6))
-		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 8, 0), pill)
-		draw_string(font, pill.position + Vector2(5, fs + 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.color("ink"))
+		cmd["pill"] = Rect2(Vector2(r.end.x - tw * 0.4, r.position.y - 2), Vector2(tw, fs + 6))
+		cmd["pill_fs"] = fs
+		cmd["pill_txt"] = txt
+	_ui_commands.append(cmd)
 
 ## The selected person's places: home and workplace in their colour, the haunts you've been
 ## told about in a fainter version of it.
-func _draw_selection_marks() -> void:
+func _queue_selection_marks() -> void:
 	if selected_npc == "" or not g.w.by_id.has(selected_npc):
 		return
 	var n = g.w.by_id[selected_npc]
 	var col: Color = C.npc_color(n.id)
 	var w2 = maxf(2.0, 3.0 * _scale)
-	draw_rect(_r(_home_rect(n)).grow(4), col, false, w2)
+	_ui_commands.append({"kind": "rect_outline", "rect": _r(_home_rect(n)).grow(4), "color": col, "width": w2})
 	if C.LOCATIONS.has(n.work):
-		draw_rect(_r(_loc_rect(n.work)).grow(3), col, false, w2)
+		_ui_commands.append({"kind": "rect_outline", "rect": _r(_loc_rect(n.work)).grow(3), "color": col, "width": w2})
 	for l in g.known_haunts.get(n.id, []):
 		if C.LOCATIONS.has(l):
-			draw_rect(_r(_loc_rect(l)).grow(3), Color(col.r, col.g, col.b, 0.45), false, maxf(1.5, 2.0 * _scale))
+			_ui_commands.append({"kind": "rect_outline", "rect": _r(_loc_rect(l)).grow(3), "color": Color(col.r, col.g, col.b, 0.45), "width": maxf(1.5, 2.0 * _scale)})
 
 ## Where each living person is drawn, following what the player can actually see: a paper
 ## standee of them at their building, in the street, or at their home.
@@ -604,14 +745,14 @@ func _draw_people(font) -> void:
 			var rr = Rect2(foot - Vector2(hh * 0.4, hh), Vector2(hh * 0.8, hh))
 			draw_circle(foot + Vector2(0, -2), hh * 0.3, Color(0, 0, 0, 0.35))
 			if t != null:
-				rr = _draw_art(t, rr, "contain", Color(0.75, 0.78, 1.0) if night else Color.WHITE)
+				rr = _draw_art(t, rr, "contain", Color.WHITE)
 			else:
 				draw_circle(rr.get_center(), hh * 0.3, C.npc_color(n.id))
 			if n.busy_with != "":
-				draw_arc(rr.position + Vector2(rr.size.x * 0.85, rr.size.y * 0.15), hh * 0.12, 0, TAU, 12, Color(1, 1, 1, 0.9), 2.0)
+				_ui_commands.append({"kind": "arc", "center": rr.position + Vector2(rr.size.x * 0.85, rr.size.y * 0.15), "radius": hh * 0.12, "points": 12, "color": Color(1, 1, 1, 0.9), "width": 2.0})
 			if n.id == selected_npc:
-				draw_rect(rr.grow(3), C.npc_color(n.id), false, 3.0)
-				draw_rect(rr.grow(1), Color(1, 1, 1, 0.9), false, 1.5)
+				_ui_commands.append({"kind": "rect_outline", "rect": rr.grow(3), "color": C.npc_color(n.id), "width": 3.0})
+				_ui_commands.append({"kind": "rect_outline", "rect": rr.grow(1), "color": Color(1, 1, 1, 0.9), "width": 1.5})
 			var person_block: String = n.home_block if night or n.at_home() else w.loc_block(n.loc)
 			if zoom_block != "" and person_block == zoom_block:
 				var lfs = lf if members.size() <= 2 else maxi(11, int(lf * 0.85))
@@ -622,14 +763,16 @@ func _draw_people(font) -> void:
 				var label = name_label_rect(desired, _label_obstacles, label_bounds)
 				_label_obstacles.append(label)
 				_name_labels.append({"id": n.id, "rect": label})
-				draw_style_box(UITheme.flat(Color(0.06, 0.07, 0.1, 0.82), Color(0.25, 0.22, 0.18, 0.65), 1, 4, 2), label)
-				draw_string(font, label.position + Vector2(0, lfs), n.name, HORIZONTAL_ALIGNMENT_CENTER, label.size.x, lfs, C.npc_color(n.id))
+				_ui_commands.append({"kind": "name_label", "rect": label, "name": n.name, "fs": lfs, "color": C.npc_color(n.id)})
 			var hint = ""
 			if g.state == "day":
 				hint = "busy talking; click to inspect their profile" if n.busy_with != "" else "click to inspect their profile"
 			elif g.state == "night":
 				hint = "click to choose them for your ward" if g.w.tools["ward"] > 0 else ""
-			_hits.push_front({"rect": rr, "kind": "npc", "id": n.id, "label": "%s the %s" % [n.name, n.occupation], "hint": hint})
+			if zoom_block != "":
+				if _hover.get("kind", "") == "npc" and _hover.get("id", "") == n.id:
+					_ui_commands.append({"kind": "hover_box", "rect": rr.grow(3), "radius": 7, "bw": 2})
+				_hits.push_front({"rect": rr, "kind": "npc", "id": n.id, "label": "%s the %s" % [n.name, n.occupation], "hint": hint})
 
 ## Search nearest rows first, then columns, keeping names off place signs and
 ## preceding names. This uses screen geometry only; portraits/hit targets stay put.
@@ -664,8 +807,7 @@ func _gui_input(ev: InputEvent) -> void:
 			queue_redraw()
 	elif ev is InputEventMouseButton and ev.pressed:
 		if ev.button_index == MOUSE_BUTTON_RIGHT and zoom_block != "":
-			zoom_block = ""
-			queue_redraw()
+			zoom_to("")
 			clicked.emit("back", "")
 			return
 		if ev.button_index != MOUSE_BUTTON_LEFT:
@@ -675,14 +817,12 @@ func _gui_input(ev: InputEvent) -> void:
 			return
 		match h["kind"]:
 			"back":
-				zoom_block = ""
-				queue_redraw()
+				zoom_to("")
 				clicked.emit("back", "")
 			"block":
 				if g.state == "night":
 					selected_block = h["id"]
-				zoom_block = h["id"]
-				queue_redraw()
+				zoom_to(h["id"])
 				clicked.emit("block", h["id"])
 			_:
 				clicked.emit(h["kind"], h["id"])

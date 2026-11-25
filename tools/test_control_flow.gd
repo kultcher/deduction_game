@@ -54,6 +54,7 @@ func _log(scene) -> String:
 
 func _run() -> void:
 	var scene = load("res://ui/main.tscn").instantiate()
+	scene.pacing_enabled = false   # drives commands synchronously across nights (test_pacing covers the overlay)
 	root.add_child(scene)
 	scene.show_script_at_start = false
 	scene.seed_box.value = 25923
