@@ -149,7 +149,14 @@ var _label_obstacles: Array = [] # Screen-space signs/accepted names, rebuilt pe
 var _name_labels: Array = [] # Visible name rectangles, also used by layout checks.
 var _scale = 1.0
 var _offset = Vector2.ZERO
-var reduced_motion: bool = false
+var reduced_motion: bool = false:
+	set(v):
+		reduced_motion = v
+		if reduced_motion:
+			_snap_zoom()
+			if _lighting.current_phase >= 0 and _lighting.progress < 1.0:
+				_lighting.set_phase(_lighting.current_phase, false)
+			queue_redraw()
 var _lighting: MapLighting = MapLighting.new()
 var _ui_overlay: Control
 var _ui_commands: Array = []

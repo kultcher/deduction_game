@@ -78,13 +78,18 @@ func _init() -> void:
 	_check(mv._lighting.from_phase == C.NIGHT and mv._lighting.to_phase == C.MORNING and mv._lighting.progress < 1.0,
 		"releasing defer starts dawn transition from night to morning")
 
-	# 8. Non-animated refresh to the SAME target phase cancels an active wave and snaps.
+	# 8. Enabling reduced_motion mid-transition immediately cancels active lighting and zoom tweens.
+	mv.zoom_to("square", true)
+	_check(mv._zoom_tween != null and mv._zoom_tween.is_valid(),
+		"zoom_to starts an animated zoom tween when reduced_motion is false")
 	mv.reduced_motion = true
-	mv.refresh()
 	_check(mv._lighting.from_phase == C.MORNING and mv._lighting.to_phase == C.MORNING and is_equal_approx(mv._lighting.progress, 1.0) and mv._lighting._tween == null,
-		"reduced_motion refresh during active transition to same phase cancels tween and snaps")
+		"setting reduced_motion=true mid-wave cancels lighting tween and snaps immediately")
+	_check(mv._zoom_tween == null and mv._current_view.is_equal_approx(mv._view_rect()),
+		"setting reduced_motion=true mid-zoom cancels zoom tween and snaps immediately")
+	mv.zoom_to("", false)
 
-	# 9. set_game during an active transition to the same target phase also cancels the wave.
+	# 9. Non-animated refresh to the SAME target phase cancels an active wave and snaps.
 	mv.reduced_motion = false
 	g.w.phase = C.AFTERNOON
 	mv.refresh()

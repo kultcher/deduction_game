@@ -310,6 +310,8 @@ func _on_more(i: int) -> void:
 			open_daily_guess(Callable())
 		MoreItem.REDUCED_MOTION:
 			reduced_motion = not reduced_motion
+			if map != null:
+				map.reduced_motion = reduced_motion
 		MoreItem.EXIT:
 			get_tree().quit()
 
