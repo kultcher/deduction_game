@@ -25,6 +25,8 @@ const REF = Vector2(1730, 800)       ## the reference footprint; everything scal
 const CARD = Vector2(270, 380)       ## card size at the reference footprint
 const PUSH = 1.35                    ## how much the final card grows as it comes forward
 const DEAL = 8                       ## cards dealt before the final one
+## The gap between the burden tag and the card's edge, at the reference size.
+const TAG_GAP = 22.0
 const MAX_STACK = 6                  ## face-down cards drawn in the deck at most
 
 var reduced_motion := false
@@ -387,7 +389,8 @@ func _layout() -> void:
 	thread.position = Vector2(26 * k, -70 * k)
 	slip.position = Vector2.ZERO
 	tag.pivot_offset = Vector2(27 * k, -70 * k)
-	tag.position = _deck_c + Vector2(-CARD.x * PUSH / 2.0 - slip.size.x / k + 30, CARD.y * 0.12) * k
+	# The slip hangs just clear of the pushed-out card's left edge (it overlapped it before; Nov 27).
+	tag.position = _deck_c + Vector2(-CARD.x * PUSH / 2.0 - TAG_GAP, CARD.y * 0.12) * k - Vector2(slip.size.x, 0)
 	tag.set_meta("base", tag.position)
 
 ## A ragged tear down the middle of a card: side 0 is the left half, 1 the right.
