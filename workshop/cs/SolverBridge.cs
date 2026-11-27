@@ -43,6 +43,7 @@ public partial class SolverBridge : RefCounted
         _lastOwnOf = Array.Empty<int>();
         _lastOwnFlatCodes = Array.Empty<byte>();
         _lastOwnCounts = Array.Empty<double>();
+        _lastOwnWeights = Array.Empty<double>();
         SolverContext.Clear();
     }
 
