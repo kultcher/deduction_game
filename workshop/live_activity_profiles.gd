@@ -30,6 +30,14 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 			return card.role
 	return ""
 
+## Whether the person's own (unquoted) Sexton report says it tolled on this night.
+static func sexton_tolled(cards: Array, person: String, night: int) -> bool:
+	for card in cards:
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "sexton" and not card.get("quoted", false) \
+				and str(card.get("source", "")) == person and int(card.get("data", {}).get("night", card.get("night", -1))) == night:
+			return true
+	return false
+
 static func role_hearing(cards: Array, person: String, role: String) -> float:
 	var strength = 0.0
 	for card in cards:
@@ -46,7 +54,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 	var paths: Array = [[]]
 	for block in C.BLOCKS:
 		paths.append(C.route(person.home, block))
-	if role in ["", "lamplighter"]:
+	if role in ["", "lamplighter"] or (role == "sexton" and sexton_tolled(cards, person.id, night)):
 		paths.append(C.BLOCKS.keys())
 	var result: Array = []
 	for path in paths:
@@ -404,6 +412,9 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 				rate = maxf(rate, lerpf(float(rates.ordinary), float(rates.secret), float(card.get("hearing_weight", 1.0))))
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
+	# A good Sexton walks every block on the night it says it tolled (Michael, Nov 21).
+	if profile in ["gift", "secret", "ordinary"] and role_of(cards, person.id) == "sexton" and sexton_tolled(cards, person.id, night):
+		return [{"path": C.BLOCKS.keys(), "weight": 1.0}]
 	var destinations: Array = C.BLOCKS.keys()
 	if profile == "gift":
 		var role = role_of(cards, person.id)

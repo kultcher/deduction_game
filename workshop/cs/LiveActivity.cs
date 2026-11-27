@@ -99,6 +99,9 @@ internal static class LiveActivityKernel
     public const int MoveRoleMedium = 5;
     public const int MoveRoleOther = 6;
     public const int MoveRoleMonitor = 7;
+    /// The Sexton: it walks every block on the night it tolls (Michael, Nov 21), told by its
+    /// own toll report, whose night is in slot 17.
+    public const int MoveRoleSexton = 8;
 
     // Profile kind codes:
     private const int ProfOrdinary = 0;
@@ -520,7 +523,8 @@ internal static class LiveActivityKernel
                     candBuf[2] = PathSpec.Route(home, BlockMarket);
                     candBuf[3] = PathSpec.Route(home, BlockDocks);
                     candBuf[4] = PathSpec.Route(home, BlockHill);
-                    if (roleCode == MoveRoleEmpty || roleCode == MoveRoleLamplighter)
+                    if (roleCode == MoveRoleEmpty || roleCode == MoveRoleLamplighter
+                        || (roleCode == MoveRoleSexton && SextonTolled(i, night, cardInts, cardCount)))
                     {
                         candBuf[5] = PathSpec.LampTour(home);
                         candCount = 6;
@@ -838,6 +842,22 @@ internal static class LiveActivityKernel
         }
     }
 
+    /// Whether the person's own (unquoted) Sexton report says it tolled on this night.
+    private static bool SextonTolled(int personIdx, int night, int[] cardInts, int cardCount)
+    {
+        for (int c = 0; c < cardCount; c++)
+        {
+            int off = c * CardStride;
+            if (cardInts[off] == KindReport && (cardInts[off + 1] & FlagQuoted) == 0
+                && cardInts[off + 7] == MoveRoleSexton && cardInts[off + 2] == personIdx
+                && cardInts[off + 17] == night)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<PathSpec> BuildProfilePaths(
         int personIdx,
         int night,
@@ -885,6 +905,14 @@ internal static class LiveActivityKernel
         if (night >= personDeathBeforeNight[personIdx])
         {
             result.Add(PathSpec.StayHome(1.0));
+            return result;
+        }
+        // A good Sexton walks every block on the night it says it tolled (Michael, Nov 21), so a
+        // sighting of it anywhere that night fits; a lying one walks as its evil profile has it.
+        if (roleCode == MoveRoleSexton && profKind != ProfDemon && profKind != ProfMinion
+            && SextonTolled(personIdx, night, cardInts, cardCount))
+        {
+            result.Add(PathSpec.LampTour(personHomes[personIdx], 1.0));
             return result;
         }
 
