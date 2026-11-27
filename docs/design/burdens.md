@@ -666,3 +666,13 @@ Relayed by Seneschal; the wording follows his message closely.
     holder had already claimed it publicly.
   - **Measured** (40 passive games): the holder is framed more and killed less, and the poison
     falls a little more often. Good wins are unchanged.
+
+## 17. Landed, and the Marked middle option (Nov 23–24)
+
+- **Burdens landed on main** in #547 (Lantern's `claude/burdens`, cut from `mock/burdens-slot`).
+- **The Marked "middle option"** (Michael, Nov 23; built by Argon, #555): once someone has
+  claimed a burden, the player's word that they hold it counts at 0.70 of the player's usual
+  weight (`Tuning.Workshop.PLAYER_WORD_CLAIMED_SCALE`). An unclaimed burden the player argues
+  keeps full weight. Argon's probe (10 NPCs, seeds 1, 3 and 4): 0.70 sits between 0.65, where the
+  player's word barely helps a real Marked, and 0.75.
+
