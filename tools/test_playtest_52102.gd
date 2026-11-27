@@ -60,6 +60,14 @@ func _window_verdict() -> void:
 	var line: String = GameScreens.theory_status(g)
 	check(w.by_id[demon].name in line and not "Demon: not recorded" in line, "the theory line shows the window's Demon (%s)" % line)
 	check(minions.all(func(m): return ("%s (Minion)" % w.by_id[m].name) in line), "and an untyped Minion as plain Minion, not a guessed type")
+	# Codex on #571: a confirmed window with every circle cleared is an empty verdict; the
+	# profile's guesses don't come back.
+	g.set_guess(demon, "demon", 3)
+	var empty: Array = picks.map(func(p): return {"id": "", "type": ""})
+	DailyGuess.apply(g, empty)
+	var cleared: Dictionary = GameScreens.effective_guesses(g)
+	check(CaseMetrics.demon_guesses(cleared).is_empty() and CaseMetrics.minion_guesses(cleared).is_empty(), "a window confirmed with every circle cleared is an empty verdict, even with profile guesses")
+	check("Demon: not recorded" in GameScreens.theory_status(g), "and the theory line says so")
 
 func _lie_nights() -> void:
 	var g = _case()

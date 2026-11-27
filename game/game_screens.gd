@@ -447,14 +447,16 @@ static func set_secret_guess(g, id: String, secret: String, confidence: int) -> 
 	return true
 
 
-## The player's verdict: the daily guess window's last locked picks when they've locked any
-## (Michael, Nov 21: "the last guesses locked here are the player's verdict"), else the profile's
-## guesses. The window never writes back to the profile (ui/daily_guess.gd), so the summary and
-## the theory line read it here (playtest 52102).
+## The player's verdict: the daily guess window's last locked picks once they've confirmed it
+## at all (Michael, Nov 21: "the last guesses locked here are the player's verdict"), else the
+## profile's guesses. A confirmed window with every circle cleared is an empty verdict, not a
+## fallback (Codex on #571). The window never writes back to the profile (ui/daily_guess.gd), so
+## the summary and the theory line read it here (playtest 52102).
 static func effective_guesses(g) -> Dictionary:
-	var picks: Array = g.get_meta("daily_guess_locked", {}).get("picks", []) if g.has_meta("daily_guess_locked") else []
-	if not picks.any(func(p): return str(p.get("id", "")) != ""):
+	var store: Dictionary = g.get_meta("daily_guess_locked", {}) if g.has_meta("daily_guess_locked") else {}
+	if not store.has("picks"):
 		return g.guesses
+	var picks: Array = store["picks"]
 	var sc = g.w.case_script
 	var minion_types: Array = sc.minions if sc != null else C.EVIL_ROLES.filter(func(r): return C.is_minion(r))
 	return CaseMetrics.window_guesses(picks, minion_types)
