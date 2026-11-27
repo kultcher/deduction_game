@@ -12,6 +12,7 @@ test_own_night_knowledge
 test_relay_bluff_games
 test_self_sighting
 test_shadow
+test_silenced_shares_nothing
 test_social_credibility
 test_trace_solver
 test_workshop_action
