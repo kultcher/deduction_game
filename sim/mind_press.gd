@@ -463,8 +463,10 @@ static func _evil_caught_out(w, n, night: int, presses: int = 0) -> Dictionary:
 ## it has named another gift to anyone; with no spare gift it stays put, wary of a double
 ## claim. {} when it doesn't, else the gift's answer.
 static func _backup_walking_gift(w, n, night: int) -> Dictionary:
-	# Never once it has named a gift to anyone, publicly or in private.
-	if n.claim_public or n.max_tier >= 3 or n.claimed_role != "":
+	# Never once it has named a gift to anyone, publicly or in private; nor a Revenant-turned
+	# townsperson, whose real gift is its cover (Codex on #560, as the bluff switch and the
+	# double claim exclude it).
+	if n.turned or n.claim_public or n.max_tier >= 3 or n.claimed_role != "":
 		return {}
 	var spare: Array = spare_walking_gifts(w, n, night)
 	if spare.is_empty():
@@ -484,7 +486,8 @@ static func _backup_walking_gift(w, n, night: int) -> Dictionary:
 	var soft: Dictionary = n.dialogue_memory.get("caught_soft", {})
 	soft[str(night)] = w.day
 	n.dialogue_memory["caught_soft"] = soft
-	return _answers().answer_gift(w, n, 3)
+	# The press already counted the question (Codex on #560).
+	return _answers().answer_gift(w, n, 3, false)
 
 ## Spare walking gifts for n (evil's bluff pool, as the bluff switch uses it): none a teammate
 ## bluffs, none anyone n knows of has claimed, and only those whose night work would explain

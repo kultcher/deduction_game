@@ -168,6 +168,47 @@ func _evil_backs_into_a_walker() -> void:
 		Press._pressed_caught_out(w, e, 1, _contra(1))
 		Press._pressed_caught_out(w, e, 1, _contra(1))
 		claimed_backed = claimed_backed or str(w.evil_plan["bluffs"][e.id]) != "clerk"
+	# Nor a Revenant-turned townsperson (its real gift is its cover), and one re-press counts as
+	# one question (Codex on #560).
+	var turned_backed := false
+	var double_count := false
+	var turned_cases := 0
+	var backup_cases := 0
+	for sd in range(3200, 3240):
+		var w = _world(sd)
+		var e = null
+		for m in w.evil_team():
+			if C.is_minion(m.role) and m.role != "scion" and not m.turned:
+				e = m
+				break
+		if e == null:
+			continue
+		var plain: String = "clerk"
+		w.evil_plan["bluffs"][e.id] = plain
+		e.claimed_role = ""
+		e.claim_public = false
+		e.max_tier = 1
+		e.history[w.time_key(1, C.NIGHT)] = "night:" + w.living().filter(func(m): return m != e and m.home_block != e.home_block)[0].home_block
+		if Press.spare_walking_gifts(w, e, 1).is_empty():
+			continue
+		Press._pressed_caught_out(w, e, 1, _contra(1))
+		var before_q: int = e.pressed_today
+		Press._pressed_caught_out(w, e, 1, _contra(1))
+		if str(w.evil_plan["bluffs"][e.id]) != plain:
+			backup_cases += 1
+			double_count = double_count or e.pressed_today - before_q != 1
+		var w2 = _world(sd)
+		var t = w2.living_good().filter(func(m): return not C.ROLES[m.role].get("night_walk", false))[0]
+		w2.turn_evil(t, "test")
+		t.history[w2.time_key(1, C.NIGHT)] = "night:" + w2.living().filter(func(m): return m != t and m.home_block != t.home_block)[0].home_block
+		if t.is_evil():
+			turned_cases += 1
+			Press._pressed_caught_out(w2, t, 1, _contra(1))
+			Press._pressed_caught_out(w2, t, 1, _contra(1))
+			turned_backed = turned_backed or str(w2.evil_plan["bluffs"][t.id]) != t.role
+	print("turned cases %d; backups checked for question count %d" % [turned_cases, backup_cases])
+	_check(turned_cases >= 5 and not turned_backed, "a Revenant-turned townsperson never backs into another gift")
+	_check(backup_cases >= 3 and not double_count, "backing into a gift counts the re-press as one question")
 	print("backed into a walking gift on the second press: Minion %d/%d, Demon %d/%d" % [backed["minion"], tried["minion"], backed["demon"], tried["demon"]])
 	_check(tried["minion"] >= 8 and tried["demon"] >= 8, "enough cases with a spare walking gift were found")
 	_check(backed["minion"] > 0 and backed["demon"] > 0, "pressed again, evil sometimes backs into a spare walking gift")
