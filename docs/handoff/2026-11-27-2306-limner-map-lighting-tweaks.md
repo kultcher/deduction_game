@@ -3,13 +3,13 @@
 - **Agent:** Claude-Limner
 - **Base:** origin/main `a88b83ba`
 - **Status:** PR open. Presentation only: golden can't move.
-- **Next actor:** Bailiff to merge. Michael is still choosing a morning grade from Limner's
-  sheets (`mock/morning-grades`), so the morning is left as it is.
+- **Next actor:** Bailiff to merge.
 - **Decisions:** Michael, Nov 27, through Seneschal, after Limner's review of #556:
   - hide the grade in an idle afternoon, if that's simple (he OK'd Limner doing it rather
     than Argon);
   - grade the standees less at night, so faces stay readable;
-  - don't change the morning yet.
+  - don't change the morning yet; then, from Limner's three options on `mock/morning-grades`
+    (B softer gold, C rose dawn, D light touch), Michael picked **C, rose dawn**.
 
 ## What changed
 
@@ -26,6 +26,11 @@
 - **`tools/test_map_lighting.gd`:** five checks (now 25): a settled afternoon switches the
   grade and its copy off; a transition switches them back on; night keeps the grade; night
   standees keep a mild, readable tint; afternoon standees are untinted.
+
+- **The morning grade** (`ui/map_lighting.gdshader`, `grade_morning`): now rose dawn, a rosier,
+  cooler early light with no warm lift. The sandy paths and lots keep their paper texture
+  instead of going flat yellow. The dawn wave's ramp still ends on it. The morning standee
+  tint follows, a touch rosier.
 
 ## Measured
 

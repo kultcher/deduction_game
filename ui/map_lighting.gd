@@ -29,7 +29,7 @@ var on_change: Callable = Callable()
 
 ## The townspeople standees are drawn above the grade with a milder tint of their own, so
 ## faces stay readable at night (Michael, Nov 27). Morning, afternoon, evening, night.
-const STANDEE_TINTS = [Color(1.0, 0.97, 0.9), Color(1, 1, 1), Color(0.88, 0.91, 1.0), Color(0.74, 0.8, 0.96)]
+const STANDEE_TINTS = [Color(1.0, 0.96, 0.94), Color(1, 1, 1), Color(0.88, 0.91, 1.0), Color(0.74, 0.8, 0.96)]
 
 
 func attach(owner: Control) -> void:
