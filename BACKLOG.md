@@ -56,6 +56,19 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. A case archive `[decided: direction]`
   9. Scoring system `[open]`
   10. Storyteller/director and solvability check `[open]`
+- [Release readiness](#release-readiness)
+  1. Platforms and resolution `[decided: direction]`
+  2. Developer tools in player builds `[decided]`
+  3. A Settings menu `[decided: direction]`
+  4. A title screen, or main menu `[decided: direction]`
+  5. How to Play `[decided: direction]`
+  6. Credits, licences and a visible version `[decided: direction]`
+  7. Quit confirmation `[decided: direction]`
+  8. Case notes that are actually saved `[decided: direction]`
+  9. Mid-case save and resume `[decided: direction]`
+  10. Basic UI sound effects `[decided: direction]`
+  11. A "case history" module `[open]`
+  12. Shrinking the assets `[decided: direction]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -523,6 +536,52 @@ The one performance item, "Late-game meeting and presenting cost", is in
     commune with his spirit", chosen by a director. (Oct 19) [open] (Folded in Nov 18, Michael.)
 
 ---
+
+## Release readiness
+
+From Argon's release audit ([the release audit](docs/maintenance/codebase_and_release_audit_2026-11-27.md), merged in #563). Michael accepted these on Nov 27. Each cites
+the audit section it comes from. The fix-as-you-go bugs went straight to the leads, and the
+architecture items are still a proposal for Michael, so neither is here.
+
+- **Platforms and resolution** (audit Part 2, and P2 item 11). Windows is the primary target, and
+  the Steam Deck (1280×800, 16:10) is worth pursuing. The scope:
+  - readable fonts at 720p and on the Deck;
+  - a clamp for the ultrawide centre stage;
+  - clamped windows;
+  - bundled open-licence fonts.
+
+  **From now on, new UI is checked at 1280×800 as well as 1080p.** Owner Herald.
+  [decided: direction]
+- **Developer tools in player builds** (audit P1 items 7 and 8).
+  - **Hidden in release builds:** the Debug checkbox, Write dev log, and the raw command line.
+  - **Kept:** the case seed box, since players may share seeds.
+  - **Logging:** the logging itself stays, since Michael plans a case history that may build on
+    it (below). The end-of-case file dumps stop going into the player's log with an OS path,
+    and the heavy tracing is gated on a debug flag. How much feeds the case history is to decide
+    with Michael.
+
+  Owners Herald, with Bailiff. [decided]
+- **A Settings menu** (audit P0 items 4 and 5): display mode, resolution, UI scale, music
+  volume and mute, and reduced motion remembered. Owner Herald. [decided: direction]
+- **A title screen, or main menu** (audit P1 item 9). Owner Herald. [decided: direction]
+- **How to Play** (audit P1 item 9): after the mechanics settle, under onboarding ("Learning
+  resources", section 4). Owner Herald. [decided: direction]
+- **Credits, licences and a visible version** (audit P1 item 9). Owners Herald, and Bailiff for
+  the version. [decided: direction]
+- **Quit confirmation**, including the window's close button (audit P1 item 6). Owner Herald.
+  [decided: direction]
+- **Case notes that are actually saved** (audit P1 item 6). Today they say "saved as you type",
+  but live only in memory. Owner Herald. [decided: direction]
+- **Mid-case save and resume** (audit P1 item 6). A large item: Herald for the UI, and the sim
+  state needs Lantern and Beadle. [decided: direction]
+- **Basic UI sound effects** (audit P0 item 4). Owners Herald, and Limner for sourcing.
+  [decided: direction]
+- **A "case history" module** (Michael's idea, Nov 27): a post-game breakdown, possibly built on
+  the logging (above). It's to shape with Vicar. Related: "A case archive" (section 4) and the
+  grim reveal. [open]
+- **Shrinking the assets** (audit P2 item 10). Compress and prune about 380 MB of lossless PNGs
+  and unused prototype folders, likely much of it redundant. Do it late, and show Michael samples
+  before any lossy step. It belongs to the final phases. Owner Limner. [decided: direction]
 
 ## Workshop gaps (NYI)
 
