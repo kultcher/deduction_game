@@ -31,7 +31,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided: direction; held, Michael, Nov 23]`
+    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
     6. Caught out and pressed again: what's left `[decided]`
@@ -50,7 +50,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Vigil request and reward rework `[deferred]`
   3. What does Insight do now? `[deferred]`
   4. The Breathstealer overhaul `[decided: add; option open]`
-  5. \*The secrets rework `[decided; values open]`
+  5. Burdens: what's left after landing `[open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
   8. A case archive `[decided: direction]`
@@ -67,9 +67,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Brute kills scored as hexes on custom scripts `[later]`
   3. Gift doubt for readings the judge doesn't check `[open]`
   4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  5. \*Per-person Demon odds for gifts that target the Demon `[decided]`
-  6. "Not being seen out" as evidence `[open]`
-  7. Observable actions as evidence (Stage 1B) `[tentative]`
+  5. "Not being seen out" as evidence `[open]`
+  6. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -473,45 +472,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     (`DayPresence.breath_factor`), and since #157 (Nov 14) it assumes a Breathstealer that
     hunts. Check what's still missing for the player before choosing an option. (Folded in Nov 18, Michael.)
 
-- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
-  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
-  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
-  ones the holder knows about become ordinary claims, which evil can bluff, and the player
-  can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
-  Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
-  "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
-  Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
-  answered every open question the same day, and chose judge model A. **Prototype stage 1
-  started** (Michael approved, Nov 20) on `mock/burdens-slot`: Lantern on the slot world domain
-  with Marked known, Beadle on Marked's disclosure, defence and bluff, and both retiring the
-  Lovers and Sleepwalker 1.0. All in
-  [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
-  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
-  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
-  it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
-  good NPCs may lie about their gift with a reason; every secret is unique; the hidden kinds
-  (probably Delusional and Sleepwalker) are mutually exclusive by script. Not decided yet:
-  plain folk and confidants (section 10). [open]
-  - **Values set (Michael, Nov 21; burdens.md section 14):**
-    - the Unrequited walks 65% of nights, at least every other night;
-    - the generic 10% secret-errand allowance retires;
-    - an Unrequited reveal costs good listeners' trust like a spread secret;
-    - the spell breaks at "truly suspects".
-
-    The stage-2 judge model is held for Argon's report.
-  - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
-    pairing with a good person only works if real Lovers sometimes leave each other out to
-    dry. **If evil ever fakes a Lovers confession**, `Solver.lovers_needs` (and its use in
-    `Solver._solve` and `CaseEval._compile_impl`) must stop treating a confession as proof.
-    [open] (Folded in Nov 18, Michael.)
-  - **Secret awareness and bluffing.** Lovers' confessions carry a usable secret type and
-    can explain night movement. Since #162 (triage 5.9) a Lovers confession also names the
-    partner, and the solver treats it as proof of both, because evil never fakes one
-    (`Solver.lovers_needs`). Triage 5.8 belongs here too: presenting a card about someone's
-    secret to that person got Lian to disclose her gift. Michael: to an individual, present
-    either a case or a card with a defined interaction. Decide whether holders know they're Marked, how one asks
-    about it, and how evil can claim it too. Keep these as attributed claims, not alignment
-    confirmations. (61251/25923) [open] (Folded in Nov 18, Michael.)
+- **Burdens: what's left after landing** (from "The secrets rework", which landed in #547,
+  Nov 23). Design in [docs/design/burdens.md](docs/design/burdens.md). On deck there: Carouser and
+  Sleepwalker 2.0; later, Night Caller, Objector and Grudge.
   - **Ways to discover and confront secrets:** sightings that don't fit, confidants, a
     "you have a secret" card used as leverage. (Personal items came out on Nov 19, when
     Michael decided to remove them.) [open] (Folded in Nov 18, Michael.)
@@ -519,6 +482,8 @@ The one performance item, "Late-game meeting and presenting cost", is in
     first-use and repeated breach losses and the permanent caps, keeping a real betrayal
     consequence while allowing proportionate recovery, with apologies and confidentiality
     promises. [decided; values open] (Folded in Nov 18, Michael.)
+
+  [open]
 
 - **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
   18; restored Nov 8) Three layers, from one data registry so they never drift:
@@ -625,11 +590,6 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   refresh never read through a theory and live play didn't use it by default, so it is
   deleted with the purge. Revisit for the connections model. The code survives on the
   branch `archive/legacy-belief-final`. **[tentative]**
-- **Per-person Demon odds for gifts that target the Demon** (Michael, Nov 21). A Seer picks
-  the person most likely to be the Demon, not the most likely evil. That needs each NPC to hold
-  a per-person chance of being the Demon specifically. Being built on the Burdens prototype. From
-  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1. Owner Lantern;
-  Beadle uses it for the Seer's picks. **[decided]**
 - **"Not being seen out" as evidence** (Michael, Nov 21). Today nothing clears someone for not
   having been seen out at night: the judge ignores the chance of being spotted, and only a
   complete watch list or coverage says someone wasn't out. It goes under the circumstantial

@@ -46,7 +46,7 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
 - **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards; two or more claims of one gift).
 - **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart. The bar follows Insight (Michael, Nov 17): 0.8 for the dullest NPC, 0.1 for the sharpest, in a straight line between, at every town size (it was 0.4 for everyone). See "Insight sets the core's bar" below.
   - The seed is its own readings, the night holding a Night Watch's or Lamplighter's own reports, and a night it was wrongly sighted ("he says he saw me out, and I wasn't").
-    - *Planned (Michael, Nov 21; built on `mock/burdens-slot`, lands with Burdens):* the wrongly sighted night leaves the seed. See "Firsthand means only what the NPC itself read, saw or did" below.
+    - *Built (Michael, Nov 21; landed with Burdens, #547):* the wrongly sighted night leaves the seed. See "Firsthand means only what the NPC itself read, saw or did" below.
   - Each candidate is tested against the seed only, so order can't matter and the core can't snowball.
   - Rebuilt at dawn. A newly heard card is tested when it arrives, so an NPC can catch a lie the day it hears it.
   - A presentation never edits the core. What the seed proves alone stays proved.
@@ -779,7 +779,7 @@ told only once a walking gift that explains them has been claimed (Beadle, follo
 
 ### Firsthand means only what the NPC itself read, saw or did (Michael, Nov 21)
 
-*Planned: built on `mock/burdens-slot`, and it lands on main with Burdens.* From the BACKLOG_POLISH item "Being lied about can pull in evidence that clears the liar".
+*Built: it landed on main with Burdens (#547).* From the BACKLOG_POLISH item "Being lied about can pull in evidence that clears the liar".
 - **The rule:** firsthand means only what the NPC itself read, saw or did. Anything someone else said is secondhand.
 - **The change:** someone else's sighting of the NPC, on a night the NPC knows it was home, no longer seeds its core. That was the core's only secondhand seed.
   - The sighting still counts fully against its teller, because the NPC's own knowledge that it was home contradicts it.

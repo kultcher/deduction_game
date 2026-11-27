@@ -24,6 +24,89 @@ session notes are kept for the record; code pointers may have moved since.
     `Tuning.Roles.GRAVEDIGGER.hanging_lean` (0.08; renamed from `nothing_to_read_lean`), and the
     vote part is logged as `gravedigger_wants_hanging`. The item was left open by mistake.
 
+## Built, Nov 23–27, 2026 (closed by Claude-Vicar)
+
+- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
+  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
+  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
+  ones the holder knows about become ordinary claims, which evil can bluff, and the player
+  can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
+  Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
+  "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
+  Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
+  answered every open question the same day, and chose judge model A. **Prototype stage 1
+  started** (Michael approved, Nov 20) on `mock/burdens-slot`: Lantern on the slot world domain
+  with Marked known, Beadle on Marked's disclosure, defence and bluff, and both retiring the
+  Lovers and Sleepwalker 1.0. All in
+  [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
+  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
+  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
+  it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
+  good NPCs may lie about their gift with a reason; every secret is unique; the hidden kinds
+  (probably Delusional and Sleepwalker) are mutually exclusive by script. Not decided yet:
+  plain folk and confidants (section 10). [open]
+  - **Values set (Michael, Nov 21; burdens.md section 14):**
+    - the Unrequited walks 65% of nights, at least every other night;
+    - the generic 10% secret-errand allowance retires;
+    - an Unrequited reveal costs good listeners' trust like a spread secret;
+    - the spell breaks at "truly suspects".
+
+    The stage-2 judge model is held for Argon's report.
+  - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
+    pairing with a good person only works if real Lovers sometimes leave each other out to
+    dry. **If evil ever fakes a Lovers confession**, `Solver.lovers_needs` (and its use in
+    `Solver._solve` and `CaseEval._compile_impl`) must stop treating a confession as proof.
+    [open] (Folded in Nov 18, Michael.)
+  - **Secret awareness and bluffing.** Lovers' confessions carry a usable secret type and
+    can explain night movement. Since #162 (triage 5.9) a Lovers confession also names the
+    partner, and the solver treats it as proof of both, because evil never fakes one
+    (`Solver.lovers_needs`). Triage 5.8 belongs here too: presenting a card about someone's
+    secret to that person got Lian to disclose her gift. Michael: to an individual, present
+    either a case or a card with a defined interaction. Decide whether holders know they're Marked, how one asks
+    about it, and how evil can claim it too. Keep these as attributed claims, not alignment
+    confirmations. (61251/25923) [open] (Folded in Nov 18, Michael.)
+  - **Ways to discover and confront secrets:** sightings that don't fit, confidants, a
+    "you have a secret" card used as leverage. (Personal items came out on Nov 19, when
+    Michael decided to remove them.) [open] (Folded in Nov 18, Michael.)
+  - **Softer secret breaches.** Secret-keeping rapport now decays nightly. Still to review:
+    first-use and repeated breach losses and the permanent caps, keeping a real betrayal
+    consequence while allowing proportionate recovery, with apologies and confidentiality
+    promises. [decided; values open] (Folded in Nov 18, Michael.)
+
+  > **Closed Nov 27:** built. Burdens landed on main in Lantern's #547 (cut from `mock/burdens-slot`), with the Marked middle option in Argon's #555. The Lovers and Sleepwalker 1.0 retired, so "Lovers as an excuse" and the Lovers half of "Secret awareness and bluffing" are moot; the Marked half was decided in burdens.md. "Ways to discover and confront secrets" and "Softer secret breaches" carry over to the new item "Burdens: what's left after landing".
+
+- **Per-person Demon odds for gifts that target the Demon** (Michael, Nov 21). A Seer picks
+  the person most likely to be the Demon, not the most likely evil. That needs each NPC to hold
+  a per-person chance of being the Demon specifically. Being built on the Burdens prototype. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1. Owner Lantern;
+  Beadle uses it for the Seer's picks. **[decided]**
+
+  > **Closed Nov 27:** built. Lantern #550 (`DemonCandidates.demon_chances_of_npc`) and Beadle #549 (the Seer picks by it).
+
+- **Being lied about can pull in evidence that clears the liar** (Michael, Nov 20; seed
+  100002).
+  - **What happened:** Edda's core, re-anchored on the night she was lied about, takes in a
+    rumour that "one of Bart and Jory is Delusional". That undercuts Jory's watch of Hollis,
+    and Hollis falls 78% → 71% overall.
+  - **Seed 100002 was resolved by #474** ("A sighting places its teller"): Hollis's lie now
+    counts against him by about 7 points.
+  - **Moved here (Michael, Nov 21),** since it's unlikely to matter much in most games. It's a
+    belief item, not presentation, so it's the exception to this file's rule, kept here as
+    low priority.
+  - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
+    within its own night, and its comment points to this item.
+
+  - **Decided (Michael, Nov 21):** firsthand means only what the NPC itself read, saw or did.
+    Someone else's sighting of it on a night it was home no longer seeds its core, but still
+    counts fully against the teller. Lantern's figures, as relayed: Lian 82% → 92% on 100100,
+    and 62% → 99% on 100027. Built on `mock/burdens-slot`; it lands with Burdens, and
+    this item closes then. Still being measured: whether the NPC's own sightings and vigils
+    should seed its core. See `docs/belief_model.md`.
+
+  Owner Lantern. [decided; lands with Burdens]
+
+  > **Closed Nov 27:** built; it landed with Burdens (#547), as its entry said it would.
+
 ## Built, Nov 22, 2026 (closed by Claude-Vicar)
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on

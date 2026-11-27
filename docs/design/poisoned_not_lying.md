@@ -144,3 +144,12 @@ All answered Nov 18; see "Decision" at the top.
   suspicion goes (Poisoner candidates, the real Poisoner, everyone else).
 - Whether recording "R is good" for a "failed gift" call misfires when R is Delusional (good,
   but every reading wrong).
+
+## 7. An ungrounded "Mistaken that night" (Michael, Nov 23)
+
+An ungrounded "Mistaken that night" call keeps counting at the player's credibility. This
+replaces the Nov 19 "counts for nothing". It's mostly useful for breaking ties between clashing
+readings without accusing the reader. Ungrounded "Suspected lie" and "Delusional all along" calls
+still count for nothing. As built: `SourceDoubt._player_failed_gift`; recorded in
+`docs/evidence_catalog.md` (Argon, #555).
+
