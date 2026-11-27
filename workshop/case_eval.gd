@@ -503,6 +503,6 @@ static func strength_from(r: Dictionary) -> Dictionary:
 			reason = "It rests on one card."
 		elif r.pivotal.is_empty():
 			reason = "Several lines of evidence agree."
-		else:
-			reason = "It rests on %d cards together." % r.pivotal.size()
+		# Several pivotal cards: no reason line. "It rests on N cards together" was cut
+		# (Michael, Nov 27, case #136): a Moderate case already draws votes, and needs no excuse.
 	return {"category": r.category, "text": category_text(r.category), "reason": reason, "lr": r.lr}

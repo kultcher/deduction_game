@@ -91,8 +91,19 @@ static func time_label(t: Dictionary) -> String:
 	return "D%d%s" % [t["day"], ["M", "A", "E"][clampi(t["phase"], 0, 2)]]
 
 ## People a card is about (not who said it): subjects, plus everyone a reading names.
+## Presentation only: each person's home block, set by Game.new_case, so a reading about a
+## block's residents counts as about them (52102 finding 5). The simulation never reads it.
+static var homes: Dictionary = {}
+
 static func about(card: Dictionary) -> Array:
 	var out: Array = card.get("subject", []).duplicate()
+	if str(card.get("kind", "")) in ["info", "report"] and C.has_role_def(str(card.get("role", ""))):
+		var rdef = C.role_def(str(card.get("role", "")))
+		var blk: String = rdef.residents_block(card.get("data", {})) if rdef != null else ""
+		if blk != "":
+			for id in homes:
+				if homes[id] == blk and not (id in out):
+					out.append(id)
 	var d: Dictionary = card.get("data", {})
 	for key in ["pair", "nbrs", "seen", "trio"]:
 		for x in d.get(key, []):

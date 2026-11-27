@@ -28,6 +28,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
     2. Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval` `[open]`
+    3. A case-strength helper that names what would firm the case up `[decided: direction]`
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
@@ -135,6 +136,20 @@ Lantern). Nothing is open here.
   relative band/LR comparison rather than raw `0.2 / 0.5` (which dampened `heard` rarely
   reaches), and decide whether NPC `present_points_elsewhere` should stay aligned with it.
   [open]
+
+- **A case-strength helper that names what would firm the case up** (Michael, Nov 27, via
+  Seneschal; he discussed it with Argon earlier). When a case rests on several unverified
+  claims or on people taken as good, the Workshop says which ones, and what kind of evidence
+  would strengthen it. For example: "your case rests on Constance and Greta being good; a
+  Confessor's yes or a Dowser clear on either would strengthen it."
+  - **Owner:** Quill for what's computed: which premises, answers and people the case's
+    strength leans on (the judge's pivotal cards and the case's assumptions), and which gifts
+    or evidence kinds could settle each.
+  - **Herald** owns how it's shown and worded.
+  - **Not yet decided:** where it shows (the badge's words, a hover, the Why readout), how
+    many items it names, and whether it names only gifts on the script.
+
+  [decided: direction]
 
 ### NPC behaviour
 

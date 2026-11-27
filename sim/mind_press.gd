@@ -81,7 +81,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
 	var trace_fits_me: bool = card.get("kind") == "trace" and card.get("trace_family", "") != "" and w.actor_fits_trace_truth(n, {"trace_family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "day": card.get("day", -1)})
-	var about_me = trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
+	# A reading about their block's residents (a Surveyor's parity) is about them (52102 finding 5).
+	var rdef_p = C.role_def(str(card.get("role", ""))) if str(card.get("kind", "")) in ["info", "report"] and C.has_role_def(str(card.get("role", ""))) else null
+	var my_block: bool = rdef_p != null and rdef_p.residents_block(card.get("data", {})) != "" and rdef_p.residents_block(card.get("data", {})) == n.home_block
+	var about_me = my_block or trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		_dialogue().on_question(w, n)
 		lines.append(say_voiced(n, "press_not_about_me", "What has that to do with me?"))

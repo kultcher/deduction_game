@@ -288,6 +288,9 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	w.case_script = case_script
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	RoleDef.script_secrets = w.case_script.secrets.duplicate() if w.case_script != null else []
+	CardModel.homes = {}
+	for m in w.npcs:
+		CardModel.homes[m.id] = m.home_block
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
 	state = "day"
