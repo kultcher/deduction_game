@@ -14,5 +14,5 @@ close-up of the central green, paths and lots below. Case 7 at 1920×1080.
 Limner's recommendation: **B**. It keeps what Argon was going for, a golden morning that
 reads differently from the afternoon, while giving the paper back.
 
-`night_faces.jpg` shows the separate change already made in #559-ish (`claude/map-lighting-tweaks`):
+`night_faces.jpg` shows the separate change made in PR #559:
 night faces before (left) and after (right).
