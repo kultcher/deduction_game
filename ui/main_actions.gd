@@ -248,7 +248,7 @@ static func day(m, w) -> void:
 				m.map.zoom_to("")
 				refresh(m))
 		else:
-			hint(m, "Examine a block to look closer, or click a person to inspect their profile.")
+			hint(m, "Examine a block to look closer.")
 			for b in C.BLOCKS.keys():
 				var blk: String = b
 				m._button(m.actions, "Examine %s" % C.block_name(blk), func():
