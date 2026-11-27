@@ -69,7 +69,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   10. Basic UI sound effects `[decided: direction]`
   11. A "case history" module `[open]`
   12. Shrinking the assets `[decided: direction]`
-  13. Architecture cleanup `[decided: direction]`
+  13. Sharp UI plaques at 1440p and 4K `[decided: direction]`
+  14. Architecture cleanup `[decided: direction]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -583,6 +584,17 @@ architecture items are still a proposal for Michael, so neither is here.
 - **Shrinking the assets** (audit P2 item 10). Compress and prune about 380 MB of lossless PNGs
   and unused prototype folders, likely much of it redundant. Do it late, and show Michael samples
   before any lossy step. It belongs to the final phases. Owner Limner. [decided: direction]
+
+- **Sharp UI plaques at 1440p and 4K** (audit Part 2, item 5, the second half; Michael, Nov 27).
+  Low priority.
+  - **The problem:** plaques and signs are shrunk on the CPU to about 34 px at logical size,
+    then stretched by the content scale, so they blur on high-DPI screens. Herald is fixing the
+    first half of that audit item, the cache leak.
+  - **The fix:** keep the art at full or 2× resolution, and draw it as a nine-patch with
+    separate source and screen margins, through a custom draw or RenderingServer's nine-patch.
+    That drops the CPU resize.
+
+  Owner Limner, with Herald consulted on `ui/theme.gd`. [decided: direction]
 
 - **Architecture cleanup** (audit Part 4; Michael, Nov 27). It's opportunistic: do each part
   when a lead is already working in that code.
