@@ -208,6 +208,32 @@ func _evil_backs_into_a_walker() -> void:
 			turned_backed = turned_backed or str(w2.evil_plan["bluffs"][t.id]) != t.role
 	print("turned cases %d; backups checked for question count %d" % [turned_cases, backup_cases])
 	_check(turned_cases >= 5 and not turned_backed, "a Revenant-turned townsperson never backs into another gift")
+	# Nor once it has named its bluff to another NPC in private (Codex on #560).
+	var told_cases := 0
+	var told_backed := false
+	for sd in range(3200, 3240):
+		var w = _world(sd)
+		var e = null
+		for m in w.evil_team():
+			if C.is_minion(m.role) and m.role != "scion" and not m.turned:
+				e = m
+				break
+		if e == null:
+			continue
+		w.evil_plan["bluffs"][e.id] = "clerk"
+		e.claimed_role = ""
+		e.claim_public = false
+		e.max_tier = 1
+		e.history[w.time_key(1, C.NIGHT)] = "night:" + w.living().filter(func(m): return m != e and m.home_block != e.home_block)[0].home_block
+		if Press.spare_walking_gifts(w, e, 1).is_empty():
+			continue
+		var heard = w.living_good()[0]
+		heard.known_claims[e.id] = {"role": "clerk"}
+		told_cases += 1
+		Press._pressed_caught_out(w, e, 1, _contra(1))
+		Press._pressed_caught_out(w, e, 1, _contra(1))
+		told_backed = told_backed or str(w.evil_plan["bluffs"][e.id]) != "clerk"
+	_check(told_cases >= 5 and not told_backed, "never once it has named its bluff to another NPC in private")
 	_check(backup_cases >= 3 and not double_count, "backing into a gift counts the re-press as one question")
 	print("backed into a walking gift on the second press: Minion %d/%d, Demon %d/%d" % [backed["minion"], tried["minion"], backed["demon"], tried["demon"]])
 	_check(tried["minion"] >= 8 and tried["demon"] >= 8, "enough cases with a spare walking gift were found")

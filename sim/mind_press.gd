@@ -468,6 +468,12 @@ static func _backup_walking_gift(w, n, night: int) -> Dictionary:
 	# double claim exclude it).
 	if n.turned or n.claim_public or n.max_tier >= 3 or n.claimed_role != "":
 		return {}
+	# Named to another NPC, or a made-up reading of it told: the listener holds the claim, not
+	# the speaker (Codex on #560), as choose_double_claim checks.
+	if w.npcs.any(func(o): return o != n and str(o.known_claims.get(n.id, {}).get("role", "")) != ""):
+		return {}
+	if n.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
+		return {}
 	var spare: Array = spare_walking_gifts(w, n, night)
 	if spare.is_empty():
 		w.dlog.think(n.id, "pressed_again", "Pressed again about night %d: no unclaimed walking gift fits; stays with \"being out isn't wicked\"." % night, {"spare": 0})

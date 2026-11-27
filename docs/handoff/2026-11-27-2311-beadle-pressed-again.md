@@ -29,7 +29,8 @@
     `PRESSED_AGAIN_BACKUP_CAREFUL` (0.3, new) for the Demon or a Scion;
   - it switches its bluff (the existing `_change_bluff`, which backfills a first-night reading),
     logs the lie with its reason, and answers as the gift;
-  - never once it has named a gift to anyone, publicly or in private, and never a
+  - never once it has named a gift to anyone, publicly or in private (including to another
+    NPC, which only the listener records, or by telling a made-up reading), and never a
     Revenant-turned townsperson, whose real gift is its cover (Codex on #560). With no spare
     walking gift, it stays with "being out isn't wicked": wary of a double claim;
   - the re-press counts as one question, not two (Codex on #560).
@@ -45,15 +46,15 @@
 
 ## Measured
 
-- **New:** `tools/test_pressed_again.gd`, 14 checks, on the slow CI list (about 50 seconds):
+- **New:** `tools/test_pressed_again.gd`, 15 checks, on the slow CI list (about 50 seconds):
   - 30 deals from seed 3000: 20 closed NPCs kept the reason at the first press, and all 20
     gave it within six more presses;
   - a truly-home NPC loses trust in the asker on the second press, not the first;
   - from seed 3200, on the second press: a Minion backed into a spare walking gift in 9 of 16
     cases, the Demon in 6 of 14. Both counts are small. Never on the first press, never into a
     gift that doesn't explain the night, never once it has named a gift;
-  - never a turned townsperson (12 cases), and the backup counts one question (5 cases). Both
-    checks fail with their guard removed.
+  - never a turned townsperson (12 cases), never once it has named its bluff to another NPC,
+    and the backup counts one question (5 cases). Each check fails with its guard removed.
 - **Also pass:** test_caught_lie_softening, test_caught_lying, test_caught_out_ladder,
   test_press_caught_out, test_press_contradiction, test_press_night_case,
   test_silence_pressure, test_trapped_explanation, test_dialogue_voices,
