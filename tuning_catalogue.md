@@ -483,9 +483,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_press.gd` |
 | `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_press.gd` |
 | `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind_cases.gd` |
-| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
-| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
+| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
+| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
+| `GUESS_NERVES_STRENGTH` | `0.5` | "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up gets the same deflection as a wrong one, and either may show the press's nervous tell, at PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this. | `sim/social_approaches.gd` |
 | `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_answers.gd` |
 | `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_answers.gd` |
 | `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |

@@ -765,6 +765,10 @@ class Dialogue:
 	const PRESS_NERVES_HIDING = 0.6
 	const PRESS_NERVES_HONEST = 0.2
 	const PRESS_PRESSURE_GAIN = 0.35
+	## "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up
+	## gets the same deflection as a wrong one, and either may show the press's nervous tell, at
+	## PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this.
+	const GUESS_NERVES_STRENGTH = 0.5
 
 	## Night whereabouts, confession, stonewalling & slip rates
 	const CONFESS_TRUST_PIVOT = 0.6
