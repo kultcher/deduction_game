@@ -285,6 +285,9 @@ static func greeting_context(g, n) -> Dictionary:
 
 
 static func _talk_options(g, n) -> String:
+	if n.silenced:
+		# They can't answer (playtest 52102, seq 747): only what doesn't need their voice.
+		return "(silenced: present <card#> [for|against <name>] | offer ward|vigil (free) | bye)"
 	var why = " | ask why" if Mind.has_live_hint(g.w, n) else ""
 	return "(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % why
 

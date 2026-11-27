@@ -319,13 +319,13 @@ func save() -> void:
 	if id == "" or g == null:
 		return
 	if not g.w.game_over:
-		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
+		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt), "profile_save")
 	changed.emit()
 
 func _save_guess() -> void:
 	if _setting or g == null or current() == "" or g.w.game_over:
 		return
-	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
+	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt), "profile_menu")
 	changed.emit()
 
 func _open_profile_menu(target: Dictionary, at: Vector2i) -> void:

@@ -174,18 +174,35 @@ func _relayed_claim(n) -> Dictionary:
 ## list keeps the lines it showed then and ignores the pointer: nothing of the next phase
 ## shows through a hover, a click or a tooltip until the player leaves.
 var _frozen = null   # id -> sub line, or null when live
+var _primed = null   # the lines as they stood just before the last command (playtest 52102)
 
 func freeze() -> void:
 	if _frozen != null or g == null:
 		return
-	_frozen = {}
-	for n in g.w.npcs:
-		_frozen[n.id] = _sub_line(n)
+	# A command that ends the phase has already moved the world on by the time the hold
+	# freezes the list, so freeze what stood before it ran (playtest 52102).
+	if _primed != null:
+		_frozen = _primed
+	else:
+		_frozen = {}
+		for n in g.w.npcs:
+			_frozen[n.id] = _sub_line(n)
+	_primed = null
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hover = ""
 	queue_redraw()
 
+## Notes the lines as they stand, just before a command runs: if it ends the phase and the
+## screen holds the old one, freeze() shows these (playtest 52102).
+func prime() -> void:
+	if _frozen != null or g == null:
+		return
+	_primed = {}
+	for n in g.w.npcs:
+		_primed[n.id] = _sub_line(n)
+
 func thaw() -> void:
+	_primed = null
 	if _frozen == null:
 		return
 	_frozen = null

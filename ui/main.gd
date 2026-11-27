@@ -355,6 +355,7 @@ func _run_workshop(cmd: String, progress: Callable) -> void:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
+	cast_list.prime()
 	_print(await g.workshop_command(cmd, progress))
 	_capture_conversation(previous_state, cmd)
 	if not conversation_finished:
@@ -388,6 +389,7 @@ func _run(cmd: String) -> void:
 		_print(g.command(cmd))   # refused; no new events
 		return
 	var phase_before: Array = [g.w.day, g.w.phase, g.state in ["meeting", "nomination"]]
+	cast_list.prime()
 	var out: String = g.command(cmd)
 	# A conversation that ran out of questions ended the phase too: what comes after it (the
 	# next phase's header, the meeting's headline, who was silenced) waits in the log until

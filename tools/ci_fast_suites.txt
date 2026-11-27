@@ -132,6 +132,7 @@ test_peer_role_gossip
 test_place_icons
 test_player_failed_gift
 test_playtest_23973
+test_playtest_52102
 test_playtest_89077
 test_playtest_ui_nov22
 test_points_elsewhere

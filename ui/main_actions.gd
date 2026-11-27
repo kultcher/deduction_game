@@ -299,19 +299,25 @@ static func talk(m, w) -> void:
 		m._button(m.actions, ask + " (free)", func(): m._run("yes"), C.npc_color(n.id))
 		m._button(m.actions, "Say no (free)", func(): m._run("no"))
 		hint(m, "Anything else you do counts as no.")
-	var gb = m._button(m.actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
-	gb.pressed.connect(func(): Pickers.ask_gift(m, gb))
+	# Silenced: they can't answer, so no questions are offered (playtest 52102, seq 747); they
+	# can still read a card, take an offer, and be left.
+	if n.silenced:
+		hint(m, "%s can't speak until tomorrow evening." % n.name)
+	else:
+		var gb = m._button(m.actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
+		gb.pressed.connect(func(): Pickers.ask_gift(m, gb))
 	var ob = m._button(m.actions, "Offer…  ▸", func(): pass)
 	ob.pressed.connect(func(): Pickers.offer(m, ob))
-	var wb = m._button(m.actions, "Ask where they were and who they saw…  ▸", func(): pass)
-	wb.pressed.connect(func(): Pickers.ask_when(m, wb))
-	var ab = m._button(m.actions, "Ask about others…  ▸", func(): pass)
-	ab.pressed.connect(func(): Pickers.ask_about(m, ab))
+	if not n.silenced:
+		var wb = m._button(m.actions, "Ask where they were and who they saw…  ▸", func(): pass)
+		wb.pressed.connect(func(): Pickers.ask_when(m, wb))
+		var ab = m._button(m.actions, "Ask about others…  ▸", func(): pass)
+		ab.pressed.connect(func(): Pickers.ask_about(m, ab))
 	var asks: Dictionary = {"seer": "check", "registrar": "check", "warden": "guard", "nightwatch": "watch"}
-	if (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
+	if not n.silenced and (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
 		var rb = m._button(m.actions, "Ask them to use their gift tonight…  ▸", func(): pass)
 		rb.pressed.connect(func(): Pickers.gift_request(m, rb, n.claimed_role, asks[n.claimed_role]))
-	for k in n.hints:
+	for k in ([] if n.silenced else n.hints):
 		if w.by_id[k].alive:
 			# They hinted at a private reason at the meeting: ask them for it.
 			m._button(m.actions, "Ask why they suspect %s" % w.by_id[k].name, func(): m._run("ask why"), C.npc_color(k))
