@@ -40,6 +40,11 @@ static func new_game(events: Array):
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(int(setup.data.seed), int(setup.data.npcs), script)
+	# The UI streams meetings one speaker at a time (ui/main.gd sets stream_meeting) and logs
+	# each step as a player_testimony record. A log with those records replays the same way,
+	# or the command that opens a meeting runs it whole and every digest after it differs
+	# (playtest 52102, seq 133; Coroner, Nov 27). Logs without them (autoplay) stay unstreamed.
+	g.stream_meeting = events.any(func(e): return e.type == "player_testimony")
 	return g
 
 ## Replays every event with seq < stop_seq. hooks (all optional):
@@ -62,7 +67,7 @@ static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {
 			if hooks.has("before_command"):
 				hooks.before_command.call(g, e)
 			var began: int = Time.get_ticks_msec()
-			var out: String = g.command(str(e.data.cmd))
+			var out: String = g.testimony_step() if e.type == "player_testimony" and g.stream_meeting else g.command(str(e.data.cmd))
 			step += 1
 			if hooks.has("after_command"):
 				hooks.after_command.call(g, e, Time.get_ticks_msec() - began)
