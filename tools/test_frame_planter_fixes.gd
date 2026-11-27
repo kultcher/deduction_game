@@ -9,6 +9,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Evil = preload("res://sim/evil.gd")
 const C = preload("res://sim/content.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var checks = 0
 var fails = 0
@@ -44,6 +45,8 @@ func _init() -> void:
 	var monitor_window := 0
 	var planted_once := 0
 	var planted_cases := 0
+	var told_cases := 0
+	var fetch_logged := false
 	for sd in range(5000, 5060):
 		var w = _world(sd)
 		var team: Array = w.evil_team().filter(func(m): return m.alive)
@@ -84,15 +87,24 @@ func _init() -> void:
 		var winner_rewritten: bool = sg.id in winner.get("data", {}).get("seen", [])
 		if str(loser["text"]) == loser_text and loser["data"]["seen"].is_empty() and (not winner_rewritten or logged):
 			rewrites_ok += 1
-		# A planted sighting told: logged as a lie once.
+		# A planted sighting: fetching it logs nothing (Codex on #569); told to the Demonologist,
+		# it's logged as a lie once.
 		var ps: Dictionary = w.evil_plan.get("planter_sighting", {})
 		if not ps.is_empty():
 			var planter = w.by_id[chosen]
+			var planted := func() -> int: return w.dlog.entries.filter(func(x): return x["type"] == "think" and x["actor"] == chosen and x.get("data", {}).get("planted", false)).size()
 			Evil.fake_night_sighting(w, planter, 1)
 			Evil.fake_night_sighting(w, planter, 1)
-			var n_planted: int = w.dlog.entries.filter(func(x): return x["type"] == "think" and x["actor"] == chosen and (x.get("data", {}).get("planted", false) or x.get("data", {}).get("rewrite", false) or str(x.get("reason", "")).begins_with("Told of seeing") or str(x.get("reason", "")).begins_with("Made up"))).size()
+			fetch_logged = fetch_logged or planted.call() > 0
+			var told := 0
+			for k in range(2):
+				planter.pressed_today = 0
+				var r: Dictionary = Mind.answer_night(w, planter, 1)
+				if r.get("facts", []).any(func(f): return str(f.get("kind", "")) == "sighting" and sg.id in f.get("subject", [])):
+					told += 1
 			planted_cases += 1
-			planted_once += int(n_planted >= 1 and w.dlog.entries.filter(func(x): return x["type"] == "think" and x["actor"] == chosen and x.get("data", {}).get("planted", false)).size() <= 1)
+			planted_once += int(planted.call() == (1 if told > 0 else 0))
+			told_cases += int(told > 0)
 	for sd in range(5100, 5160):
 		# A Monitor bluffer living on the death block: no window sighting.
 		var w = _world(sd)
@@ -115,9 +127,44 @@ func _init() -> void:
 		var ps: Dictionary = w.evil_plan.get("planter_sighting", {})
 		if str(w.evil_plan.get("daily_planter", "")) == mon.id and str(ps.get("how", "")) == "window":
 			monitor_window += 1
-	print("rewrite cases %d (ok %d); planted told %d (logged once %d); Monitor cases %d (window %d)" % [cases, rewrites_ok, planted_cases, planted_once, monitor_cases, monitor_window])
+	print("rewrite cases %d (ok %d); planted %d (told %d; logged as often as told %d); Monitor cases %d (window %d)" % [cases, rewrites_ok, planted_cases, told_cases, planted_once, monitor_cases, monitor_window])
 	_check(cases >= 5 and rewrites_ok == cases, "only the chosen planter's untold watch report is rewritten, and the rewrite is logged as a lie")
-	_check(planted_cases >= 3 and planted_once == planted_cases, "a planted sighting is logged as a lie when told, and only once")
+	_check(not fetch_logged, "fetching a planted sighting logs no lie: it isn't told yet")
+	_check(planted_cases >= 3 and planted_once == planted_cases, "a planted street sighting held back (no walking gift claimed) is never logged as told")
+	# A window frame, told to the Demonologist twice: logged as a lie once.
+	var window_told := 0
+	var window_once := 0
+	for sd in range(5000, 5040):
+		var w = _world(sd)
+		var team: Array = w.evil_team().filter(func(m): return m.alive)
+		var sg = w.living_good()[0]
+		var death: String = ""
+		for b in C.BLOCKS.keys():
+			if b != sg.home_block and not team.any(func(m): return m.home_block == b):
+				death = b
+				break
+		if death == "":
+			continue
+		_scene(w, death, sg)
+		for m in team:
+			w.evil_plan["bluffs"][m.id] = "clerk"
+		Evil.plan_daily_frame(w)
+		var chosen: String = str(w.evil_plan.get("daily_planter", ""))
+		if chosen == "" or str(w.evil_plan.get("planter_sighting", {}).get("how", "")) != "window" or w.evil_plan.get("scapegoat", "") != sg.id:
+			continue
+		var planter = w.by_id[chosen]
+		var told := 0
+		for k in range(2):
+			planter.pressed_today = 0
+			var r: Dictionary = Mind.answer_night(w, planter, 1)
+			told += int(r.get("facts", []).any(func(f): return str(f.get("kind", "")) == "sighting" and sg.id in f.get("subject", [])))
+		if told == 0:
+			continue
+		window_told += 1
+		var n_lies: int = w.dlog.entries.filter(func(x): return x["type"] == "think" and x["actor"] == chosen and x.get("data", {}).get("planted", false)).size()
+		window_once += int(n_lies == 1)
+	print("window frames told: %d, logged as a lie exactly once: %d" % [window_told, window_once])
+	_check(window_told >= 3 and window_once == window_told, "a planted window sighting told to the Demonologist is logged as a lie once, however often it's told")
 	_check(monitor_cases >= 5 and monitor_window == 0, "a Monitor bluffer is never given a window sighting")
 	print("Frame planter fixes: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

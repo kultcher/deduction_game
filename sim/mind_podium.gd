@@ -299,6 +299,7 @@ static func _night_sightings(w, d, nd: int, vantage: String, how: String, lines:
 		var fake = Evil.fake_night_sighting(w, d, nd, vantage, how)
 		if fake != null and not d.told_to.has(MindMeeting._town_sighting_key(d, fake)):
 			reported.append(fake)
+			Evil.note_told_sighting(w, d, fake)
 	var groups: Array = []
 	for b in reported:
 		var report: Dictionary = _mind().sighting_report(w, d, b, nd)

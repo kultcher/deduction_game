@@ -1182,14 +1182,6 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 	var r = cache[key]
 	if not (r is Dictionary) or r["block"] != vantage:
 		return null
-	# A sighting the day's frame plan planted (not made up above) is a lie too: logged once,
-	# when first told (playtest 52102: `grimoire lies` missed Dorian's and Odette's).
-	var logged: Dictionary = w.evil_plan.get("planted_lie_logged", {})
-	if n.id == planter_id and not logged.has(key) and str(r.get("who", "")) == str(w.evil_plan.get("scapegoat", "")) and w.by_id.has(str(r.get("who", ""))):
-		logged[key] = true
-		w.evil_plan["planted_lie_logged"] = logged
-		w.dlog.think(n.id, "lie", "Told of seeing %s on %s %s: the day's planted frame on evil's scapegoat." % [w.by_id[str(r["who"])].name, C.block_name(str(r["block"])), C.spoken_when(nd, -1)],
-			{"lie": true, "why": "plant a frame on the scapegoat", "planted": true})
 	if not street_story_fits(n, r):
 		# Seen "while out" needs a night-walking gift it has claimed to explain being out
 		# (Michael, Nov 20): until it has, it holds the sighting back rather than tell it bare.
@@ -1199,6 +1191,23 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 			w.dlog.think(n.id, "lie", "Holds back its made-up sighting of %s on %s %s: seen while out, and it has claimed no gift that takes it out at night." % [w.by_id[r["who"]].name if w.by_id.has(r["who"]) else r["who"], C.block_name(r["block"]), C.spoken_when(nd, -1)], {"held": true})
 		return null
 	return r
+
+## A made-up sighting told to the Demonologist (in private or at the podium) is a lie: logged
+## once per member and night, at the telling (playtest 52102: the plan's planted frame came from
+## the cache and was never logged; Codex on #569: log when told, not when fetched). A sighting
+## made up in fake_night_sighting, and logged there, isn't logged again. NPC-to-NPC tellings
+## log their own lie (Social._deliver).
+static func note_told_sighting(w, n, r: Dictionary) -> void:
+	if not n.is_evil() or not w.by_id.has(str(r.get("who", ""))):
+		return
+	var key: String = "%s:%d" % [n.id, int(r.get("day", -1))]
+	var logged: Dictionary = w.evil_plan.get("planted_lie_logged", {})
+	if logged.has(key):
+		return
+	logged[key] = true
+	w.evil_plan["planted_lie_logged"] = logged
+	w.dlog.think(n.id, "lie", "Told the Demonologist of seeing %s on %s %s: the day's planted frame on evil's scapegoat." % [w.by_id[str(r["who"])].name, C.block_name(str(r.get("block", ""))), C.spoken_when(int(r.get("day", -1)), -1)],
+		{"lie": true, "why": "plant a frame on the scapegoat", "planted": true})
 
 ## Whether a made-up sighting is one the teller can tell as it stands: a window sighting
 ## always, one seen "while out" only once it has claimed a night-walking gift that explains
