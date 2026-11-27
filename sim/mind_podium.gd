@@ -109,8 +109,7 @@ static func press_role(w, d, grounds: bool) -> Dictionary:
 			var pkg: Dictionary = C.HINT_PACKAGES[pk]
 			lines.append(_say(d, "hint_pkg_" + pk, pkg["text"] + " That's as far as I'll go."))
 			facts.append({"kind": "hint", "subject": [d.id], "source": d.id, "package": pk, "roles": pkg["roles"], "public": true,
-				"text": "%s hinted before the town at %s (%s)." % [d.name, pkg["name"],
-					" / ".join(PackedStringArray(pkg["roles"].map(func(r): return C.role_name(r))))]})
+				"text": "%s hinted before the town at %s (%s)." % [d.name, pkg["name"], C.package_roles_text(pk, w.case_script)]})
 			d.max_tier = maxi(d.max_tier, 2)
 			_town_hears(w, d, facts)
 			return {"lines": lines, "facts": facts, "outcome": "hint"}
