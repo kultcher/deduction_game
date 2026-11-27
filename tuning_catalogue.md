@@ -182,9 +182,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CIVIL_TALK_BASE` | `0.04` | Conversation, pressing, promises, nominations, clemency & presentations | `sim/mind_dialogue.gd` |
 | `CIVIL_TALK_PRIVACY_DAMP` | `0.0` | Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5) | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_LIMIT` | `3` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
+| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social_approaches.gd` |
@@ -486,6 +486,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
 | `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
+| `PRESSED_AGAIN_OPENNESS` | `0.15` | Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned a night but kept the reason: each earlier press about that night adds this to the openness check for giving the reason (its gift, or a known burden's walk). | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `PRESSED_AGAIN_BACKUP_MINION` | `0.6` | Evil pressed again about a night it owned with no walking bluff to tell: the chance per re-press that it backs into a walking gift no one has claimed. A Minion is bolder; the Demon and a Scion are careful. | `sim/mind_press.gd` |
+| `PRESSED_AGAIN_BACKUP_CAREFUL` | `0.3` |  | `sim/mind_press.gd` |
 | `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_answers.gd` |
 | `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_answers.gd` |
 | `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |

@@ -34,7 +34,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. Caught out and pressed again: what's left `[decided]`
+    6. \*Caught out and pressed again: what's left `[decided]`
     7. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)

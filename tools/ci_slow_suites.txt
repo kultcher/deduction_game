@@ -9,6 +9,7 @@ test_connections_cache
 test_conversation_gifts
 test_npc_interactions
 test_own_night_knowledge
+test_pressed_again
 test_relay_bluff_games
 test_self_sighting
 test_shadow
