@@ -69,6 +69,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   10. Basic UI sound effects `[decided: direction]`
   11. A "case history" module `[open]`
   12. Shrinking the assets `[decided: direction]`
+  13. Architecture cleanup `[decided: direction]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -582,6 +583,21 @@ architecture items are still a proposal for Michael, so neither is here.
 - **Shrinking the assets** (audit P2 item 10). Compress and prune about 380 MB of lossless PNGs
   and unused prototype folders, likely much of it redundant. Do it late, and show Michael samples
   before any lossy step. It belongs to the final phases. Owner Limner. [decided: direction]
+
+- **Architecture cleanup** (audit Part 4; Michael, Nov 27). It's opportunistic: do each part
+  when a lead is already working in that code.
+  - Retire the remaining GDScript solver mirrors, and the dead ModeGdscript and ModeVerify
+    scaffolding.
+  - Give the burden and modifier codes, and the GDScript↔C# wire strides, one definition.
+  - Fold the scattered hard-coded role checks into RoleRegistry.
+  - Flatten the deep `extends` chains and the runtime `load()` cycles, and fix the sim→workshop
+    and workshop→game layer inversions.
+  - Split the largest files.
+  - Consolidate `ui/main.gd`'s modal state into one overlay stack, and unify the duplicated VN and
+    courtroom stage (Herald).
+
+  **Not part of this:** a single source for tuning values is in progress with Argon.
+  [decided: direction]
 
 ## Workshop gaps (NYI)
 
