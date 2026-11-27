@@ -245,8 +245,7 @@ static func day(m, w) -> void:
 					var scene_id: String = sid
 					m._button(m.actions, "Go to %s (crime scene)" % w.scenes[scene_id]["name"], func(): m._run("go " + scene_id))
 			m._button(m.actions, "Back to town view", func():
-				m.map.zoom_block = ""
-				m.map.refresh()
+				m.map.zoom_to("")
 				refresh(m))
 		else:
 			hint(m, "Examine a block to look closer, or click a person to inspect their profile.")

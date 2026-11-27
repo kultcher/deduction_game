@@ -80,8 +80,12 @@ func _run() -> void:
 	_check(scene.profile.current() == n.id, "the row click also shows that person's profile")
 	_check(not scene.map._hits.any(func(h): return h["kind"] == "npc" and h["id"] == n.id), "selecting someone unseen does not reveal a map icon")
 	_check(g.known_haunts[n.id] == ["well"], "selection does not discover additional haunts")
+	_check(not scene.map._hits.any(func(h): return h["kind"] == "npc"), "whole-town view exposes blocks only, suppressing direct NPC clicks")
+	scene.map.zoom_block = g.w.loc_block(other.loc)
+	scene.map.refresh()
+	await _settle()
 	var visible: Array = scene.map._hits.filter(func(h): return h["kind"] == "npc" and h["id"] == other.id)
-	_check(not visible.is_empty(), "another visible map icon is available")
+	_check(not visible.is_empty(), "once zoomed into a block, a visible NPC map icon is clickable")
 	if not visible.is_empty():
 		var motion = InputEventMouseMotion.new()
 		motion.position = visible[0]["rect"].get_center()

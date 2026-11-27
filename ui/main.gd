@@ -81,7 +81,7 @@ var theory_label: Label
 var roll_window
 var roll_button: Button
 var debug_check: CheckBox
-var day_icon: TextureRect
+var day_panel: PanelContainer
 var day_label: Label
 var cast_list                # ui/cast_list.gd
 var cast_header: Label
@@ -144,6 +144,7 @@ func _open_pacing_when_settled(plan: Array, rest: Array) -> void:
 			headlines.modulate.a = 1.0
 		for event in rest:
 			headlines.enqueue(event)
+		_refresh_all()
 		if _reveal_after_pacing:
 			_reveal_after_pacing = false
 			open_reveal())
@@ -245,6 +246,7 @@ func _new_case() -> void:
 		return
 	conversation_finished = false
 	_phase_held = false
+	pacing_open = false
 	_deferred_log_events = []
 	_day_pick = ""
 	conversation_show_map = false
@@ -308,6 +310,8 @@ func _on_more(i: int) -> void:
 			open_daily_guess(Callable())
 		MoreItem.REDUCED_MOTION:
 			reduced_motion = not reduced_motion
+			if map != null:
+				map.reduced_motion = reduced_motion
 		MoreItem.EXIT:
 			get_tree().quit()
 
@@ -347,7 +351,7 @@ func _open_live_workshop(number: int = 0) -> void:
 	case_view.refresh()
 	case_view.open_workshop(number)
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished or _phase_held or daily_guess_open:
+	if conversation_finished or _phase_held or pacing_open or daily_guess_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -376,7 +380,7 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	# While a finished conversation or a reading holds the old phase, nothing runs until the
 	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
-	if conversation_finished or _phase_held:
+	if conversation_finished or _phase_held or pacing_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -638,6 +642,27 @@ func _refresh_all() -> void:
 		map_return.visible = false
 		input.editable = false
 		return
+	if pacing_open:
+		# Hold the old phase's map, clock, actions and approaches while an execution or
+		# night-kill cutscene is queued/playing (Michael, Nov 25). If the condemned's
+		# last words are still on the courtroom stage, let the stage finish first.
+		var last_words_now: bool = meeting_view != null and meeting_view.presenting()
+		if last_words_now:
+			Actions.refresh(self)
+			map_stage.visible = false
+			meeting_view.visible = true
+		else:
+			for ch in actions.get_children():
+				actions.remove_child(ch)
+				ch.queue_free()
+			cast_list.freeze()
+			map_stage.visible = true
+			conversation_view.visible = false
+			meeting_view.visible = false
+			map_return.visible = false
+		input.editable = false
+		_sync_map_lighting_defer()
+		return
 	cast_list.thaw()
 	Actions.sync_approach(self, not inspect_pages.is_empty())
 	if roles_pinned and roles_showing and _roles_signature != Roles.state_key(self):
@@ -646,11 +671,11 @@ func _refresh_all() -> void:
 	var key = "%d:%d:%s" % [g.w.day, g.w.phase, g.state if g.state in ["night", "meeting", "nomination", "over"] else "day"]
 	if key != _last_phase_key:
 		_last_phase_key = key
-		map.zoom_block = ""
+		map.zoom_to("")
 		map.selected_block = ""
 		_day_pick = ""
 	if g.state in ["day", "talk", "approach"] and g.moved:
-		map.zoom_block = g.w.loc_block(g.loc)
+		map.zoom_to(g.w.loc_block(g.loc))
 	_refresh_side()
 	Actions.refresh(self)
 	var meeting = g.state in ["meeting", "nomination"]
@@ -671,14 +696,26 @@ func _refresh_all() -> void:
 		meeting_view.refresh()
 	else:
 		meeting_view.finish()
+	map.reduced_motion = reduced_motion
+	_sync_map_lighting_defer()
 	map.refresh()
 	cast_list.refresh()
 	cast_header.text = "Townsfolk · %d alive" % g.w.living().size()
 	var night = g.state == "night"
-	day_icon.texture = UITheme.tex("ui/moon" if night else "ui/sun", 0.15)
-	day_label.text = ("Night %d" % g.w.day) if night else ("Day %d · %s" % [g.w.day, "Town meeting" if g.state in ["meeting", "nomination"] else C.PHASES[g.w.phase]])
+	var phase_name: String = "Night" if night else ("Town meeting" if g.state in ["meeting", "nomination"] else C.PHASES[g.w.phase])
+	day_label.text = "Day %d\n%s" % [g.w.day, phase_name]
 	if case_view.visible:
 		case_view.refresh()
+## Hold the map's sunrise/sunset wave whenever a cutscene, meeting or non-approach
+## conversation covers the map so the player sees the sweep when returning to town.
+## NPC approaches let the lighting transition finish off-screen.
+func _sync_map_lighting_defer() -> void:
+	if map == null:
+		return
+	var in_approach: bool = g != null and g.state == "approach"
+	var obscured: bool = pacing_open or not map_stage.visible or (conversation_view.visible and not in_approach)
+	map.set_lighting_deferred(obscured)
+
 ## Show this person's profile in the sidebar and the case view.
 func _side_person_id() -> String:
 	return profile.current()
@@ -695,6 +732,8 @@ func _on_town_person_clicked(id: String) -> void:
 	if selected != "":
 		_select_person(selected)
 	cast_list.refresh()
+	map.reduced_motion = reduced_motion
+	_sync_map_lighting_defer()
 	map.refresh()
 	if g.state == "night":
 		_ward_target = selected
@@ -742,6 +781,8 @@ func _on_map_clicked(kind: String, id: String) -> void:
 
 		"night":
 			Actions.refresh(self)
+	map.reduced_motion = reduced_motion
+	_sync_map_lighting_defer()
 	map.refresh()
 ## The map's "Return to conversation" / "Return to meeting" button.
 func _on_map_return() -> void:
