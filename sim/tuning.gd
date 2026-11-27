@@ -530,7 +530,7 @@ class Social:
 	const ROLE_WILLING_TRUST_SCALE = 0.5
 	const ROLE_WILLING_PRESSURE_SCALE = 0.3
 	const ROLE_WILLING_THRESHOLD = 0.55
-	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.5
+	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.6  # was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure)
 
 
 # ---------------------------------------------------------------- 6. Town Meeting: Claims, Consensus, Nominations & Votes

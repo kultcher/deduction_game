@@ -13,7 +13,10 @@
   guess line, with no hint replayed. Before, a right guess at the hint tier replayed the hint,
   which told a right guess from a wrong one.
 - **A willing NPC still owns up to a right guess,** at the gift tier or above, as before,
-  including the first-guess bonus (`CORRECT_ROLE_GUESS_BONUS_PROB`).
+  including the first-guess bonus.
+- **`Tuning.Social.CORRECT_ROLE_GUESS_BONUS_PROB`: 0.5 → 0.6** (Michael, Nov 27). On the first
+  guess you put to an NPC, a right one lifts that answer a disclosure tier 6 times in 10, up
+  from 5. It lasts for that answer only.
 - **The tell:** either guess may show one of the press's four nervous cues ("looks away a moment
   too quickly" and the rest), at `PRESS_NERVES_HIDING` (0.6) for a right guess or
   `PRESS_NERVES_HONEST` (0.2) for a wrong one, × (1 − Composure) × `GUESS_NERVES_STRENGTH` (0.5,
@@ -24,11 +27,11 @@
     check: "wrong-guess wording introduces no random choice").
 - **Wrong guesses** keep their trust cost and wording.
 
-## Open with Michael
+## Decided by Michael (Nov 27)
 
-- **Whether a right guess gives a lasting nudge toward disclosing later.** Today it doesn't; it
-  only affects that one answer. A proposal is with Seneschal: a half-strength press's pressure
-  (existing values, no new constant). It isn't built.
+- **No lasting nudge from a right guess:** no pressure. Pressure feeds too much (the player
+  guesses the Seer, so the Seer outs publicly and is killed). The first-guess bonus is raised
+  instead, above.
 
 ## Measured
 

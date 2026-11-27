@@ -314,7 +314,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
 | `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
 | `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
-| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social_approaches.gd` |
+| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.6` | was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure) | `sim/social_approaches.gd` |
 
 ## Meeting
 
