@@ -125,8 +125,15 @@ jobs:
           # Only pass --force-demon when a cell asks for it, so refs from before the flag still run.
           FORCE_ARGS=()
           if [ -n "$FORCE_DEMON" ]; then FORCE_ARGS=(--force-demon "$FORCE_DEMON"); fi
-          # The same for --games-per-proc (refs from before Nov 28 lack it).
-          if [ "${GAMES_PER_PROC:-0}" -gt 0 ]; then FORCE_ARGS+=(--games-per-proc "$GAMES_PER_PROC"); fi
+          # The same for --games-per-proc, which refs from before Nov 28 lack: pass it only when the
+          # checked-out sweep_shard.py supports it (Codex, #585), else run those shards unrestarted.
+          if [ "${GAMES_PER_PROC:-0}" -gt 0 ]; then
+            if python3 tools/sweep_shard.py --help 2>/dev/null | grep -q -- "--games-per-proc"; then
+              FORCE_ARGS+=(--games-per-proc "$GAMES_PER_PROC")
+            else
+              echo "::warning::this ref's sweep_shard.py has no --games-per-proc; running without restarts"
+            fi
+          fi
           python3 tools/sweep_shard.py --godot "$GODOT_BIN" \
             --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" "${FORCE_ARGS[@]}" \
             --seeds "$FIRST:$LAST" --procs "${PROCS:-4}" --out "$RUNNER_TEMP/out" \
