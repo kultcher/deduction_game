@@ -213,12 +213,17 @@ internal static class SolverContext
     {
         UniverseStride3Cache.Clear();
         PackedUniverses.Clear();
+        PackedUniverses.TrimExcess();
         PackedUniverseByKey.Clear();
         UniverseMetaByHandle.Clear();
         MovementFactors.Clear();
+        MovementFactors.TrimExcess();
         PresenceWeights.Clear();
+        PresenceWeights.TrimExcess();
         CompiledCases.Clear();
+        CompiledCases.TrimExcess();
         RoleConstraintMemos.Clear();
+        RoleConstraintMemos.TrimExcess();
     }
 
     public static int CachedUniverseCount => UniverseStride3Cache.Count;
