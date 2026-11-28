@@ -70,6 +70,7 @@ test_fabrication_check
 test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
+test_free_move
 test_gift_doubt
 test_gift_doubt_good
 test_gossip_tiers
@@ -123,6 +124,7 @@ test_night_sighting_rebuttal
 test_nightwatch_whole_list
 test_nomination_and_evil_tuning
 test_nomination_case
+test_nov28_ui
 test_npc_chatter
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness
@@ -133,8 +135,10 @@ test_own_route_knowledge
 test_pacing
 test_peer_role_gossip
 test_place_icons
+test_plaque_menus
 test_player_failed_gift
 test_playtest_23973
+test_playtest_52102
 test_playtest_89077
 test_playtest_ui_nov22
 test_points_elsewhere
@@ -190,6 +194,7 @@ test_term_defs
 test_text_formatter
 test_text_terms
 test_text_ui
+test_theme_checkbox
 test_too_clean_bluffs
 test_totem_evidence
 test_town_note

@@ -296,6 +296,7 @@ static func _late_relay(w, n, lines: Array, facts: Array) -> void:
 			if not decide(w, n, "late_relay", parts, "Tell the town what %s told them before dying (%s, day %d)?" % [src_id, str(e.get("role", "")), int(e.get("day", -1))]):
 				continue # they may yet, at a later meeting
 			n.told_to[key] = true
+			MindWithheld.note_shared(w, n, e, "public")  # a late reading held back from a Call on, now told (Codex on #588)
 			var rn: String = C.role_name(e["role"])
 			# Say when, relative to today, once: a "night N" inside the reading's own text (the
 			# Veteran's, the Medium's) is dropped if it's that night, or said as a person would.
@@ -341,6 +342,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array, bump: f
 		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
 		var report = sighting_report(w, n, b, b.day)
 		n.told_to[_town_sighting_key(n, b)] = true
+		MindWithheld.note_shared(w, n, {"role": "", "day": int(b.day)}, "public")  # a sighting held back from a Call on, now told
 		_add_observation(groups, report.observation)
 		facts.append(report.fact)
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})

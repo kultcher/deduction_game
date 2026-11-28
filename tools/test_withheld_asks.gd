@@ -65,6 +65,8 @@ func _init() -> void:
 	_private_answers()
 	_meeting_press()
 	_call_on_record()
+	_sightings()
+	_late_readings()
 	print("Withheld asks: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -299,3 +301,108 @@ func _call_on_record() -> void:
 	print("Call on refusals recorded: %d; shared_at after going public: %d" % [recs, shared_ok])
 	_check(recs >= 5 and ok, "a refusal of the Demonologist's Call on is on the record, asker \"player\"")
 	_check(shared_ok == recs, "when the reading comes out before the town, the refusal gets shared_at")
+
+## Night sightings (Codex on #588): a sighting held back from a Call on gets shared_at once
+## volunteered; a pressed claimant's sighting reaches the town as the claimant's.
+func _sightings() -> void:
+	var recs := 0
+	var closed := 0
+	for sd in range(8500, 8580):
+		var w = _world(sd, 3)
+		var c = null
+		for m in w.living_good():
+			if not MindCallOn._untold_sightings(w, m).is_empty() and MindCallOn._unshared_readings(w, m).is_empty() and MindCallOn._untold_late(w, m).is_empty():
+				c = m
+				break
+		if c == null:
+			continue
+		_closed(c)
+		c.traits["gossip"] = 0.0
+		c.traits["confidence"] = 0.0
+		c.traits["composure"] = 1.0
+		c.trust = 0.0
+		var r: Dictionary = MindCallOn.respond(w, c)
+		if not r.outcome in ["deferred", "deflected"]:
+			continue
+		var rec: Dictionary = w.withheld_refusals[-1]
+		if str(rec.claim.role) != "":
+			continue
+		recs += 1
+		c.traits["gossip"] = 1.0
+		c.traits["confidence"] = 1.0
+		MindMeeting._volunteer_night_sightings(w, c, [], [], 5.0)
+		closed += int(rec.has("shared_at"))
+	print("sighting refusals at a Call on: %d; closed once volunteered: %d" % [recs, closed])
+	_check(recs >= 3 and closed == recs, "a night sighting held back from a Call on gets shared_at once volunteered")
+	var pressed := 0
+	var heard := 0
+	for sd in range(8600, 8700):
+		var w = _world(sd, 3)
+		var p: Array = _press_setup(w)
+		if p.is_empty():
+			continue
+		var n = p[0]
+		var c = p[1]
+		var seen: Array = MindCallOn._untold_sightings(w, c)
+		if seen.is_empty():
+			continue
+		c.traits["gossip"] = 1.0
+		c.traits["confidence"] = 1.0
+		var facts: Array = []
+		var k: int = 0
+		while k < 20 and not Withheld.meeting_press(w, n, [], facts):
+			k += 1
+		var sf: Array = facts.filter(func(f): return str(f.get("kind", "")) == "sighting" and str(f.get("source", "")) == c.id)
+		if sf.is_empty():
+			continue
+		pressed += 1
+		var key: String = "sighting:%s:%d" % [str(sf[0].subject[0]), int(sf[0].day)]
+		heard += int(w.living_good().any(func(l): return l != c and l != n and l.heard.has(key)))
+	print("pressed claimants who told a sighting: %d; heard by the town: %d" % [pressed, heard])
+	_check(pressed >= 3 and heard == pressed, "a pressed claimant's night sighting reaches the town as the claimant's")
+
+## A dead reader's reading, held back from a Call on by the one it told: the refusal gets
+## shared_at once that NPC relays it to the town (Codex on #588).
+func _late_readings() -> void:
+	var recs := 0
+	var closed := 0
+	for sd in range(8700, 8800):
+		var w = _world(sd, 3)
+		var src = null
+		for m in w.living_good():
+			if not m.info_log.is_empty():
+				src = m
+				break
+		if src == null:
+			continue
+		var e: Dictionary = src.info_log[0]
+		e["shared"] = false
+		var c = null
+		for m in w.living_good():
+			if m != src and MindCallOn._unshared_readings(w, m).is_empty() and MindCallOn._untold_sightings(w, m).is_empty():
+				c = m
+				break
+		if c == null:
+			continue
+		src.alive = false
+		c.known_claims[src.id] = {"role": src.role, "readings": [e], "via": src.id, "first_claimed_day": 1}
+		_closed(c)
+		c.traits["composure"] = 1.0
+		c.trust = 0.0
+		c.npc_trust[src.id] = 0.0
+		var r: Dictionary = MindCallOn.respond(w, c)
+		if not r.outcome in ["deferred", "deflected"]:
+			continue
+		var rec: Dictionary = w.withheld_refusals[-1]
+		if rec.claim.role != str(e.get("role", "")) or rec.claim.day != int(e.get("day", -1)):
+			continue
+		recs += 1
+		c.traits["privacy"] = 0.0
+		c.npc_trust[src.id] = 1.0
+		for k in range(20):
+			MindMeeting._late_relay(w, c, [], [])
+			if c.told_to.has("town|late:%s:%d:%s" % [src.id, int(e.get("day", -1)), str(e.get("role", ""))]):
+				break
+		closed += int(rec.has("shared_at"))
+	print("late-reading refusals at a Call on: %d; closed once relayed: %d" % [recs, closed])
+	_check(recs >= 3 and closed == recs, "a dead reader's reading held back from a Call on gets shared_at once relayed")

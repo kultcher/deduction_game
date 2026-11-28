@@ -109,8 +109,7 @@ static func press_role(w, d, grounds: bool) -> Dictionary:
 			var pkg: Dictionary = C.HINT_PACKAGES[pk]
 			lines.append(_say(d, "hint_pkg_" + pk, pkg["text"] + " That's as far as I'll go."))
 			facts.append({"kind": "hint", "subject": [d.id], "source": d.id, "package": pk, "roles": pkg["roles"], "public": true,
-				"text": "%s hinted before the town at %s (%s)." % [d.name, pkg["name"],
-					" / ".join(PackedStringArray(pkg["roles"].map(func(r): return C.role_name(r))))]})
+				"text": "%s hinted before the town at %s (%s)." % [d.name, pkg["name"], C.package_roles_text(pk, w.case_script)]})
 			d.max_tier = maxi(d.max_tier, 2)
 			_town_hears(w, d, facts)
 			return {"lines": lines, "facts": facts, "outcome": "hint"}
@@ -166,10 +165,16 @@ static func _plain_account(w, d, nd: int, block: String, lines: Array, facts: Ar
 	facts.append({"kind": "alibi", "subject": [d.id], "home": false, "day": nd, "phase": C.NIGHT, "source": d.id, "block": block, "public": true,
 		"text": "%s says they were out on %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day)]})
 
-static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) -> Dictionary:
+## `pressed` (Michael, Nov 20 plan: the same ladder at the podium): the player pressing them
+## with a card about that night (press_card). Each earlier press about the night, in private or
+## here, makes owning up to the reason likelier (PRESSED_AGAIN_OPENNESS); evil with nothing to
+## tell may back into a spare walking gift; and the truly home grow irritated.
+static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false, pressed: bool = false) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var outcome: String = ""
+	var Press = load("res://sim/mind_press.gd")
+	var presses: int = Press.press_count(d, nd) if pressed else 0
 	var where: String = d.history.get(w.time_key(nd, C.NIGHT), "home:" + d.home_block)
 	var was_out: bool = where.begins_with("night:")
 	var block: String = where.substr(where.find(":") + 1)
@@ -190,8 +195,22 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 		facts.append(_alibi_home(d, nd))
 		vantage = d.home_block
 		outcome = "home"
+		# Truly home and pressed again about it before the town: it stands by its account and
+		# trusts the Demonologist less, as in private. One count for both venues: the private
+		# ladder's `pressed_nights` (MindPress._answer_pressed_night), so switching venues doesn't
+		# reset it (Codex on #580).
+		var home_presses: int = int(d.dialogue_memory.get("pressed_nights", {}).get(str(nd), 0))
+		if pressed:
+			var pn: Dictionary = d.dialogue_memory.get("pressed_nights", {})
+			pn[str(nd)] = home_presses + 1
+			d.dialogue_memory["pressed_nights"] = pn
+		if pressed and home_presses > 0:
+			var drop: float = (Tuning.Trust.QUESTION_FATIGUE_BASE + Tuning.Trust.QUESTION_FATIGUE_PRIVACY * _trait(d, "privacy")) * (1.0 - Tuning.Trust.QUESTION_FATIGUE_COMPOSURE_DAMP * _trait(d, "composure"))
+			_mind().set_trust(w, d, d.trust - drop, "pressed again before the town about night %d, when they were home" % nd)
 	else:
 		var parts: Dictionary = _stakes(w, d)
+		if presses > 0:
+			parts["pressed_again"] = Tuning.Dialogue.PRESSED_AGAIN_OPENNESS * presses
 		var walking_gift: bool = not d.is_evil() and d.secret.is_empty() and C.ROLES[d.role].get("night_walk", false)
 		var outing: String = C.role_def(d.role).honest_outing(w, d, nd, _mind(), true) if not d.is_evil() and C.has_role_def(d.role) else ""
 		if outing == "reveal":
@@ -205,9 +224,19 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 			vantage = duty_out["vantage"]
 			how = duty_out["how"]
 			outcome = "gift_outing"
-		elif outing == "withhold" and (admitted or admitted_before(d, nd)):
+		elif outing == "withhold" and (admitted or admitted_before(d, nd)) and not (presses > 0 and _gives_way(w, d, nd, parts)):
 			_plain_account(w, d, nd, block, lines, facts)
 			outcome = "admitted"
+		elif outing == "withhold" and (admitted or admitted_before(d, nd)):
+			# Pressed again, it gives the gift that took it out (Michael, Nov 20).
+			MindMeeting._public_disclosure(w, d, lines, facts, false)
+			lines.append(_say(d, "podium_gift_outing", "So yes, I was out %s, on %s. That was my gift's work." % [C.spoken_when(nd, w.day), C.block_name(block)],
+				{"when": C.spoken_when(nd, w.day), "block": C.block_name(block)}))
+			facts.append({"kind": "alibi", "subject": [d.id], "home": false, "day": nd, "phase": C.NIGHT, "source": d.id, "block": block,
+				"text": "%s says they were out on %s %s, on their gift's work." % [d.name, C.block_name(block), C.spoken_when(nd, w.day)]})
+			vantage = block
+			how = "street"
+			outcome = "gift_outing"
 		elif outing == "withhold":
 			w.dlog.think(d.id, "stonewall", "Pressed at the podium: keeps the night's errand (%s gift) to themself for now." % C.role_name(d.role))
 			lines.append(_say(d, "podium_whereabouts_refusal", "Where I spend my nights is my own affair, and I'll not answer for %s here." % C.spoken_when(nd, w.day),
@@ -243,6 +272,17 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				vantage = block
 				how = "street"
 				outcome = "confess"
+		if outcome == "" and d.is_evil() and presses > 0 and (admitted or admitted_before(d, nd)) and Press.back_into_walking_gift(w, d, nd) != "":
+			# Evil pressed again about a night it owned, with nothing to tell: it comes out with
+			# the spare walking gift it backed into, before the town.
+			MindMeeting._public_disclosure(w, d, lines, facts, false)
+			lines.append(_say(d, "podium_gift_outing", "So yes, I was out %s, on %s. That was my gift's work." % [C.spoken_when(nd, w.day), C.block_name(block)],
+				{"when": C.spoken_when(nd, w.day), "block": C.block_name(block)}))
+			facts.append({"kind": "alibi", "subject": [d.id], "home": false, "day": nd, "phase": C.NIGHT, "source": d.id, "block": block,
+				"text": "%s says they were out on %s %s, on their gift's work." % [d.name, C.block_name(block), C.spoken_when(nd, w.day)]})
+			vantage = block
+			how = "street"
+			outcome = "gift_outing"
 		if outcome == "" and (admitted or admitted_before(d, nd)):
 			# They've just owned a true sighting: a plain account, never a stonewall, and
 			# no grudge against the Demonologist for "pressing" (any nominator can get here).
@@ -276,7 +316,19 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 	if vantage != "":
 		_night_sightings(w, d, nd, vantage, how, lines, facts)
 	_town_hears(w, d, facts)
-	return {"lines": lines, "facts": facts, "outcome": outcome, "night": nd}
+	if pressed:
+		Press.note_press(d, nd)
+	return {"lines": lines, "facts": facts, "outcome": outcome, "night": nd, "presses": presses}
+
+## A good walker that kept its gift's errand, pressed again before the town: does it give way?
+## The podium's own gift-outing decision, with the press in its parts and the reveal's cost.
+static func _gives_way(w, d, nd: int, parts: Dictionary) -> bool:
+	var p2: Dictionary = parts.duplicate()
+	var cost: Dictionary = MindMeeting.reveal_cost(w, d)
+	for k in cost:
+		p2["cost_" + k] = -cost[k]
+	p2["seen_out"] = Tuning.Meeting.PODIUM_SEEN_OUT
+	return _mind().decide(w, d, "podium_gift_outing", p2, "Pressed again on night %d before the town: give my gift (%s)?" % [nd, d.role])
 
 
 ## What they saw that night, told from where they say they were (the same gate public
@@ -300,6 +352,7 @@ static func _night_sightings(w, d, nd: int, vantage: String, how: String, lines:
 		var fake = Evil.fake_night_sighting(w, d, nd, vantage, how)
 		if fake != null and not d.told_to.has(MindMeeting._town_sighting_key(d, fake)):
 			reported.append(fake)
+			Evil.note_told_sighting(w, d, fake)
 	var groups: Array = []
 	for b in reported:
 		var report: Dictionary = _mind().sighting_report(w, d, b, nd)
@@ -354,7 +407,7 @@ static func press_card(w, d, card: Dictionary, grounds: bool) -> Dictionary:
 	if kind in ["sighting", "alibi", "secret", "vigil", "trace"] and int(card.get("phase", C.NIGHT)) == C.NIGHT:
 		nd = int(card.get("day", -1))
 	if nd >= 0 and nd < w.day:
-		var r: Dictionary = press_night(w, d, nd, grounds)
+		var r: Dictionary = press_night(w, d, nd, grounds, false, true)
 		r["mode"] = "night"
 		# Shown a sighting, they may add what the death record says of that night (BACKLOG
 		# "Explicit night-sighting rebuttals"): after the account, speech only, no weight.

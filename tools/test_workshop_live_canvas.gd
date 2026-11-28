@@ -263,8 +263,10 @@ func _flow() -> void:
 	var delivery_count: int = g.workshop_deliveries.size()
 	g.command("present %d" % number)
 	check(g.workshop_deliveries.size() == delivery_count, "canvas presentation cannot bypass the once-per-meeting floor limit")
-	g.command("nominate " + target.id)
-	check(g.state == "nomination", "ordinary nomination follows the case presentation")
+	# A bare nomination ('raw'): since #565 a plain 'nominate' speaks your filed case and
+	# spends the statement, which would leave nothing for 'case' below to test.
+	g.command("nominate %s raw" % target.id)
+	check(g.state == "nomination" and not g.statement_used, "ordinary nomination follows the case presentation")
 	g.workshop_deliveries.clear()
 	await g.workshop_command("case %d" % number, func(_name): await process_frame)
 	check(g.statement_used and g.workshop_deliveries.size() == g.w.living().size() - 1, "a case put on the nomination evaluates the graph for eligible listeners")

@@ -263,6 +263,8 @@ func build(font: Font) -> void:
 		refresh()
 		changed.emit())
 	workshop.changed.connect(_refresh_staged)
+	workshop.changed.connect(_sync_board_cover)
+	workshop.resized.connect(_sync_board_cover)
 	state.selection_changed.connect(func():
 		board.queue_redraw()
 		tray.queue_redraw())
@@ -381,7 +383,7 @@ func show_card_menu(num: int, at: Vector2i) -> void:
 
 func _on_card_action(action: int) -> void:
 	var num = _context_card
-	card_menu.hide()
+	preload("res://ui/column_menus.gd").close(card_menu)
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
 		return
 	match action:
@@ -446,7 +448,7 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 	return b
 
 func set_game(game) -> void:
-	card_menu.hide()
+	preload("res://ui/column_menus.gd").close(card_menu)
 	_context_card = 0
 	g = game
 	for key in panels:
@@ -679,6 +681,11 @@ func selected_cards() -> Array:
 	return staged.duplicate()
 
 ## Double-click, drag or the card menu: put a board card into the Case Workshop.
+## The board pans and fits within what the Workshop sheet leaves uncovered.
+func _sync_board_cover() -> void:
+	if board != null and workshop != null:
+		board.set_right_cover(0.0 if workshop.fullscreen else workshop.covered_width())
+
 func add_to_workshop(num: int) -> void:
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].kind == "deduction":
 		return

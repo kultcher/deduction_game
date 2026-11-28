@@ -189,6 +189,10 @@ static func meeting_press(w, n, lines: Array, facts: Array) -> bool:
 	var res: Dictionary = _call_on().respond(w, best, n.id)
 	lines.append_array(res.get("lines", []))
 	facts.append_array(res.get("facts", []))
+	# The claimant's night sightings reach the town as said by the claimant (Codex on #588): the
+	# testimony turn delivers its facts as the presser's, which a sighting's source rules out.
+	for f in res.get("facts", []):
+		_social().deliver_public_sighting(w, best, f)
 	return true
 
 ## One refusal on the record (see the header). `claim` is {day, role}.
@@ -200,8 +204,9 @@ static func record_refusal(w, asker_id: String, n, claim: Dictionary, venue: Str
 	var who: String = "the Demonologist" if asker_id == "player" else (w.by_id[asker_id].name if w.by_id.has(asker_id) else asker_id)
 	w.dlog.add("withheld_refusal", n.id, asker_id, r, "%s %s %s's ask (%s)%s." % [n.name, "defers" if kind == "deferred" else "deflects", who, venue, (", " + reason) if reason != "" else ""])
 
-## `n` has given reading `e`, to `to_id` alone or to "public": every open refusal of that claim
-## the hearer knows of gets `shared_at`.
+## `n` has given reading `e` (or told a night sighting: `e` = {role: "", day: its night}), to
+## `to_id` alone or to "public": every open refusal of that claim the hearer knows of gets
+## `shared_at`.
 static func note_shared(w, n, e: Dictionary, to_id: String) -> void:
 	var now: int = -1
 	for r in w.withheld_refusals:
