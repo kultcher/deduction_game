@@ -57,3 +57,11 @@ None.
 - **test_sexton_toll_tour** has 8 checks now: the order of evaluation without clearing caches, and the duty account. Without the cache fix, the order check fails.
 - **Suites:** these pass: test_night_sighting_rebuttal, test_evil_play, test_meeting_m2b, test_workshop_regressions and test_connections_core.
 - **Golden:** identical to `baseline_1bf8a4b` on all five seeds at `--tol 0`.
+
+## Codex round 2
+
+- **No inferred Lamplighter from a toll walk.** `EvaluateRoutes` no longer puts a Sexton on `forcedLamp` because its toll walk is the only path that fits two far sightings. The inferred Lamplighter claim had clashed with its Sexton claim.
+- **The toll comes before an Unrequited visit,** in both kernels' holder column, as in `world_night.gd`. A good Unrequited Sexton doesn't visit on its toll night, and a visit that was due stays due.
+- **test_sexton_toll_tour:** 11 checks now. Without the fixes, both new ones fail.
+- **Main merged** (baseline `c0cb269`). Golden is identical on all five seeds at `--tol 0`.
+- **Suites:** these pass: test_burden_unrequited_walk, test_night_sighting_rebuttal, test_workshop_regressions, test_connections_core, test_connections_cache, test_connections_pairings and test_lamplighter_count_mix.
