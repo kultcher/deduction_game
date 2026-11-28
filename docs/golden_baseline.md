@@ -51,8 +51,8 @@ only by two intended 2c fixes:
 Psychologist's all-clear reading reworded on Nov 28 ("I learned that none of the information I
 heard on day N was a lie or misread"). #561, #565 and #571 are zero drift, and come before it.
 - **Divergence from `baseline_1bf8a4b`:** text only.
-  - Every seed differs in its first prompts (step 0, day 1), in reply text: the move hint ("you may
-    still move once within …"), the day prompt's places, and later the night gifts' descriptions,
+  - Every seed differs in its first prompts (step 0, day 1), in reply text: the day prompt's places, and
+    later the night gifts' descriptions,
     Clemency at an NPC's nomination, and "No one rises to speak for or against …".
   - Seed 900 also differs at record 175 (day 4 morning), in the text of Constance's Psychologist
     reading.
