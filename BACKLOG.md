@@ -32,7 +32,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    3. Withheld readings: asking for what someone hasn't said `[decided: direction; held, Michael, Nov 23]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
     6. \*Caught out and pressed again: what's left `[decided]`
@@ -220,7 +220,7 @@ Lantern). Nothing is open here.
     some suspicion and makes a circumstantial card.
 
   Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
-  The action's name is Michael's. [decided: direction]
+  The action's name is Michael's. [decided: direction; held, Michael, Nov 23]
 
   - **Held (Michael, Nov 23):** not to be built for now. The player's "Call on" is built (#542,
     #545); the NPC asking, pressing and cost are not.
