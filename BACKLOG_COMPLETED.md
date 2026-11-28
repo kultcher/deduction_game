@@ -9,6 +9,151 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+## Built, Nov 28, 2026 (closed by Claude-Vicar, backlog sweep)
+
+- **A friend's doubtful defence** (Michael, Nov 22). When a friend of the nominee is close to
+  voting yes, it voices a doubtful defence: "I've known Kiran for a long time. He wouldn't be
+  capable of something like this... would he?" (Michael's line, approved). It's a new voice tier.
+  It replaces the proposal "a same-day defence holds back the vote", which Michael declined.
+  Grief not fading stays as intended (Oct 30). Owners: Beadle (the trigger), Herald (the lines
+  for each voice).
+  - **Revised (Michael, Nov 22): two parts.**
+    1. **The line tier,** as above (`support_doubt_for`, triggered for a friend close to yes).
+    2. **Social pressure is damped for a voter who strongly trusts the nominee,** above a trust
+       level. That covers the player's vote and consensus; evidence-based suspicion isn't
+       damped.
+  - **Why:** the Coroner found Isolde, at trust 0.95 and suspicion 0.18 toward Kiran, pushed to
+    the edge of voting yes by Michael's vote and the consensus.
+  - **Next:** Beadle proposes the shape and the constants.
+  - **Lines** (Michael, Nov 22): the doubtful-defence lines for all 15 voices are approved, and
+    use "they" for the nominee. A yes-side line is added for a friend who votes yes despite the
+    bond (the "forgive me, Kiran" beat). Herald drafts it, and Michael approves the wording.
+
+  [decided]
+  - **Built** (Beadle, Nov 22, merged with #547): the `support_doubt_for` line tier in
+    `sim/mind_support.gd`, the reluctant friend's yes (`vote_yes_doubtful_friend`), and the damping
+    in `sim/mind_vote.gd`. Above trust `VOTE_TRUST_DAMP_START` 0.75 in the nominee, the town's
+    pressure and the player's yes count for less, up to `VOTE_TRUST_DAMP_MAX` 0.6 less at full
+    trust. Those two values were set at build time; no approval of them is recorded. Closed
+    Nov 28 (Vicar's sweep).
+
+- **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
+  connections model what is believed, so a reason can name cards the belief didn't combine.
+  **[polish]**
+  - **Built** (Lantern, #444, Nov 20): a joint reason pairs two cards only if the belief model
+    weighed them together. Closed Nov 28 (Vicar's sweep).
+
+- **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
+  Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
+  - **NPCs ask in private:** now and then, an NPC asks a claimant for a reading it should
+    already have, such as a first-night gift's.
+  - **NPCs press at the meeting:** rarely, a confident NPC presses someone it suspects of
+    holding back.
+  - **The cost:** a deferral with a reason costs a little, a bare deflection more, and the cost
+    builds by day.
+  - **The player's version:** one softer ask per meeting, outside a nomination. Refusing costs
+    some suspicion and makes a circumstantial card.
+
+  Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
+  [decided]
+
+  - **Un-held (Michael, Nov 28),** after a hold from Nov 23. The player's "Call on" is built
+    (#542, #545); the NPC asking, pressing and cost are now to be built, to the shape and
+    values below.
+  - **Beadle's shape (approved, Nov 28):**
+    - **Asking in private:** in an NPC-to-NPC conversation, a good NPC that heard someone claim
+      an information gift at least a day ago, and has heard no reading from them since, may
+      ask for it (Herald's `ask_reading_private` line). At most once per pair per day. A
+      first-night gift is owed from day 1; an ongoing one once a night has passed since the
+      claim.
+    - **Pressing at the meeting:** a confident NPC that suspects a public claimant who has gone
+      a day without a reading may press them (Herald's `press_withheld` line), at the existing
+      accusing level of suspicion. At most once per meeting.
+    - **The answer:** the "Call on" rules. The holder gives the reading; defers with a reason
+      (a friend, a burden, or distrust of the asker); or deflects. A bluffer with a fabricated
+      reading mostly answers. A private ask is answered to the asker only. Both pushes reuse
+      `CALL_ON_PRESSURE_BUMP`.
+    - **Five new constants (approved, Michael, Nov 28):**
+
+      | Constant | Value | What it does |
+      |---|---|---|
+      | `ASK_PRIVATE_BASE` | 0.10 | the base chance to ask, per conversation with the claimant |
+      | `ASK_PRIVATE_WARY` | 0.30 | added per unit of the asker's suspicion of the claimant |
+      | `ASK_PRIVATE_INSIGHT` | 0.10 | added per unit of the asker's Insight |
+      | `PRESS_WITHHELD_CONFIDENCE_MIN` | 0.6 | how confident an NPC must be to press |
+      | `PRESS_WITHHELD_SCALE` | 0.25 | multiplied by confidence: the chance to press |
+
+      That's about 0.15 for an average asker and 0.35 for a wary, sharp one; a press about
+      0.15–0.25 when someone qualifies.
+  - **The refusal record (agreed with Lantern, Nov 23)**, for Lantern's cost:
+    - one entry per refusal: asker (an NPC, or "player" for "Call on"), claimant, the claim
+      dodged (its fact id, or its day and role), the statement tick, private or meeting,
+      deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
+    - `known_to`: the asker alone for a private ask, "public" at the meeting;
+    - `shared_at`, set when the claimant later gives that reading.
+    - Settled with Lantern (Nov 28): the claim is always `{day, role}` (the night of the dodged
+      reading and its gift), with `fact_id` added alongside once one exists; `known_to` is
+      always a list (`[asker]` or `["public"]`); `shared_at` is set on every entry for that
+      claimant and claim.
+  - **Asking and answering: built** (Beadle, Nov 28; `sim/mind_withheld.gd`, `MindCallOn.respond`
+    with an asker, `w.withheld_refusals`). The cost is Lantern's, next.
+  - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
+    sized from bot runs.
+
+    | Constant | Value | What it does |
+    |---|---|---|
+    | `WITHHELD_DEFER_FACTOR` | 1.15 | the cost of a deferral with a reason |
+    | `WITHHELD_DEFLECT_FACTOR` | 1.6 | the cost of a bare deflection |
+    | `WITHHELD_DAY_STEP` | 1.25 | how much more it costs for each day the reading stays out |
+
+    - **Alignment-blind** (Michael): the cost doesn't depend on whether good or evil is likelier
+      to dodge, so there's no metagaming of who defers.
+    - **It doesn't stack:** several refusals over the same claim don't add up.
+    - **Trust-discounted:** it costs less when the asker trusts the holder.
+    - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
+  - **Built:** the player's "Call on" (#542, #545); NPCs asking, pressing and answering, and
+    the refusal record (Beadle, #588); the cost (Lantern, #592). Closed Nov 28 (Vicar's sweep).
+
+- **Graded gossip.** Each gossip occasion has a budget of mixed-value items, so the player
+  usually gets at least two useful pieces. (Michael, Nov 19) Owner Beadle, with Quill on the
+  value tiers; plan first. [decided]
+  - **Approved (Michael, Nov 19):** new constants `TAVERN_TIER1_TARGET` = 2 and
+    `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
+  - **The tiers (Michael, Nov 20, later):**
+    - **Tier 1:** a reading or other stated information, or a night sighting that names a
+      place;
+    - **Tier 2:** role claims, hints and secrets;
+    - **Tier 3:** everything else.
+
+    The targets stay at 2 and 1, and Beadle's budget calls are approved.
+  - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
+    `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
+    both met on about 4% of tavern evenings today, though the town's news would allow it on
+    about 84%. Merged (#431, Nov 20).
+  - **Budget built** (Beadle, Nov 20, #437; handoff `2026-11-20-1400-beadle-gossip-budget.md`):
+    each evening fills its tier-1 and tier-2 targets first, then draws as before. Both targets
+    are met on about 73% of evenings (from 3%). Merged (#437, Nov 20).
+  - **Closed Nov 28** (Vicar's sweep): both parts merged (#431, #437); nothing was left open.
+
+- **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
+  block, so:
+  - the Night Watch card's "pass by" is reworded, along with the Vigil tooltip's "passing
+    through": Herald #448;
+  - no voiced line says "road": Herald #446, merged.
+
+  **Wording approved (Michael, Nov 20):**
+  - **#446, the no-roads rewording:** approved as drafted, with its kept phrases: the
+    Lamplighter's "lamp route", the Augur's "crossed paths", the idiom "a long road from
+    murder", and general street flavour.
+  - **The Night Watch card:** "I watched {block}: I saw A and B out." With one person, "I saw
+    A out." With nobody, "nobody stirred".
+  - **The Vigil tooltip:** "You only see if its residents leave home. You do not see people
+    arrive on this block from elsewhere."
+
+  The Night Watch card and Vigil tooltip are in Herald's #448, first in the golden queue;
+  the item closes when #448 merges. Owner Herald. [decided]
+  - **Closed Nov 28** (Vicar's sweep): #446 and #448 are both merged.
+
 ## Built, Nov 28, 2026 (closed by Claude-Beadle)
 
 - **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
