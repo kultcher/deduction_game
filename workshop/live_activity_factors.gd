@@ -55,7 +55,7 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	duty["data"] = {} if is_count else {"block": list.get("data", {}).get("block", ""), "seen": []}
 	var broken: Dictionary = _list_mix(view, cards.map(func(c): return duty if c.get("id", "") == list.id else c), observations, rest)
 	# (broken_cards below is the same list, for the outsider's scale.)
-	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
+	var b: float = clampf(float(list.get("broken_chance", 0.0)), 0.0, 1.0)
 	# The kernel scores the broken branch on the sound branch's scale (it divides by the sound
 	# branch's good profiles in every component; LiveActivityKernel.SetListNorm, Codex on #273).
 	# A broken list says these words as often as an honest one would, from what an outsider

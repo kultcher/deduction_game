@@ -121,5 +121,26 @@ func _init() -> void:
 	print("three lists: broken chances %s, honest doubt of each night %s" % [three.b, three.void])
 	check(three.b[0] == 0.0 and three.void[0] >= 1.0, "a list beyond the mixing cap keeps the old fallback (broken chance %.2f, night void %.2f)" % [three.b[0], three.void[0]])
 	check(three.b[1] > 0.0 and three.b[2] > 0.0 and three.void[1] < 1.0 and three.void[2] < 1.0, "the latest two lists are mixed and kept")
+	# Regression (Nov 28 sweep, 77 games e.g. seed 101531): a Night Watch report mixed
+	# solely because `omen_claimants` is non-empty (no `broken_chance` key on the card)
+	# must not crash in LiveActivity._list_mix.
+	var LiveActivity = preload("res://workshop/live_activity.gd")
+	var g_omen = Game.new()
+	g_omen.detailed_logging = false
+	g_omen.new_case(42, 7)
+	var w_omen = g_omen.w
+	var ppl: Array = []
+	for n in w_omen.npcs:
+		ppl.append({"id": n.id, "home": n.home_block, "alive": true, "death_day": -1})
+	var omen_view: Dictionary = {"live_activity": true, "people": ppl, "day": 2, "night_events": [], "cards": [], "chronology": {}}
+	var omen_card: Dictionary = {
+		"id": "nw_omen_no_b", "kind": "report", "role": "nightwatch",
+		"source": ppl[0].id, "night": 1, "quoted": false, "duty_only": false,
+		"data": {"block": "square", "seen": [ppl[1].id]},
+		"omen_claimants": [ppl[2].id],
+	}
+	var omen_factors: Array = LiveActivity.factors(omen_view, [omen_card], {})
+	check(omen_factors.size() == 1 and omen_factors[0].has("list_mix") and is_equal_approx(float(omen_factors[0].list_mix.broken), 0.0) and int(omen_factors[0].list_mix.omen) != 0,
+		"Night Watch report with omen_claimants and no broken_chance key mixes cleanly (b=0, omen mask set)")
 	print("Night Watch whole list: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
