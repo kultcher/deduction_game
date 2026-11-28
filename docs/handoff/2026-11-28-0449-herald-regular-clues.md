@@ -11,34 +11,19 @@
   - The logic is unchanged: the same pick by its own seeded draw (`hash(seed, place, "regulars")`), once per place per game, and the same `known_haunts` and haunt receipt. The clue is drawn from that same private generator after the regular, so the world's random rolls don't move.
   - The card is the same firsthand haunt receipt (Quill): same kind, source and fields, so its Workshop id doesn't change. Only its text changes, to the sentence above. It shows no day, because haunts don't change (Michael); the receipt keeps `day` as data.
   - "They're not the only one." is gone (Michael).
-- **Clues:** `game/regular_clues.gd` has two per character, tied to the person, not the trade, since trades change between cases. Each reads after "<Name>'s". Michael said I could pick them.
+- **Clues:** `game/regular_clues.gd` has two per character, tied to the person, not the trade, since trades change between cases. Each reads after "<Name>'s". Michael picked them (one each).
 - **VN page:** the find comes up as its own page over the place, like a crime-scene trace or the tavern's gossip. Title: "<Place> · left behind". There's no picture of the object yet, as Michael asked. The left panel reads "Searching the place", even at the tavern, where it used to say "Listening to the gossip". `Game.last_search_clue` carries the find to the screen.
 - **Flaky tests:** the same `test_day_plaque` / `test_audit_ui` fix as #571, with identical content.
 
 ## Small calls made on Michael's behalf
 
-- **The clues** (he delegated the picks; each follows "<Name>'s"):
-  - Agnes: half-finished letter, full of other people's news; knitting, the needles still in it.
-  - Bartholomew: whittling knife and a little heap of shavings; great work gloves, stitched with a B.
-  - Constance: prayer book; list of the town's failings, in a neat hand.
-  - Dorian: sleeping draught; page with the same line crossed out a dozen times.
-  - Edda: shawl, mended many times over; jar of preserves.
-  - Fenwick: script notes; book on drama (both his examples).
-  - Greta: tally of strangers' comings and goings; walking stick, worn smooth.
-  - Hollis: spectacles, folded on an open book; old treatise, with notes in every margin.
-  - Isolde: lavender sachet; pressed flower, tucked into a ribbon.
-  - Jory: battered ball, scuffed from kicking; boots, worn through at the toes.
-  - Kiran: deck of cards; page of jokes, half of them crossed out.
-  - Lian: ledger of debts, settled to the penny; tin cup.
-  - Merrin: list of omens; lucky charm, worried smooth.
-  - Nisha: notebook of careful observations; chessboard, mid-game.
-  - Odette: well-thumbed book, with dry remarks pencilled in its margins; pipe and tobacco tin.
+- **The clues:** Michael picked one practical clue each (Nov 28): Agnes's knitting, Bartholomew's whittling knife, Constance's prayer book, Dorian's sleeping draught, Edda's shawl, Fenwick's book on drama, Greta's walking stick, Hollis's spectacles, Isolde's pressed flower, Jory's battered ball, Lian's tin cup, Merrin's lucky charm, Nisha's chessboard and Odette's pipe and tobacco tin. Kiran's deck of cards is my pick until he confirms. He asked for more options for Odette, Lian, Hollis, Edda and Greta; those went to Seneschal.
 - **The sentences:** the card's text is Michael's. The narration uses the same sentence. Mine are the page title "<Place> · left behind" and the panel's "Searching the place".
 
 ## Measured
 
 - New suite `tools/test_regular_clues.gd` (11 checks, in the fast list; 2 repeat runs):
-  - every character has one or two clues;
+  - every character has one clue;
   - a search at a place with a regular finds one of that person's own clues and teaches you the haunt;
   - the narration is Michael's sentence, with no "tells you";
   - the card says what you found, with no day;

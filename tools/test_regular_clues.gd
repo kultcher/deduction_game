@@ -27,7 +27,7 @@ func _run() -> void:
 	# Every character has a clue or two, each naming them or theirs.
 	var missing: Array = C.CAST.filter(func(ch): return Clues.CLUES.get(ch.id, []).is_empty()).map(func(ch): return ch.id)
 	check(missing.is_empty(), "every character has a clue (%s missing)" % ", ".join(PackedStringArray(missing)))
-	check(Clues.CLUES.values().all(func(list): return list.size() >= 1 and list.size() <= 2), "one or two each")
+	check(Clues.CLUES.values().all(func(list): return list.size() == 1), "one each (Michael's picks)")
 
 	var scene = load("res://ui/main.tscn").instantiate()
 	scene.show_script_at_start = false
