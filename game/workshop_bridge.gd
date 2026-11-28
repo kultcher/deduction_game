@@ -211,9 +211,13 @@ static func withheld_seen(w, n) -> Array:
 		if str(r.get("claimant", "")) == n.id or not (n.id in seen_by or "public" in seen_by):
 			continue
 		var claim: Dictionary = r.get("claim", {})
+		# The earliest the reading reached this listener: told before the town, or to it alone
+		# (shared_to) on an earlier day, which a later public telling mustn't undo (Codex on #592).
+		var shared_tick: int = int(r.shared_at) if r.has("shared_at") else -1
+		if r.get("shared_to", {}).has(n.id) and (shared_tick < 0 or int(r.shared_to[n.id]) < shared_tick):
+			shared_tick = int(r.shared_to[n.id])
 		out.append({"claimant": str(r.claimant), "role": str(claim.get("role", "")), "night": int(claim.get("day", -1)),
-			"day": int(r.get("day", 0)), "kind": str(r.get("kind", "")),
-			"shared_day": int(r.shared_at) / 4 if r.has("shared_at") else (int(r.shared_to[n.id]) / 4 if r.get("shared_to", {}).has(n.id) else -1)})
+			"day": int(r.get("day", 0)), "kind": str(r.get("kind", "")), "shared_day": shared_tick / 4 if shared_tick >= 0 else -1})
 	return out
 
 static func _reading(source: String, e: Dictionary) -> Dictionary:

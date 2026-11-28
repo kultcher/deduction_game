@@ -111,3 +111,14 @@ func _in_play() -> void:
 	var for_a: Array = Bridge.withheld_seen(g.w, a)
 	check(for_b.size() == 1 and int(for_b[0].shared_day) == g.w.day and for_a.size() == 1 and int(for_a[0].shared_day) == -1,
 		"a publicly refused reading told to one listener is shared for it alone (%s / %s)" % [for_b, for_a])
+	# A later public telling doesn't undo the listener's earlier private one (Codex on #592).
+	g.w.withheld_refusals[0]["shared_at"] = (g.w.day + 2) * 4
+	check(int(Bridge.withheld_seen(g.w, b)[0].shared_day) == g.w.day and int(Bridge.withheld_seen(g.w, a)[0].shared_day) == g.w.day + 2,
+		"the earliest telling to a listener counts, for it and for everyone else")
+	# Telling the reading refreshes its hearer at once: a deferral's cost is lifted (Codex on #592).
+	g.w.withheld_refusals.clear()
+	MindWithheld.record_refusal(g.w, a.id, c, {"day": 1, "role": "seer"}, "private", "deferred", "friend")
+	var held_s: float = float(a.suspicion.get(c.id, 0.0))
+	MindWithheld.note_shared(g.w, c, {"role": "seer", "day": 1}, a.id)
+	var told_s: float = float(a.suspicion.get(c.id, 0.0))
+	check(told_s < held_s - 0.005, "once the reading is told to its asker, the deferral's cost lifts at once (%.3f -> %.3f)" % [held_s, told_s])

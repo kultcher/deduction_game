@@ -51,3 +51,10 @@ None.
 - **test_withheld_cost:** 19 checks.
 - **Suites:** test_withheld_asks, test_call_on_respond, test_call_on and test_silence_pressure pass.
 - **Golden:** identical to `baseline_2e97efe` (main).
+
+## Codex round 2
+
+- **The earliest telling counts:** `withheld_seen` takes the earlier of `shared_at` and `shared_to[listener]`, so a later public telling can't undo a listener's earlier private one.
+- **Hearers refresh at once:** `note_shared` refreshes whoever the reading reached (the hearer, or every living good mind for a public telling) when it changes a record.
+- **test_withheld_cost:** 21 checks.
+- **Golden:** identical to `baseline_2e97efe`.

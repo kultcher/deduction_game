@@ -218,6 +218,7 @@ static func record_refusal(w, asker_id: String, n, claim: Dictionary, venue: Str
 ## `shared_at`.
 static func note_shared(w, n, e: Dictionary, to_id: String) -> void:
 	var now: int = -1
+	var changed: bool = false
 	for r in w.withheld_refusals:
 		if str(r.get("claimant", "")) != n.id or r.has("shared_at"):
 			continue
@@ -233,6 +234,14 @@ static func note_shared(w, n, e: Dictionary, to_id: String) -> void:
 				var to: Dictionary = r.get("shared_to", {})
 				if not to.has(to_id):
 					to[to_id] = now
+					changed = true
 				r["shared_to"] = to
 			continue
 		r["shared_at"] = now
+		changed = true
+	# Whoever the reading reached weighs the lifted (or frozen) cost now, not at their next
+	# unrelated refresh (Codex on #592). Through refresh_beliefs, so a meeting turn queues it.
+	if changed:
+		var heard: Array = w.living_good().filter(func(m): return m != n and (to_id == "public" or m.id == to_id))
+		for m in heard:
+			_ledger().refresh_beliefs(w, m, " (a held-back reading now told)")
