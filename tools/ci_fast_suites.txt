@@ -193,6 +193,7 @@ test_term_defs
 test_text_formatter
 test_text_terms
 test_text_ui
+test_theme_checkbox
 test_too_clean_bluffs
 test_totem_evidence
 test_town_note
