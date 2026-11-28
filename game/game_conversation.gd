@@ -143,7 +143,6 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			n.pressed_today = 0  # A new conversation they chose to initiate.
 			g.state = "talk"
 			g.moved = true
-			g.free_move_used = true
 			g.loc = n.loc
 			g.w.player_loc = g.loc
 			g.talk_with = n
