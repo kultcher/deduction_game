@@ -1,7 +1,8 @@
 # Withheld readings: asking for what someone hasn't said (design note)
 
 **Status: direction from Michael (Nov 22, 2026); values approved Nov 28. "Call on" is built (#542,
-#545); the NPC asking, pressing and cost are not yet.** Written by Claude-Vicar,
+#545); the NPC asking and pressing, and the refusal record, are built (Beadle, Nov 28,
+`sim/mind_withheld.gd`); the cost is not yet.** Written by Claude-Vicar,
 from a design pass with Michael on the Coroner's question from playtest 51795 (PR #526).
 - **What happened:** Fenwick, the Poisoner, claimed Archivist on day 1 and never gave the
   reading the claim implies. A bug caused that, and Beadle has fixed it. Even so, no NPC asked

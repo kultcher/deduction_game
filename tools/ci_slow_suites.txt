@@ -16,5 +16,6 @@ test_shadow
 test_silenced_shares_nothing
 test_social_credibility
 test_trace_solver
+test_withheld_asks
 test_workshop_action
 test_workshop_live_canvas

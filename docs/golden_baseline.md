@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, lazy Delusion exposure): `baseline_1bf8a4b`
+### Current baseline (Nov 28, withheld readings: NPCs ask and press): `baseline_446c9c2`
+
+`tools/golden/baseline_446c9c2/` is the capture from `claude/beadle-withheld-asks` at `446c9c2`:
+`baseline_1bf8a4b` plus NPCs asking in private, and pressing at the meeting, for a reading a
+claimed gift owes (`sim/mind_withheld.gd`). It supersedes `baseline_1bf8a4b`.
+- **Divergence from `baseline_1bf8a4b`:** seed 42 only, at record 36 (day 2, afternoon). In a
+  conversation Kiran asks Fenwick, in private, what the Medium showed them; Fenwick, who has no
+  reading yet, says there's nothing more to tell. That roll moves the random draws after it: the
+  run is 77 records, not 104, and Fenwick, not Dorian, nominates Agnes. 900, 54875, 692 and 98933
+  are identical: no conversation there met an owed reading, and no one qualified to press, so
+  no roll was made.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings (42: Agnes hanged on
+  day 2, good wins, on the same votes).
+- **Stability:** two captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, lazy Delusion exposure): `baseline_1bf8a4b`
 
 `tools/golden/baseline_1bf8a4b/` is the Linux CI capture from `argon/lazy-delusion-exposure` at `1bf8a4b`
 (main at `f9ec1258`, #552). `WorkshopOwnership.delusion_exposed` is now `false` in play, so

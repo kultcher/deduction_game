@@ -256,6 +256,12 @@ Lantern). Nothing is open here.
       deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
     - `known_to`: the asker alone for a private ask, "public" at the meeting;
     - `shared_at`, set when the claimant later gives that reading.
+    - Settled with Lantern (Nov 28): the claim is always `{day, role}` (the night of the dodged
+      reading and its gift), with `fact_id` added alongside once one exists; `known_to` is
+      always a list (`[asker]` or `["public"]`); `shared_at` is set on every entry for that
+      claimant and claim.
+  - **Asking and answering: built** (Beadle, Nov 28; `sim/mind_withheld.gd`, `MindCallOn.respond`
+    with an asker, `w.withheld_refusals`). The cost is Lantern's, next.
   - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
     sized from bot runs.
 
