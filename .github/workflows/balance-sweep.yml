@@ -11,7 +11,7 @@ on:
         description: "Games per cell"
         default: "2000"
       cells:
-        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional)}'
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional), "procs": autoplay processes per shard (default 2 for 10 NPCs, 4 for 7), "games_per_proc": restart autoplay after this many games (default 3 for 10 NPCs, 0 = never for 7)}'
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
@@ -53,7 +53,10 @@ jobs:
           import json, math, os
           seed0 = int(os.environ["SEED_START"]); games = int(os.environ["GAMES"])
           cells = json.loads(os.environ["CELLS"]); costs = json.loads(os.environ["COSTS"])
-          budget = float(os.environ["HOURS"]) * 3600 * 4  # 4 processes per runner
+          # A 10-NPC autoplay process peaks near 4.5 GB by its third game and keeps growing, so
+          # four of them over a whole shard outgrew the runner (run 46079890031, Nov 27: every
+          # 10-NPC shard was killed). 10-NPC cells default to 2 processes, restarted every 3 games.
+          hours = float(os.environ["HOURS"])
           shards = []
           for c in cells:
               mode = str(c["mode"]); npcs = int(c["npcs"]); ins = float(c.get("insight", 1.0))
@@ -64,14 +67,16 @@ jobs:
                   raise SystemExit("bad cell %r: mode must be passive, bot, bot_pre_m4, no_present or present_vote (bot modes may end _nocross / _nodeclare; the _connections and _legacy suffixes went with the belief-model switch, purge phase 3), npcs 7 or 10" % (c,))
               force = str(c.get("force_demon", ""))
               cost = float(costs.get("%d_%s" % (npcs, mode), costs.get("%d_bot" % npcs, 220)))
-              per = max(4, int(budget // cost))
+              procs = int(c.get("procs", 2 if npcs == 10 else 4))
+              gpp = int(c.get("games_per_proc", 3 if npcs == 10 else 0))
+              per = max(procs, int(hours * 3600 * procs // cost))
               k = max(1, math.ceil(games / per))
               size = math.ceil(games / k)
               for i in range(k):
                   a = seed0 + i * size; b = min(seed0 + games, a + size)
                   if a < b:
                       name = "%d_%s_%s%s_%d" % (npcs, mode, ("%g" % ins), ("_" + force if force else ""), a)
-                      shards.append({"name": name, "npcs": npcs, "mode": mode, "insight": ins, "force_demon": force, "first": a, "last": b})
+                      shards.append({"name": name, "npcs": npcs, "mode": mode, "insight": ins, "force_demon": force, "first": a, "last": b, "procs": procs, "games_per_proc": gpp})
           if len(shards) > int(os.environ["MAX_SHARDS"]):
               raise SystemExit("%d shards exceed max_shards; raise target_hours or lower games" % len(shards))
           print("%d shards" % len(shards))
@@ -112,13 +117,17 @@ jobs:
           FIRST: ${{ matrix.first }}
           LAST: ${{ matrix.last }}
           FORCE_DEMON: ${{ matrix.force_demon }}
+          PROCS: ${{ matrix.procs }}
+          GAMES_PER_PROC: ${{ matrix.games_per_proc }}
         run: |
           # Only pass --force-demon when a cell asks for it, so refs from before the flag still run.
           FORCE_ARGS=()
           if [ -n "$FORCE_DEMON" ]; then FORCE_ARGS=(--force-demon "$FORCE_DEMON"); fi
+          # The same for --games-per-proc (refs from before Nov 28 lack it).
+          if [ "${GAMES_PER_PROC:-0}" -gt 0 ]; then FORCE_ARGS+=(--games-per-proc "$GAMES_PER_PROC"); fi
           python3 tools/sweep_shard.py --godot "$GODOT_BIN" \
             --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" "${FORCE_ARGS[@]}" \
-            --seeds "$FIRST:$LAST" --procs 4 --out "$RUNNER_TEMP/out" \
+            --seeds "$FIRST:$LAST" --procs "${PROCS:-4}" --out "$RUNNER_TEMP/out" \
             --sha "$(git rev-parse HEAD)"
       - name: Upload results
         if: always()

@@ -111,6 +111,11 @@ class Worker:
                 seed += 1
                 continue
             games = self.last - seed
+            if self.a.games_per_proc > 0:
+                # Restart autoplay every N games: a 10-NPC process's memory grows game by game
+                # (about 2.3 GB after one game, 4.5 GB by the third, Nov 28), and four of them
+                # running a whole shard's seeds outgrew a hosted runner (run 46079890031).
+                games = min(games, self.a.games_per_proc)
             cmd = [self.a.godot, "--headless", "--path", self.a.project, "--script", "res://tools/autoplay.gd", "--",
                    "--seed", str(seed), "--games", str(games), "--npcs", str(self.a.npcs), "--no-trace",
                    "--dynamic", "--results-jsonl", self.results, "--sha", self.a.sha,
@@ -235,6 +240,8 @@ def main():
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
     ap.add_argument("--procs", type=int, default=4)
+    ap.add_argument("--games-per-proc", type=int, default=0,
+                    help="restart autoplay after this many games, to bound its memory (0: never)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--sha", default=os.environ.get("GITHUB_SHA", ""))
     ap.add_argument("--game-timeout", type=float, default=1800.0)
