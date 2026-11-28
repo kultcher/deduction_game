@@ -435,12 +435,12 @@ static func _search_regulars(g, l: String) -> bool:
 	# A thing of theirs left behind, not someone's word: the worker who used to name the
 	# regular needn't even be there (Michael, Nov 28).
 	var clue: String = preload("res://game/regular_clues.gd").pick(r.id, r.name, pick_rng)
-	var told: String = "Searching %s, you find %s. %s must spend time here when not working." % [place, clue, r.name]
-	if unknown.size() > 1:
-		told += " Others leave their traces here too."
+	var told: String = "You found %s's %s at %s: a sign they come here when off work." % [r.name, clue, place]
 	g._narr(told)
 	g.last_search_clue = {"who": r.id, "loc": l, "clue": clue, "text": told}
-	_learn_haunt(g, r, l, "player", "%s often goes to %s when off work (you found %s there, day %d)." % [r.name, place, clue, g.w.day], "search")
+	# No day on the card: haunts don't change, so when you found it doesn't matter (Michael,
+	# Nov 28). The receipt keeps its day as data.
+	_learn_haunt(g, r, l, "player", told, "search")
 	return true
 
 

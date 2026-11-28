@@ -3,45 +3,45 @@
 - **Agent:** Claude-Herald
 - **Base:** main at 6770f32e
 - **Status:** PR open. Golden is identical to `baseline_1bf8a4b` at `--tol 0` on all five seeds.
-- **Next actor:** Bailiff (review, merge). Quill is checking with Seneschal whether the card behind it should change.
+- **Next actor:** Bailiff (review, merge). Quill confirmed the card doesn't change, only its words.
 
 ## What changed
 
-- **Item 7 (Michael, Nov 28, via Seneschal):** before, searching a social spot had whoever worked there tell you who its regular was, even when that worker wasn't there that phase. Now the search finds a thing of the regular's left behind: "Searching the Drowned Lamb tavern, you find a list of omens in Merrin's dramatic hand. Merrin must spend time here when not working."
+- **Item 7 (Michael, Nov 28, via Seneschal):** before, searching a social spot had whoever worked there tell you who its regular was, even when that worker wasn't there that phase. Now the search finds a thing of the regular's left behind. The narration and the card both use Michael's wording: "You found Merrin's list of omens at the Drowned Lamb tavern: a sign they come here when off work."
   - The logic is unchanged: the same pick by its own seeded draw (`hash(seed, place, "regulars")`), once per place per game, and the same `known_haunts` and haunt receipt. The clue is drawn from that same private generator after the regular, so the world's random rolls don't move.
-  - The haunt receipt now reads "(you found <clue> there, day N)" instead of "(you asked after the regulars there, day N)".
-  - With more than one unknown regular: "Others leave their traces here too." This replaces "They're not the only one."
-- **Clues:** `game/regular_clues.gd` has two per character, tied to the person, not the trade, since trades change between cases. Michael said I could pick them.
+  - The card is the same firsthand haunt receipt (Quill): same kind, source and fields, so its Workshop id doesn't change. Only its text changes, to the sentence above. It shows no day, because haunts don't change (Michael); the receipt keeps `day` as data.
+  - "They're not the only one." is gone (Michael).
+- **Clues:** `game/regular_clues.gd` has two per character, tied to the person, not the trade, since trades change between cases. Each reads after "<Name>'s". Michael said I could pick them.
 - **VN page:** the find comes up as its own page over the place, like a crime-scene trace or the tavern's gossip. Title: "<Place> · left behind". There's no picture of the object yet, as Michael asked. The left panel reads "Searching the place", even at the tavern, where it used to say "Listening to the gossip". `Game.last_search_clue` carries the find to the screen.
 - **Flaky tests:** the same `test_day_plaque` / `test_audit_ui` fix as #571, with identical content.
 
 ## Small calls made on Michael's behalf
 
-- **The clues** (he delegated the picks):
-  - Agnes: a half-finished letter full of other people's news; her knitting.
-  - Bartholomew: his whittling knife and shavings; great work gloves stitched with a B.
-  - Constance: a prayer book with her name inside; a list of the town's failings.
-  - Dorian: a sleeping draught; a page with the same line crossed out a dozen times.
-  - Edda: her much-mended shawl; a jar of her preserves.
-  - Fenwick: his script notes; a book on drama (both are Michael's examples).
-  - Greta: a tally of strangers' comings and goings; her walking stick.
-  - Hollis: his spectacles on an open book; a treatise with his margin notes.
-  - Isolde: a lavender sachet with her ribbon; a pressed flower in a note.
-  - Jory: his battered ball; boots worn through at the toes.
-  - Kiran: a deck of cards with his mark; a page of his jokes.
-  - Lian: her ledger of debts; a tin cup with her initial.
-  - Merrin: a list of omens; their lucky charm.
-  - Nisha: her notebook of observations; a chessboard mid-game.
-  - Odette: a book with dry remarks in its margins; her pipe and tobacco tin.
-- **The sentences:** "Searching <place>, you find <clue>. <Name> must spend time here when not working.", "Others leave their traces here too.", the receipt's "(you found <clue> there, day N)", the page title "<Place> · left behind", and the panel's "Searching the place".
+- **The clues** (he delegated the picks; each follows "<Name>'s"):
+  - Agnes: half-finished letter, full of other people's news; knitting, the needles still in it.
+  - Bartholomew: whittling knife and a little heap of shavings; great work gloves, stitched with a B.
+  - Constance: prayer book; list of the town's failings, in a neat hand.
+  - Dorian: sleeping draught; page with the same line crossed out a dozen times.
+  - Edda: shawl, mended many times over; jar of preserves.
+  - Fenwick: script notes; book on drama (both his examples).
+  - Greta: tally of strangers' comings and goings; walking stick, worn smooth.
+  - Hollis: spectacles, folded on an open book; old treatise, with notes in every margin.
+  - Isolde: lavender sachet; pressed flower, tucked into a ribbon.
+  - Jory: battered ball, scuffed from kicking; boots, worn through at the toes.
+  - Kiran: deck of cards; page of jokes, half of them crossed out.
+  - Lian: ledger of debts, settled to the penny; tin cup.
+  - Merrin: list of omens; lucky charm, worried smooth.
+  - Nisha: notebook of careful observations; chessboard, mid-game.
+  - Odette: well-thumbed book, with dry remarks pencilled in its margins; pipe and tobacco tin.
+- **The sentences:** the card's text is Michael's. The narration uses the same sentence. Mine are the page title "<Place> · left behind" and the panel's "Searching the place".
 
 ## Measured
 
 - New suite `tools/test_regular_clues.gd` (11 checks, in the fast list; 2 repeat runs):
   - every character has one or two clues;
   - a search at a place with a regular finds one of that person's own clues and teaches you the haunt;
-  - the narration is a find, with no "tells you";
-  - the receipt says what you found;
+  - the narration is Michael's sentence, with no "tells you";
+  - the card says what you found, with no day;
   - the page comes up over the place, with no picture;
   - the panel reads "Searching the place".
 - Suites passing: `test_regular_clues`, `test_haunt_learning`, `test_npc_fixes_shifts_dead_haunt`, `test_buildings_tavern_town_hall`, `test_gossip_tiers`, `test_meeting_gossip`, `test_peer_role_gossip`, `test_dialogue_fixes_gossip_reasons`, `test_control_flow`, `test_ui`, `test_day_plaque`, `test_audit_ui`.

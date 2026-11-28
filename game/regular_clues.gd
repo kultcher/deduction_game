@@ -1,29 +1,30 @@
 ## What a search turns up of a place's regular (Michael, Nov 28): a thing of theirs left
 ## behind, not someone's word. One or two per character, tied to the person rather than their
-## trade (trades change from case to case). Each reads after "you find ...".
+## trade (trades change from case to case). Each reads after "<Name>'s": Michael's wording
+## (Nov 28) is "You found <Name>'s <clue> at <place>: a sign they come here when off work."
 extends RefCounted
 
 const CLUES = {
-	"agnes": ["a half-finished letter in Agnes's hand, full of other people's news", "Agnes's knitting, the needles still in it"],
-	"bart": ["Bartholomew's whittling knife and a little heap of shavings", "a pair of great work gloves stitched with a B"],
-	"constance": ["a prayer book with Constance's name pressed inside the cover", "a list of the town's failings in Constance's neat hand"],
-	"dorian": ["a sleeping draught with Dorian's name scratched on the bottle", "a page of Dorian's, the same line crossed out a dozen times"],
-	"edda": ["Edda's shawl, mended many times over", "a jar of Edda's preserves, labelled in a plain hand"],
-	"fenwick": ["some of Fenwick's script notes", "a book on drama with Fenwick's name inside"],
-	"greta": ["a tally of strangers' comings and goings in Greta's blunt hand", "Greta's walking stick, worn smooth"],
-	"hollis": ["Hollis's spectacles, folded on an open book", "an old treatise with Hollis's notes in the margins"],
-	"isolde": ["a sachet of lavender with Isolde's ribbon round it", "a pressed flower tucked into a note signed Isolde"],
-	"jory": ["Jory's battered ball, scuffed from kicking", "a pair of boots worn through at the toes, Jory's by the size"],
-	"kiran": ["a deck of cards with Kiran's mark on the box", "a page of Kiran's jokes, half of them crossed out"],
-	"lian": ["Lian's ledger of debts, settled to the penny", "a plain tin cup scratched with Lian's initial"],
-	"merrin": ["a list of omens in Merrin's dramatic hand", "Merrin's lucky charm, worried smooth"],
-	"nisha": ["Nisha's notebook of careful observations", "a chessboard mid-game, with Nisha's notes beside it"],
-	"odette": ["a well-thumbed book of Odette's, dry remarks pencilled in its margins", "Odette's pipe and tobacco tin"],
+	"agnes": ["half-finished letter, full of other people's news", "knitting, the needles still in it"],
+	"bart": ["whittling knife and a little heap of shavings", "great work gloves, stitched with a B"],
+	"constance": ["prayer book", "list of the town's failings, in a neat hand"],
+	"dorian": ["sleeping draught", "page with the same line crossed out a dozen times"],
+	"edda": ["shawl, mended many times over", "jar of preserves"],
+	"fenwick": ["script notes", "book on drama"],
+	"greta": ["tally of strangers' comings and goings", "walking stick, worn smooth"],
+	"hollis": ["spectacles, folded on an open book", "old treatise, with notes in every margin"],
+	"isolde": ["lavender sachet", "pressed flower, tucked into a ribbon"],
+	"jory": ["battered ball, scuffed from kicking", "boots, worn through at the toes"],
+	"kiran": ["deck of cards", "page of jokes, half of them crossed out"],
+	"lian": ["ledger of debts, settled to the penny", "tin cup"],
+	"merrin": ["list of omens", "lucky charm, worried smooth"],
+	"nisha": ["notebook of careful observations", "chessboard, mid-game"],
+	"odette": ["well-thumbed book, with dry remarks pencilled in its margins", "pipe and tobacco tin"],
 }
 
 ## One of the person's clues, by the search's own draw; a plain fallback for anyone unlisted.
 static func pick(id: String, name: String, rng: RandomNumberGenerator) -> String:
 	var options: Array = CLUES.get(id, [])
 	if options.is_empty():
-		return "something of %s's" % name
+		return "belongings"
 	return str(options[rng.randi_range(0, options.size() - 1)])
