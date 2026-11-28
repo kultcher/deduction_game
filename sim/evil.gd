@@ -198,7 +198,10 @@ static func plan_daily_frame(w) -> void:
 		var bluff: String = str(plan.get("bluffs", {}).get(m.id, ""))
 		var cand: Dictionary = {}
 		var watch: Dictionary = _own_fake_reading(m, nd, "nightwatch")
-		if m.home_block == death_block and sg.home_block != death_block and watch.is_empty():
+		# A Monitor never sees from its window (monitor.gd), so a Monitor bluffer is never given
+		# a window sighting to tell (playtest 52102: Dorian, bluffing Monitor, "from my window").
+		var no_window: bool = bluff == "monitor"
+		if m.home_block == death_block and sg.home_block != death_block and watch.is_empty() and not no_window:
 			cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "window", "detail": "street"}
 		elif bluff in ["nightwatch", "warden", "lamplighter"]:
 			if bluff == "nightwatch":
@@ -207,15 +210,16 @@ static func plan_daily_frame(w) -> void:
 				elif str(watch.get("data", {}).get("block", "")) == death_block and sg_id in watch.get("data", {}).get("seen", []):
 					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
 				elif not watch.get("shared", false) and m.told_readings == 0 and not m.told_to.keys().any(func(k): return str(k).ends_with("|reading:%d:nightwatch" % nd)):
-					watch["data"] = {"block": death_block, "seen": [sg_id]}
-					watch["text"] = "I watched %s: I saw %s out" % [C.block_name(death_block), sg.name]
-					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
+					# Its untold watch report would be rewritten to match, but only if it's the
+					# one chosen (playtest 52102: scoring every candidate rewrote Lian's report
+					# though Dorian won the slot).
+					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street", "_rewrite_watch": true}
 			elif bluff == "warden":
 				if w.living().any(func(p): return p != m and p.home_block == death_block):
 					cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
 			else:
 				cand = {"kind": "saw", "who": sg_id, "loc": "", "block": death_block, "day": nd, "phase": C.NIGHT, "how": "street", "detail": "street"}
-		elif m.home_block == sg.home_block and watch.is_empty():
+		elif m.home_block == sg.home_block and watch.is_empty() and not no_window:
 			cand = {"kind": "saw", "who": sg_id, "loc": "", "block": m.home_block, "day": nd, "phase": C.NIGHT, "how": "window", "detail": "leaving_home"}
 		if cand.is_empty():
 			continue
@@ -225,6 +229,15 @@ static func plan_daily_frame(w) -> void:
 			best_m = m
 			best_sight = cand
 	if best_m != null and not best_sight.is_empty():
+		if best_sight.get("_rewrite_watch", false):
+			best_sight.erase("_rewrite_watch")
+			var bw: Dictionary = _own_fake_reading(best_m, nd, "nightwatch")
+			if not bw.is_empty():
+				var was_text: String = str(bw.get("text", ""))
+				bw["data"] = {"block": death_block, "seen": [sg_id]}
+				bw["text"] = "I watched %s: I saw %s out" % [C.block_name(death_block), sg.name]
+				w.dlog.think(best_m.id, "lie", "Rewrites its untold night-%d watch report to frame %s on %s (was: %s)." % [nd, sg.name, C.block_name(death_block), was_text],
+					{"lie": true, "why": "plant a frame on the scapegoat", "rewrite": true, "day": nd})
 		plan["daily_planter"] = best_m.id
 		plan["planter_sighting"] = best_sight.duplicate(true)
 		plan["fake_sightings"]["%s:%d" % [best_m.id, nd]] = best_sight.duplicate(true)
@@ -1161,6 +1174,11 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 			w.dlog.think(n.id, "lie", "Made up seeing %s, evil's scapegoat, on %s at night, %s." % [w.by_id[s].name, C.block_name(vantage), "from their window" if how == "window" else "while out"], {"lie": true})
 		if not cache.has(key):
 			cache[key] = result if result != null else false
+		if result != null:
+			# Logged as a lie just above: don't log it again as a planted one.
+			var made: Dictionary = w.evil_plan.get("planted_lie_logged", {})
+			made[key] = true
+			w.evil_plan["planted_lie_logged"] = made
 	var r = cache[key]
 	if not (r is Dictionary) or r["block"] != vantage:
 		return null
@@ -1173,6 +1191,23 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 			w.dlog.think(n.id, "lie", "Holds back its made-up sighting of %s on %s %s: seen while out, and it has claimed no gift that takes it out at night." % [w.by_id[r["who"]].name if w.by_id.has(r["who"]) else r["who"], C.block_name(r["block"]), C.spoken_when(nd, -1)], {"held": true})
 		return null
 	return r
+
+## A made-up sighting told to the Demonologist (in private or at the podium) is a lie: logged
+## once per member and night, at the telling (playtest 52102: the plan's planted frame came from
+## the cache and was never logged; Codex on #569: log when told, not when fetched). A sighting
+## made up in fake_night_sighting, and logged there, isn't logged again. NPC-to-NPC tellings
+## log their own lie (Social._deliver).
+static func note_told_sighting(w, n, r: Dictionary) -> void:
+	if not n.is_evil() or not w.by_id.has(str(r.get("who", ""))):
+		return
+	var key: String = "%s:%d" % [n.id, int(r.get("day", -1))]
+	var logged: Dictionary = w.evil_plan.get("planted_lie_logged", {})
+	if logged.has(key):
+		return
+	logged[key] = true
+	w.evil_plan["planted_lie_logged"] = logged
+	w.dlog.think(n.id, "lie", "Told the Demonologist of seeing %s on %s %s: the day's planted frame on evil's scapegoat." % [w.by_id[str(r["who"])].name, C.block_name(str(r.get("block", ""))), C.spoken_when(int(r.get("day", -1)), -1)],
+		{"lie": true, "why": "plant a frame on the scapegoat", "planted": true})
 
 ## Whether a made-up sighting is one the teller can tell as it stands: a window sighting
 ## always, one seen "while out" only once it has claimed a night-walking gift that explains

@@ -352,6 +352,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			return {"lines": lines, "facts": facts}
 	var seen: Array = n.beliefs.filter(func(b): return b["kind"] in ["saw", "stayed_in"] and b["day"] == nd and b["phase"] == C.NIGHT)
 	var reported: Array = []
+	var told_fake = null  # a made-up sighting added below, logged as a lie only once told
 	for b in seen:
 		if n.is_evil() and Evil.is_teammate(w, n, b["who"]) and b["kind"] == "saw":
 			w.dlog.think(n.id, "lie", "Left out seeing %s, a fellow evil, at night." % w.by_id[b["who"]].name)
@@ -369,9 +370,9 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	if ov_sight.get("handled", false):
 		reported = ov_sight["reported"]
 	elif n.is_evil() and vantage != "":
-		var fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
-		if fake != null:
-			reported.append(fake)
+		told_fake = Evil.fake_night_sighting(w, n, nd, vantage, how)
+		if told_fake != null:
+			reported.append(told_fake)
 	var slips: Array = []
 	if refused_whereabouts:
 		var safe: Array = []
@@ -394,6 +395,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		if not shares:
 			lines.append(say_voiced(n, "night_sightings_refuse", "I'm not ready to discuss who I saw."))
 			return {"lines": lines, "facts": facts}
+		if told_fake != null and told_fake in reported:
+			Evil.note_told_sighting(w, n, told_fake)
 	# Some alibi wordings already say they saw nobody ("didn't see a soul"): don't repeat it.
 	var said_nobody: bool = lines.any(func(l): return l is Dictionary and SAW_NOBODY_MARKERS.any(func(m): return m in str(l.get("text", "")).to_lower()))
 	if reported.is_empty() and not (was_out and not n.is_evil()) and not said_nobody:

@@ -36,7 +36,7 @@ static func _help(g) -> String:
   Case    : build cases in the Case Workshop; present them at the meeting
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
             note <name> <text> | guess <name> <role|evil|good> [1-4] | theory
-  Day     : go <place | block | person>   (then one free move within the same block)
+  Day     : go <place | block | person>   (then move freely within the same block)
             then one action: talk <name> | search | gossip (tavern, evening) | records (town hall, morning/afternoon, 3/case) | wait
   Talking : ask gift | ask night | ask seen <today | morning | afternoon | evening | yesterday [phase]>
             ask are <gift> | ask about <name> (haunts and recent sightings) | bye
@@ -359,10 +359,20 @@ static func _lies(g) -> String:
 		if e["type"] == "think" and topic == "lie":
 			out.append("  D%d %-9s %-12s %s" % [e["day"], e["phase"], g.w.by_id[e["actor"]].name, e["reason"]])
 		elif e["type"] == "info" and not e["data"].get("true", true):
-			out.append("  N%d %-9s %-12s false reading: %s (%s)" % [e["day"], "", g.w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"])])
+			out.append("  %-3s %-9s %-12s false reading: %s (%s)" % [_reading_when(e), "", g.w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"])])
 		elif e["type"] == "fake_info":
-			out.append("  N%d %-9s %-12s fabricated: %s (%s)" % [e["day"], "", g.w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"].merged({"fake": true}))])
+			out.append("  %-3s %-9s %-12s fabricated: %s (%s)" % [_reading_when(e), "", g.w.by_id[e["actor"]].name, e["data"]["text"], World.false_reading_reason(e["data"].merged({"fake": true}))])
 	return "\n".join(out)
+
+
+## When a reading is about: the night (or day phase) it reads, not when it was logged. A
+## fabrication held back and told a night later still reads the night it claims (playtest 52102).
+static func _reading_when(e: Dictionary) -> String:
+	var d: Dictionary = e.get("data", {})
+	var day: int = int(d.get("day", e["day"]))
+	if d.has("phase") and int(d["phase"]) != C.NIGHT:
+		return "D%d" % day
+	return "N%d" % day
 
 
 static func _write_logs(g) -> String:
@@ -378,7 +388,10 @@ static func set_note(g, id: String, text: String) -> void:
 	g.notes[id] = text
 
 
-static func set_guess(g, id: String, guess: String, confidence: int) -> bool:
+## `source` names the screen control that set it ("profile_menu", "profile_save"), for the log;
+## the typed command and the bots leave it out (playtest 52102: a Demon guess appeared that no
+## command made, and the log couldn't say where from).
+static func set_guess(g, id: String, guess: String, confidence: int, source: String = "") -> bool:
 	g.last_error = ""
 	if g.w.game_over:
 		g.last_error = "The case is closed. Your pre-outcome theory is frozen."
@@ -403,6 +416,8 @@ static func set_guess(g, id: String, guess: String, confidence: int) -> bool:
 	var revision = {"revision": g.guess_history.size() + 1, "day": g.w.day, "phase": g.w.phase_name(), "state": g.state,
 		"who": id, "guess": guess, "confidence": clampi(confidence, 1, 4), "before": before,
 		"guesses": g.guesses.duplicate(true), "notes": g.notes.duplicate(true)}
+	if source != "":
+		revision["source"] = source
 	g.guess_history.append(revision)
 	g.w.set_log_time()
 	g.w.dlog.add("player_guess", "player", id, revision, "Private theory revised; no truth feedback.")
@@ -432,9 +447,24 @@ static func set_secret_guess(g, id: String, secret: String, confidence: int) -> 
 	return true
 
 
+## The player's verdict: the daily guess window's last locked picks once they've confirmed it
+## at all (Michael, Nov 21: "the last guesses locked here are the player's verdict"), else the
+## profile's guesses. A confirmed window with every circle cleared is an empty verdict, not a
+## fallback (Codex on #571). The window never writes back to the profile (ui/daily_guess.gd), so
+## the summary and the theory line read it here (playtest 52102).
+static func effective_guesses(g) -> Dictionary:
+	var store: Dictionary = g.get_meta("daily_guess_locked", {}) if g.has_meta("daily_guess_locked") else {}
+	if not store.has("picks"):
+		return g.guesses
+	var picks: Array = store["picks"]
+	var sc = g.w.case_script
+	var minion_types: Array = sc.minions if sc != null else C.EVIL_ROLES.filter(func(r): return C.is_minion(r))
+	return CaseMetrics.window_guesses(picks, minion_types)
+
+
 static func capture_prediction(g, reason: String, extra: Dictionary = {}) -> Dictionary:
 	var snapshot = {"id": g.prediction_snapshots.size() + 1, "day": g.w.day, "phase": g.w.phase_name(), "state": g.state,
-		"reason": reason, "revision": g.guess_history.size(), "guesses": g.guesses.duplicate(true), "notes": g.notes.duplicate(true),
+		"reason": reason, "revision": g.guess_history.size(), "guesses": effective_guesses(g).duplicate(true), "notes": g.notes.duplicate(true),
 		"spoiled": g.prediction_spoiled, "context": extra.duplicate(true)}
 	g.prediction_snapshots.append(snapshot)
 	g.w.set_log_time()
@@ -444,10 +474,11 @@ static func capture_prediction(g, reason: String, extra: Dictionary = {}) -> Dic
 
 static func theory_status(g) -> String:
 	var parts: Array = []
-	var dids = CaseMetrics.demon_guesses(g.guesses)
+	var guesses: Dictionary = effective_guesses(g)
+	var dids = CaseMetrics.demon_guesses(guesses)
 	parts.append("Demon: %s" % (g.w.by_id[dids[0]].name if dids.size() == 1 else "not recorded"))
-	var mids = CaseMetrics.minion_guesses(g.guesses)
-	parts.append("Minion%s: %s" % ["" if g.w.minion_ids.size() == 1 else "s", ", ".join(PackedStringArray(mids.map(func(i): return "%s (%s)" % [g.w.by_id[i].name, C.role_name(g.guesses[i]["guess"])]))) if not mids.is_empty() else "not recorded"])
+	var mids = CaseMetrics.minion_guesses(guesses)
+	parts.append("Minion%s: %s" % ["" if g.w.minion_ids.size() == 1 else "s", ", ".join(PackedStringArray(mids.map(func(i): return "%s (%s)" % [g.w.by_id[i].name, "Minion" if guesses[i].get("untyped", false) else C.role_name(guesses[i]["guess"])]))) if not mids.is_empty() else "not recorded"])
 	return ("Final theory — " if g.w.game_over else "Your private theory — ") + "; ".join(PackedStringArray(parts))
 
 

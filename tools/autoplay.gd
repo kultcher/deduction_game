@@ -707,9 +707,11 @@ func _decide_inner() -> String:
 			if w.scenes.has(g.loc) and not w.scenes[g.loc]["searched"]:
 				return "search"
 			var fresh: Array = here.filter(func(n): return n.busy_with == "" and not n.silenced and talked.get(n.id, -1) != w.day)
-			if fresh.is_empty() and not g.free_move_used:
+			if fresh.is_empty():
+				# Moving within the block is free (Nov 28): step over only to someone not yet
+				# talked to today, so the bot can't bounce between two places.
 				for l in w.locations_on(w.loc_block(g.loc)):
-					if l != g.loc and not w.npcs_at(l).filter(func(n): return n.busy_with == "").is_empty():
+					if l != g.loc and not w.npcs_at(l).filter(func(n): return n.busy_with == "" and not n.silenced and talked.get(n.id, -1) != w.day).is_empty():
 						return "go " + l
 			if w.phase == C.EVENING and g.loc == "tavern" and rng.randf() < 0.4:
 				return "gossip"

@@ -50,7 +50,6 @@ var approach = {}          # pending approach: {npc, agenda}
 var approached_id = ""     # npc who approached at the start of this phase
 var approached_loc = ""    # location named in that approach
 var moved = false          # has the player chosen a location this phase
-var free_move_used = false
 var loc = ""
 var talk_with = null
 var questions_left = 0
@@ -566,6 +565,11 @@ func _dispatch(text: String) -> void:
 				var conf = p1[p1.size() - 1].to_int() if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else 2
 				var gtext = " ".join(p1.slice(1, p1.size() - 1 if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else p1.size()))
 				var role = find_role(gtext)
+				if role == "" and gtext.to_lower() in ["minion", "a minion"]:
+					# A Minion guess names its gift (playtest 52102, seq 556); say how.
+					var example: String = C.role_name(w.case_script.minions[0]).to_lower() if w.case_script != null and not w.case_script.minions.is_empty() else "poisoner"
+					_err("Name the Minion's gift ('guess %s %s'), or guess 'evil'." % [gn.name.to_lower(), example])
+					return
 				if set_guess(gn.id, role if role != "" else gtext.to_lower(), conf):
 					_narr(theory_status())
 				else:
@@ -709,8 +713,8 @@ func _abbr(b: String) -> String:
 # ---------------------------------------------------------------- screens & theory forwarders
 
 
-func set_guess(id: String, guess: String, confidence: int) -> bool:
-	return GameScreens.set_guess(self, id, guess, confidence)
+func set_guess(id: String, guess: String, confidence: int, source: String = "") -> bool:
+	return GameScreens.set_guess(self, id, guess, confidence, source)
 
 func set_secret_guess(id: String, secret: String, confidence: int) -> bool:
 	return GameScreens.set_secret_guess(self, id, secret, confidence)

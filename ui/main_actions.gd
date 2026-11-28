@@ -267,14 +267,14 @@ static func day(m, w) -> void:
 		else:
 			var b = m._button(m.actions, "%s is deep in conversation" % n.name, func(): pass, C.npc_color(n.id))
 			b.disabled = true
-	if not m.g.free_move_used:
-		for l in w.locations_on(w.loc_block(m.g.loc)):
-			if l == m.g.loc or l.begins_with("home_"):
-				continue
-			var who: Array = GameDayNight._present(m.g, l).filter(func(x): return x.busy_with == "")
-			if not who.is_empty():
-				for n in who:
-					m._button(m.actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): m._run("talk " + n.id), C.npc_color(n.id))
+	# Moving within the block is always free now (#586), so the rest of the block is a step away.
+	for l in w.locations_on(w.loc_block(m.g.loc)):
+		if l == m.g.loc or l.begins_with("home_"):
+			continue
+		var who: Array = GameDayNight._present(m.g, l).filter(func(x): return x.busy_with == "")
+		if not who.is_empty():
+			for n in who:
+				m._button(m.actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): m._run("talk " + n.id), C.npc_color(n.id))
 	if not m.g.loc.begins_with("home_") and not C.is_player_building(m.g.loc):
 		m._button(m.actions, "Search here", func(): m._run("search"))
 	if m.g.loc == "tavern":
@@ -289,8 +289,7 @@ static func day(m, w) -> void:
 		var th_btn = m._button(m.actions, th_lbl, func(): m._run("records"))
 		th_btn.disabled = (not th_open) or th_left <= 0
 	m._button(m.actions, "Wait", func(): m._run("wait"))
-	if not m.g.free_move_used:
-		hint(m, "You can still step to the other spot on this block (click it on the map).")
+	hint(m, "You can still step to the other spot on this block (click it on the map).")
 
 static func talk(m, w) -> void:
 	var n = m.g.talk_with
@@ -302,19 +301,25 @@ static func talk(m, w) -> void:
 		m._button(m.actions, ask + " (free)", func(): m._run("yes"), C.npc_color(n.id))
 		m._button(m.actions, "Say no (free)", func(): m._run("no"))
 		hint(m, "Anything else you do counts as no.")
-	var gb = m._button(m.actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
-	gb.pressed.connect(func(): Pickers.ask_gift(m, gb))
+	# Silenced: they can't answer, so no questions are offered (playtest 52102, seq 747); they
+	# can still read a card, take an offer, and be left.
+	if n.silenced:
+		hint(m, "%s can't speak until tomorrow evening." % n.name)
+	else:
+		var gb = m._button(m.actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
+		gb.pressed.connect(func(): Pickers.ask_gift(m, gb))
 	var ob = m._button(m.actions, "Offer…  ▸", func(): pass)
 	ob.pressed.connect(func(): Pickers.offer(m, ob))
-	var wb = m._button(m.actions, "Ask where they were and who they saw…  ▸", func(): pass)
-	wb.pressed.connect(func(): Pickers.ask_when(m, wb))
-	var ab = m._button(m.actions, "Ask about others…  ▸", func(): pass)
-	ab.pressed.connect(func(): Pickers.ask_about(m, ab))
+	if not n.silenced:
+		var wb = m._button(m.actions, "Ask where they were and who they saw…  ▸", func(): pass)
+		wb.pressed.connect(func(): Pickers.ask_when(m, wb))
+		var ab = m._button(m.actions, "Ask about others…  ▸", func(): pass)
+		ab.pressed.connect(func(): Pickers.ask_about(m, ab))
 	var asks: Dictionary = {"seer": "check", "registrar": "check", "warden": "guard", "nightwatch": "watch"}
-	if (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
+	if not n.silenced and (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
 		var rb = m._button(m.actions, "Ask them to use their gift tonight…  ▸", func(): pass)
 		rb.pressed.connect(func(): Pickers.gift_request(m, rb, n.claimed_role, asks[n.claimed_role]))
-	for k in n.hints:
+	for k in ([] if n.silenced else n.hints):
 		if w.by_id[k].alive:
 			# They hinted at a private reason at the meeting: ask them for it.
 			m._button(m.actions, "Ask why they suspect %s" % w.by_id[k].name, func(): m._run("ask why"), C.npc_color(k))
