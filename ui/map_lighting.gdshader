@@ -37,16 +37,17 @@ struct Grade {
 };
 
 Grade grade_morning() {
-	// Golden hour: honey-gold highlights, warm amber-peach midtones, subtle cool
-	// slate-plum shadows so dark teal trees and river stay rich instead of muddy.
+	// Rose dawn (Michael, Nov 27, option C of Limner's sheets): a rosier, cooler early
+	// light with no warm lift, so sandy paths and lots keep their paper texture; soft
+	// slate-plum shadows keep the dark teal trees and river rich.
 	return Grade(
-		vec3(0.85, 0.83, 0.94),
-		vec3(1.07, 0.98, 0.83),
-		vec3(1.14, 1.04, 0.80),
-		1.06,
+		vec3(0.88, 0.84, 0.96),
+		vec3(1.05, 0.97, 0.91),
+		vec3(1.07, 1.00, 0.92),
 		1.03,
+		1.02,
 		0.0,
-		0.03
+		0.0
 	);
 }
 

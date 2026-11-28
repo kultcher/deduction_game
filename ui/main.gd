@@ -724,6 +724,31 @@ func _refresh_all() -> void:
 	day_label.text = "Day %d\n%s" % [g.w.day, phase_name]
 	if case_view.visible:
 		case_view.refresh()
+## The Day/Phase plaque on every screen (Michael, Nov 27): top centre of the map (and of a
+## conversation over it), the meeting circle's top-left corner, or beside the Case board's
+## "Back to town".
+func _process(_delta: float) -> void:
+	_place_day_panel()
+
+func _place_day_panel() -> void:
+	if day_panel == null:
+		return
+	day_panel.visible = g != null and (new_case_screen == null or not new_case_screen.visible)
+	if not day_panel.visible:
+		return
+	day_panel.size = day_panel.get_combined_minimum_size()
+	if case_view != null and case_view.visible and case_view.back_button != null:
+		# The board's title holds the top centre: sit beside "Back to town" instead.
+		var b: Rect2 = case_view.back_button.get_global_rect()
+		day_panel.global_position = Vector2(b.end.x + 12.0, round(b.get_center().y - day_panel.size.y / 2.0))
+	elif meeting_view != null and meeting_view.visible:
+		# The top seat of the circle holds the top centre: take the free top-left corner.
+		var mr: Rect2 = meeting_view.get_global_rect()
+		day_panel.global_position = mr.position + Vector2(12.0, 8.0)
+	else:
+		var r: Rect2 = map_stage.get_global_rect()
+		day_panel.global_position = Vector2(round(r.position.x + (r.size.x - day_panel.size.x) / 2.0), r.position.y + 8.0)
+
 ## Hold the map's sunrise/sunset wave whenever a cutscene, meeting or non-approach
 ## conversation covers the map so the player sees the sweep when returning to town.
 ## NPC approaches let the lighting transition finish off-screen.

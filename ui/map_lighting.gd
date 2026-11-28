@@ -24,6 +24,12 @@ var to_phase: int = C.MORNING
 var progress: float = 1.0
 var pending_phase: int = -1
 var deferred: bool = false
+## Called whenever the grade changes (the map redraws its standees' tint with it).
+var on_change: Callable = Callable()
+
+## The townspeople standees are drawn above the grade with a milder tint of their own, so
+## faces stay readable at night (Michael, Nov 27). Morning, afternoon, evening, night.
+const STANDEE_TINTS = [Color(1.0, 0.96, 0.94), Color(1, 1, 1), Color(0.88, 0.91, 1.0), Color(0.74, 0.8, 0.96)]
 
 
 func attach(owner: Control) -> void:
@@ -136,9 +142,37 @@ func _set_progress(v: float) -> void:
 	progress = v
 	if _material != null:
 		_material.set_shader_parameter("progress", v)
+	_update_idle()
+	if on_change.is_valid():
+		on_change.call()
+
+
+## The standees' tint now: the phase's, eased across a transition as the grade is.
+func standee_tint() -> Color:
+	var a: Color = STANDEE_TINTS[clampi(from_phase, 0, 3)]
+	var b: Color = STANDEE_TINTS[clampi(to_phase, 0, 3)]
+	return a.lerp(b, clampf(progress, 0.0, 1.0)) if from_phase != to_phase else b
+
+
+## Afternoon's grade is the painted map as it is, so while it's settled the overlay and its
+## whole-viewport copy are switched off (Michael, Nov 27: free for a quarter of the day).
+func is_idle() -> bool:
+	var settled: bool = from_phase == to_phase or progress >= 0.999
+	return settled and to_phase == C.AFTERNOON
+
+
+func _update_idle() -> void:
+	var on: bool = not is_idle()
+	if _overlay != null:
+		_overlay.visible = on
+	if _back_buffer != null:
+		_back_buffer.visible = on
 
 
 func _sync_shader() -> void:
+	_update_idle()
+	if on_change.is_valid():
+		on_change.call()
 	if _material == null:
 		return
 	_material.set_shader_parameter("from_phase", from_phase)

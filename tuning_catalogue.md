@@ -729,7 +729,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DOUBT_GD_GOOD_TRUST_MIN` | `0.60` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_MISLED_SCALE` | `0.8` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_UNRELIABLE_SCALE` | `0.5` |  | `workshop/source_doubt.gd` |
-| `DOUBT_ARG_DELUSIONAL_SCALE` | `0.7` | An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3. | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_CAP` | `0.9` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_STRONG_AGR` | `0.75` |  | `workshop/source_doubt.gd` |

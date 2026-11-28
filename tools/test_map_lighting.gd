@@ -107,6 +107,20 @@ func _init() -> void:
 	_check(mv._lighting.from_phase == C.EVENING and mv._lighting.to_phase == C.EVENING and is_equal_approx(mv._lighting.progress, 1.0),
 		"reduced_motion snaps directly to target phase")
 
+	# 11. Limner, Nov 27 (Michael): a settled afternoon skips the grade and its viewport copy;
+	# standees are drawn above the grade with a milder tint, so faces read at night.
+	var lt = mv._lighting
+	lt.set_phase(C.AFTERNOON, false)
+	_check(not mv.get_child(1).visible and not mv.get_child(0).visible, "a settled afternoon switches the grade and its copy off")
+	lt.set_phase(C.EVENING, true)
+	_check(mv.get_child(1).visible and mv.get_child(0).visible, "a transition out of afternoon switches them back on")
+	lt.set_phase(C.NIGHT, false)
+	_check(mv.get_child(1).visible, "night keeps the grade on")
+	var tint: Color = lt.standee_tint()
+	_check(tint == MapLighting.STANDEE_TINTS[C.NIGHT] and tint.get_luminance() > 0.7, "night standees keep a mild, readable tint")
+	lt.set_phase(C.AFTERNOON, false)
+	_check(lt.standee_tint() == Color(1, 1, 1), "afternoon standees are untinted")
+
 	host.free()
 	print("Map lighting: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
