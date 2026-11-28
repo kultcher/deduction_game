@@ -328,6 +328,13 @@ static func _unrequited_likelihood_gd(view: Dictionary, cards: Array, person: Di
 						s_v = 0.0
 						s_m = 0.0
 						continue
+					if role == "sexton" and sexton_tolled(cards, person.id, night):
+						# The toll walk first, then no visit; a due visit stays due (as the kernel).
+						var t_m: float = (s_v + s_m) * fo
+						s_n = s_n * fo
+						s_v = 0.0
+						s_m = t_m
+						continue
 					var nn: float = s_n * (1.0 - q) * fo
 					var nv: float = (s_n * q + s_v * q + s_m) * fv
 					var nm: float = s_v * (1.0 - q) * fo

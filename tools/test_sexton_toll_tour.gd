@@ -23,13 +23,13 @@ func check(ok: bool, label: String) -> void:
 
 ## A hand-built town: the listener "a"; the Sexton "s" on the Market, who says it tolled on
 ## night 2; "t" says it saw "s" on the Docks.
-func _view(cards: Array) -> Dictionary:
+func _view(cards: Array, unrequited: bool = false) -> Dictionary:
 	var people: Array = []
 	var homes: Dictionary = {"a": "hill", "s": "market", "t": "square", "c": "market", "d": "square", "e": "docks", "f": "docks"}
 	for id in ["a", "s", "t", "c", "d", "e", "f"]:
 		people.append({"id": id, "name": id, "home": homes[id], "alive": true})
 	return {"people": people, "cards": cards, "evil_count": 2, "day": 3, "alignment_epoch": "Original alignment", "live_activity": true,
-		"world_options": {"roles": true, "identities": true, "modifiers": ["delusional", "marked"]}}
+		"world_options": {"roles": true, "identities": true, "modifiers": ["delusional", "marked"] + (["unrequited"] as Array if unrequited else [])}}
 
 func _claim() -> Dictionary:
 	return {"id": "c_s", "fact_id": "c_s", "kind": "claim", "source": "s", "subject": ["s"], "role": "sexton",
@@ -39,8 +39,8 @@ func _toll(night: int) -> Dictionary:
 	return {"id": "toll", "fact_id": "toll", "kind": "report", "source": "s", "role": "sexton", "night": night, "data": {"night": night},
 		"observed_at": {"day": night, "phase": "night"}, "reported_at": {"day": night + 1, "phase": "afternoon"}}
 
-func _seen(id: String, night: int, block: String) -> Dictionary:
-	return {"id": id, "fact_id": id, "kind": "sighting", "source": "t", "subject": "s", "subjects": ["s"], "night": night, "block": block,
+func _seen(id: String, night: int, block: String, by: String = "t") -> Dictionary:
+	return {"id": id, "fact_id": id, "kind": "sighting", "source": by, "subject": "s", "subjects": ["s"], "night": night, "block": block,
 		"data": {}, "role": "", "observed_at": {"day": night, "phase": "night"}, "reported_at": {"day": night + 1, "phase": "morning"}}
 
 func _p(cards: Array, target: String, fresh: bool = true) -> float:
@@ -94,5 +94,30 @@ func _init() -> void:
 		var by_duty: float = _p([_claim(), duty, _seen("s2", 2, "docks")], "s")
 		var duty_alone: float = _p([_claim(), duty], "s")
 		check(by_duty <= duty_alone + 0.005, "a sighting on the night of the duty account doesn't count against it (%.3f against %.3f)" % [by_duty, duty_alone])
+	# Seen on two blocks away from home on its toll night: only the walk of every block fits,
+	# but that's the toll, not a sign of a hidden Lamplighter (Codex on #562).
+	Caches.clear_all()
+	var two: Array = [_claim(), _toll(2), _seen("s2", 2, "docks"), _seen("s3", 2, "hill", "d")]
+	var rt: Dictionary = Activity.routes(_view(two), two)
+	check(bool(rt.get("okay", false)) and rt.get("forced_lamp", []).is_empty(), "seen on two far blocks on its toll night, the Sexton is no inferred Lamplighter (%s)" % [rt.get("forced_lamp", [])])
+	# A good Unrequited Sexton tolls first and doesn't visit that night (world_night.gd,
+	# Burdens.unrequited_visit), so a sighting far from any beloved's way bears the toll out
+	# in its holder column too (Codex on #562). The kernels agree.
+	var holder_ratio = func(seen: Array) -> float:
+		Caches.clear_all()
+		var with_c: Array = [_claim(), _toll(2)] + seen
+		var base_c: Array = [_claim(), _toll(2)]
+		var vw: Dictionary = _view(with_c, true)
+		var vb: Dictionary = _view(base_c, true)
+		return Activity.unrequited_likelihood(vw, with_c, vw.people[1]) / Activity.unrequited_likelihood(vb, base_c, vb.people[1])
+	var un_toll: float = holder_ratio.call([_seen("s3", 2, "hill", "d")])
+	var un_off: float = holder_ratio.call([_seen("s3", 1, "hill", "d")])
+	print("Unrequited Sexton, seen on the Hill: on its toll night x%.3f, on night 1 x%.3f" % [un_toll, un_off])
+	check(un_toll > 0.9 and un_toll > un_off + 0.05, "an Unrequited Sexton seen on the Hill on its toll night isn't held to a visit (x%.3f against x%.3f)" % [un_toll, un_off])
+	var uc: Array = [_claim(), _toll(2), _seen("s3", 2, "hill", "d"), _seen("s4", 1, "docks")]
+	var uv: Dictionary = _view(uc, true)
+	var u_cs: float = Activity.unrequited_likelihood(uv, uc, uv.people[1])
+	var u_gd: float = Activity._unrequited_likelihood_gd(uv, uc, uv.people[1])
+	check(absf(u_cs - u_gd) <= 1e-9 * maxf(1.0, absf(u_gd)), "C# and GDScript agree on the Unrequited Sexton's column (%s against %s)" % [u_cs, u_gd])
 	print("Sexton toll tour: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

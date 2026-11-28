@@ -671,7 +671,9 @@ internal static class LiveActivityKernel
                     }
                     if (allOut) forced |= (1 << i);
                     if (anyOut) possible |= (1 << i);
-                    if (allLamp && !forcedLamp.Contains(i))
+                    // A Sexton's toll walk covers every block too, but it's no sign of a Lamplighter
+                    // (Codex on #562): only a walker the routes force onto the tour is inferred one.
+                    if (allLamp && personMoveRole[i] != MoveRoleSexton && !forcedLamp.Contains(i))
                     {
                         forcedLamp.Add(i);
                     }
@@ -1508,6 +1510,18 @@ internal static class LiveActivityKernel
                             sN = (sN + sV + sM) * fo;
                             sV = 0.0;
                             sM = 0.0;
+                            continue;
+                        }
+                        if (roleCode == MoveRoleSexton && SextonTolled(personIdx, night, cardInts, cardCount))
+                        {
+                            // The toll walk comes first (world_night.gd), and a holder already out
+                            // doesn't visit (Burdens.unrequited_visit): no visit tonight, and a
+                            // visit that was due stays due (Codex on #562).
+                            double tN = sN * fo;
+                            double tM = (sV + sM) * fo;
+                            sN = tN;
+                            sV = 0.0;
+                            sM = tM;
                             continue;
                         }
                         double nN = sN * (1.0 - visitChance) * fo;
