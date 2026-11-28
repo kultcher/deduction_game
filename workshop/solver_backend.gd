@@ -44,6 +44,12 @@ static func _bridge() -> Variant:
 			if DisplayServer.get_name() != "headless":
 				OS.alert(MISSING_ASSEMBLY, "Demonologist: C# solver missing")
 			assert(false, MISSING_ASSEMBLY)
+			# A release build strips the assert, and the caller would then call into null:
+			# quit cleanly instead, after the alert above (audit, Nov 28).
+			if not OS.is_debug_build():
+				var loop = Engine.get_main_loop()
+				if loop is SceneTree:
+					loop.quit(1)
 	return _cs_bridge
 
 static func sync_tuning() -> void:
