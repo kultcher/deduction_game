@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift doesn't hand out readings. It does its work, and that's that.",
 	"empty_readings": "I've got nothing to report from it yet, so stop fishing.",
 	"withhold_readings_privacy": "Naming my gift is one thing; what it's shown me stays mine for now.",
+	"withhold_readings_public": "Naming my gift is one thing; what it's shown me stays mine for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You got what I gave you before. I don't trust you enough for the rest right now.",
 	"role_query_self": "That would be me, like I already told you.",
 	"role_query_unknown": "I couldn't tell you who the {role} is.",

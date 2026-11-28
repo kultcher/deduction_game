@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift isn't the sort that whispers secrets, love—it just does its job.",
 	"empty_readings": "The pot hasn't boiled yet, dear—nothing to report so far.",
 	"withhold_readings_privacy": "What it's shown me can stay in my own cupboard for now, love.",
+	"withhold_readings_public": "What it's shown me can stay in my own cupboard for now, if it's all the same to you.",   # to the town, after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You've had what I shared before, dear. The newer bits I'll keep to myself for now.",
 	"role_query_self": "Well, that would be me, dear.",
 	"role_query_unknown": "I couldn't tell you who the {role} is, love—haven't heard a peep.",

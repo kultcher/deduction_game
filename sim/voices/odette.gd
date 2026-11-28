@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift does its work without whispering gossip in my ear, mercifully.",
 	"empty_readings": "Hold your applause—my gift has produced nothing of interest yet.",
 	"withhold_readings_privacy": "I've indulged you with my title; what it has shown me remains my own affair for now.",
+	"withhold_readings_public": "I've indulged you with my title; what it has shown me remains my own affair for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You've had my earlier findings. Since my confidence in you has dipped, the rest stays with me.",
 	"role_query_self": "That would be me, assuming you were listening the first time.",
 	"role_query_unknown": "I couldn't tell you who the {role} is; people rarely send me their credentials.",

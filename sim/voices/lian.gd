@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift does a job, it doesn't produce readings.",
 	"empty_readings": "Nothing to report yet. My log is still empty.",
 	"withhold_readings_privacy": "You have my role. I'm holding back the readings until the timing is right.",
+	"withhold_readings_public": "You have my role. I'm holding back the readings until the timing is right.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You have my earlier reports. Until I trust your judgment again, the new ones stay with me.",
 	"role_query_self": "That's me, as you already have on your board.",
 	"role_query_unknown": "I don't have a name for the {role} yet.",

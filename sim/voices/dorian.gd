@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift doesn't actually tell me things, sorry—it just does what it does.",
 	"empty_readings": "I haven't actually gotten any readings from it yet—sorry, I wish I had more to give you!",
 	"withhold_readings_privacy": "I'm sorry, what it's shown me, I really need to keep to myself for now.",
+	"withhold_readings_public": "I'm sorry, what it's shown me, I really need to keep to myself for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "I told you what I had before, sorry, and right now I'm not comfortable sharing the rest.",
 	"role_query_self": "Um, that would be me, actually—like I mentioned!",
 	"role_query_unknown": "Sorry, I really couldn't tell you who the {role} is!",

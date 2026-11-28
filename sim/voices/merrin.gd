@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift brings no visions or whispers, alas—it merely does its grim work!",
 	"empty_readings": "Heaven help us, the dark has shown me nothing yet!",
 	"withhold_readings_privacy": "What dark truths my gift has glimpsed, I daren't speak aloud just yet!",
+	"withhold_readings_public": "What dark truths my gift has glimpsed, I daren't speak aloud just yet!",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "I gave you what I knew before, and my heart misgives me too sorely to share the rest right now!",
 	"role_query_self": "Have you forgotten already?! That burden is mine!",
 	"role_query_unknown": "Heaven knows who the {role} may be in this nest of shadows—I could not tell you!",
