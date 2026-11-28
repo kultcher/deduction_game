@@ -35,8 +35,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. Withheld readings: asking for what someone hasn't said `[decided]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. \*Caught out and pressed again: what's left `[decided]`
-    7. Good NPCs lie tactically `[open]`
+    6. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -256,6 +255,12 @@ Lantern). Nothing is open here.
       deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
     - `known_to`: the asker alone for a private ask, "public" at the meeting;
     - `shared_at`, set when the claimant later gives that reading.
+    - Settled with Lantern (Nov 28): the claim is always `{day, role}` (the night of the dodged
+      reading and its gift), with `fact_id` added alongside once one exists; `known_to` is
+      always a list (`[asker]` or `["public"]`); `shared_at` is set on every entry for that
+      claimant and claim.
+  - **Asking and answering: built** (Beadle, Nov 28; `sim/mind_withheld.gd`, `MindCallOn.respond`
+    with an asker, `w.withheld_refusals`). The cost is Lantern's, next.
   - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
     sized from bot runs.
 
@@ -280,33 +285,6 @@ Lantern). Nothing is open here.
 - **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
   reveal looks for protection first, from the player or a known Warden. Same source; it may
   generalise. Owner Beadle. [decided: direction]
-
-- **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
-  remainders.) Owner Beadle.
-  - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
-    possible forced reveal of the hidden gift or secret, handling genuine home accounts,
-    unremembered outings and evil cover.
-  - **From "More rebuttals after a caught lie"** (closed Nov 20; its decisions are in
-    BACKLOG_COMPLETED.md):
-    - when pressed again, evil backs into a spare or unknown walking gift (the ladder's step
-      3, with the Demon and Scion careful and a Minion bolder);
-    - the podium path: the same ladder at the meeting, not only in private.
-
-  The first response, "Fine, I was out", is built (#368), and so is the private ladder that
-  follows it.
-  - **Plan approved (Michael, Nov 20):**
-    - a good NPC that owned the night but kept the reason gets pressure checks that rise
-      with each press, and a pass forces the gift or secret reveal;
-    - a truly-home NPC stays home and grows irritated;
-    - the Sleepwalker keeps its usual "I was at home" lines, and grows irritated the same
-      way;
-    - evil backs into a spare walking gift, the Demon included rather than stonewalling.
-      With no spare, it's wary of a double claim. The Demon and a Scion are careful; a
-      Minion is bolder;
-    - the same ladder runs at the podium: private first, then the podium.
-  - **The podium part (#580)** keeps the shared 0.15 per press (Michael, Nov 28).
-
-  [decided]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:

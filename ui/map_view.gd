@@ -536,7 +536,7 @@ func _draw() -> void:
 			if zoom_block != "":
 				if _hover.get("kind", "") == "location" and _hover.get("id", "") == l:
 					_ui_commands.append({"kind": "hover_box", "rect": drawn.grow(3), "radius": 7, "bw": 2})
-				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if not g.free_move_used and w.loc_block(g.loc) == b and g.loc != l else "")
+				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if w.loc_block(g.loc) == b and g.loc != l else "")
 				if g.state != "day":
 					hint = ""
 				var un = g.unseen_at_ui(l)
@@ -572,7 +572,7 @@ func _draw() -> void:
 					if g.state == "day":
 						if not (n.alive and n.at_home()):
 							home_hint = "nobody's in; you can only call on someone who's home"
-						elif g.moved and (g.free_move_used or w.loc_block(g.loc) != b):
+						elif g.moved and w.loc_block(g.loc) != b:
 							home_hint = "they're in, but you've already chosen where to spend this phase"
 						else:
 							home_hint = "click to call on them" + (" (free move)" if g.moved else "")

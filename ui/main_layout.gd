@@ -74,9 +74,12 @@ static func build(m) -> void:
 	var mp: PopupMenu = more.get_popup()
 	# Ids are fixed per entry so reordering the menu never changes what an id does.
 	for it in [["New case…", m.MoreItem.NEW_CASE], ["Cast (text)", m.MoreItem.CAST], ["Timeline (text)", m.MoreItem.TIMELINE],
-			["Card list sidebar", m.MoreItem.SIDEBAR], ["Write dev log", m.MoreItem.LOG], ["Case Workshop", m.MoreItem.WORKSHOP], [m.DailyGuess.MENU_ENTRY, m.MoreItem.SUSPICIONS]]:
+			["Card list sidebar", m.MoreItem.SIDEBAR], ["Case Workshop", m.MoreItem.WORKSHOP], [m.DailyGuess.MENU_ENTRY, m.MoreItem.SUSPICIONS]]:
 		mp.add_item(it[0], it[1])
 	mp.add_check_item("Reduced motion", m.MoreItem.REDUCED_MOTION)
+	# The dev tool and leaving sit apart from the everyday entries (Limner, Nov 28).
+	mp.add_separator()
+	mp.add_item("Write dev log", m.MoreItem.LOG)
 	mp.add_separator()
 	mp.add_item(m.EXIT_GAME, m.MoreItem.EXIT)
 	mp.id_pressed.connect(func(i):

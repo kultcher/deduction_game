@@ -21,6 +21,7 @@ test_bot_m4
 test_buildings_tavern_town_hall
 test_burden_unrequited_walk
 test_burdens_ui
+test_cache_clear_all
 test_call_on
 test_canvas_card_text
 test_card_wording_fixes
@@ -40,6 +41,7 @@ test_connections_pairings
 test_connections_why
 test_control_flow
 test_conversation_nights
+test_cs_tuning_parity
 test_csharp_slice_c0
 test_daily_guess
 test_day_defence
@@ -70,6 +72,7 @@ test_fabrication_check
 test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
+test_free_move
 test_gift_doubt
 test_gift_doubt_good
 test_gossip_tiers
@@ -124,6 +127,7 @@ test_night_sighting_rebuttal
 test_nightwatch_whole_list
 test_nomination_and_evil_tuning
 test_nomination_case
+test_nov28_ui
 test_npc_chatter
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness
@@ -134,8 +138,10 @@ test_own_route_knowledge
 test_pacing
 test_peer_role_gossip
 test_place_icons
+test_plaque_menus
 test_player_failed_gift
 test_playtest_23973
+test_playtest_52102
 test_playtest_89077
 test_playtest_ui_nov22
 test_points_elsewhere
@@ -175,6 +181,7 @@ test_roles_registry
 test_roles_secrets
 test_roles_shelter
 test_self_doubt_poisoner
+test_sexton_toll_tour
 test_shared_delusion
 test_shared_model
 test_sighter_contest
@@ -191,6 +198,7 @@ test_term_defs
 test_text_formatter
 test_text_terms
 test_text_ui
+test_theme_checkbox
 test_too_clean_bluffs
 test_totem_evidence
 test_town_note
@@ -245,4 +253,5 @@ test_workshop_ui_selection
 test_workshop_vote_and_alibi
 test_workshop_votes
 test_workshop_why
+test_withheld_cost
 test_would_vote

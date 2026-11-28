@@ -38,13 +38,25 @@ static func _bridge() -> Variant:
 			if scr != null and scr.can_instantiate():
 				_cs_bridge = scr
 				_cs_bridge.SetMode(1)  # the bridge's own label; C# is the only path
-				_cs_bridge.RoleSetMarkedDemonChance(float(preload("res://sim/tuning.gd").Setup.MARKED_DEMON_CHANCE))
+				sync_tuning()
 		if _cs_bridge == null:
 			push_error(MISSING_ASSEMBLY)
 			if DisplayServer.get_name() != "headless":
 				OS.alert(MISSING_ASSEMBLY, "Demonologist: C# solver missing")
 			assert(false, MISSING_ASSEMBLY)
 	return _cs_bridge
+
+static func sync_tuning() -> void:
+	if _cs_bridge == null:
+		return
+	var T = preload("res://sim/tuning.gd")
+	_cs_bridge.ConfigureTuning(
+		float(T.Setup.MARKED_DEMON_CHANCE),
+		float(T.Workshop.VIGIL_MISS),
+		float(T.Workshop.WALKER_CLAIM_GIFT),
+		float(T.Workshop.WALKER_CLAIM_HOME),
+		float(T.Workshop.WALKER_CLAIM_SECRET)
+	)
 
 static func is_csharp_available() -> bool:
 	return _bridge() != null

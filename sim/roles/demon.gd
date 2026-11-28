@@ -7,5 +7,5 @@ func _init() -> void:
 	display_name = "Demon"
 	align = "evil"
 	kind = "evil"
-	desc = "Kills one person each night (not the first)."
+	desc = "Kills one person each night (not the night before you arrived), walking to their block to do it."
 	shape = "NONE"

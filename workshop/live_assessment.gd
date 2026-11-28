@@ -466,15 +466,18 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 				card["kind"] = "report"
 				card["role"] = "nightwatch"
 				card["data"] = {"block": block, "seen": []}
-			elif e.content.get("duty_claim", false) and str(e.content.get("duty", "")) in ["medium", "lamplighter"]:
+			elif e.content.get("duty_claim", false) and str(e.content.get("duty", "")) in ["medium", "lamplighter", "sexton"]:
 				var duty_role: String = str(e.content.duty)
-				if e.subjects != [e.source] or block not in C.BLOCKS or night < (1 if duty_role == "medium" else 0):
+				if e.subjects != [e.source] or block not in C.BLOCKS or night < (1 if duty_role in ["medium", "sexton"] else 0):
 					return {}
 				card["duty_claim"] = true
 				card["duty_only"] = true
 				card["kind"] = "report"
 				card["role"] = duty_role
-				card["data"] = {"block": block}
+				# A Sexton's duty account ("I tolled the church bell and walked every parish")
+				# names its toll night, as its toll report does, so the movement model reads the
+				# walk of every block that night from either (Codex on #562).
+				card["data"] = {"night": night} if duty_role == "sexton" else {"block": block}
 			elif e.kind == "alibi" and e.content.has("home") and not bool(e.content.home):
 				# A person's own word that they WERE out ("Fine, I was out", or an account of an
 				# outing): never a home claim (before Nov 19 it lost `home` here and read as one).
@@ -900,6 +903,9 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
 		"ledger": {}, "case_memory": {}, "recency": src.get("recency", {}).duplicate(true)}
+	# The refusals to share a reading this listener saw (Connections.withheld).
+	if src.has("withheld"):
+		result["withheld"] = src.withheld.duplicate(true)
 	# The connections model's memory for this listener (workshop/connections.gd); only there
 	# for a real listener's capture (the Test juror and ghost listeners have none).
 	if src.has("connections"):

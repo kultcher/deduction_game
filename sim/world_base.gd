@@ -55,6 +55,7 @@ var executions: Array = []          # {day, id, nominator, yes, player_yes, play
 var night_walkers: Array = []       # last night: {id, block, path, why}
 var town_relationships: Array = [] # Rolled public bonds, captured before secret Lovers add a friendship.
 var public_claims: Array = []       # {day, who, role}
+var withheld_refusals: Array = []   # refusals to give an owed reading (sim/mind_withheld.gd has the shape)
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 var defences = {}                   # supporter id -> {target, day}: their latest public word for someone (M2c)
 var meeting_arguments = []          # recency: [{day, target}] the player argued at a meeting

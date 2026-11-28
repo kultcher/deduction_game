@@ -305,7 +305,8 @@ func _night_sightings() -> void:
 	# Neighbours at home sometimes notice each other going in for the night and not coming
 	# out again: a (true, if weak) alibi for those who stayed in.
 	for o in living():
-		if o.out_last_night:
+		# A Monitor sees nothing from its window, nor does evil bluffing one (as above).
+		if o.out_last_night or o.role == "monitor" or (o.is_evil() and evil_plan.get("bluffs", {}).get(o.id, "") == "monitor"):
 			continue
 		for m in living():
 			if m != o and m.home_block == o.home_block and not m.out_last_night and chance(Tuning.Setup.NIGHT_NEIGHBOUR_ALIBI_CHANCE):

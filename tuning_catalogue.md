@@ -182,9 +182,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CIVIL_TALK_BASE` | `0.04` | Conversation, pressing, promises, nominations, clemency & presentations | `sim/mind_dialogue.gd` |
 | `CIVIL_TALK_PRIVACY_DAMP` | `0.0` | Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5) | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_LIMIT` | `3` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
-| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
-| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social_approaches.gd` |
@@ -228,7 +228,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLANTER_TARGET_GOSSIP_MIN` | `0.45` |  | `sim/social.gd` |
 | `PLANTER_TARGET_TRUST_MIN` | `0.48` |  | `sim/social.gd` |
 | `MURDER_RELAY_BONUS` | `0.35` |  | `sim/social.gd` |
-| `IDLE_CHAT_WEIGHT` | `0.18` | was 0.30 (meeting plan M1: more leads, less weather) | `sim/social.gd` |
+| `IDLE_CHAT_WEIGHT` | `0.18` | was 0.30 (meeting plan M1: more leads, less weather) | `sim/mind_withheld.gd`, `sim/social.gd` |
+| `ASK_PRIVATE_BASE` | `0.10` | Withheld readings, asking in private (docs/design/withheld_readings.md; Michael, Nov 28): in a conversation with someone it heard claim an information gift a day or more ago, and from whom it has heard no reading since, a good NPC asks for the reading with this chance: the base, plus the wary part times its suspicion of the claimant, plus the Insight part times its Insight. At most once per pair per day. About 0.15 for an average asker, 0.35 for a wary, sharp one. | `sim/mind_withheld.gd` |
+| `ASK_PRIVATE_WARY` | `0.30` |  | `sim/mind_withheld.gd` |
+| `ASK_PRIVATE_INSIGHT` | `0.10` |  | `sim/mind_withheld.gd` |
 | `DAY_RUMOR_WEIGHT` | `0.45` |  | `sim/social.gd` |
 | `UNEASE_SUSP_MIN` | `0.34` |  | `sim/social.gd` |
 | `HEARSAY_TRUST_SCALE` | `0.75` |  | `sim/social.gd`, `tools/measure_evidence.gd` |
@@ -324,7 +327,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CROWD_FADE_PRIVACY_FLOOR` | `0.45` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SIGHTING_BAR` | `0.10` |  | `sim/mind_meeting.gd` |
-| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd` |
+| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd`, `sim/mind_withheld.gd` |
 | `SILENCE_USEFUL_MIN` | `3` |  | `sim/mind_meeting.gd` |
 | `SILENCE_SPEAK_BONUS` | `0.6` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_FULL_MARGIN` | `3.0` | Block safety (Step 2): how safe a nominee is because someone else is firmly on the block. | `sim/mind_meeting.gd` |
@@ -376,7 +379,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PUBLIC_CLAIM_DAY_SLOPE` | `0.4` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
 | `PUBLIC_CLAIM_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
-| `CALL_ON_PRESSURE_BUMP` | `0.3` | "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC the Demonologist calls on feels, in pressure units: it adds to the "say it before the town?" decision as that much more pressure would, and lowers the bar for volunteering a night sighting by as much. | `sim/mind_call_on.gd` |
+| `CALL_ON_PRESSURE_BUMP` | `0.3` | "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC the Demonologist calls on feels, in pressure units: it adds to the "say it before the town?" decision as that much more pressure would, and lowers the bar for volunteering a night sighting by as much. | `sim/mind_call_on.gd`, `sim/mind_withheld.gd` |
+| `PRESS_WITHHELD_CONFIDENCE_MIN` | `0.6` | Withheld readings, pressing at the meeting (Michael, Nov 28): a good NPC at least this confident, suspecting (at the accusing level, GOOD_ACCUSE_MIN_SUSP) a public claimant who has gone a day without giving a reading, presses them before the town with chance PRESS_WITHHELD_SCALE x its Confidence (about 0.15 to 0.25). At most once per meeting. | `sim/mind_withheld.gd` |
+| `PRESS_WITHHELD_SCALE` | `0.25` |  | `sim/mind_withheld.gd` |
 | `PUBLIC_CLAIM_FEW_LEFT` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_BASE` | `0.2` |  | `sim/mind_meeting.gd` |
@@ -486,7 +491,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
 | `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
-| `PRESSED_AGAIN_OPENNESS` | `0.15` | Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned a night but kept the reason: each earlier press about that night adds this to the openness check for giving the reason (its gift, or a known burden's walk). | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `PRESSED_AGAIN_OPENNESS` | `0.15` | Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned a night but kept the reason: each earlier press about that night adds this to the openness check for giving the reason (its gift, or a known burden's walk). | `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_AGAIN_BACKUP_MINION` | `0.6` | Evil pressed again about a night it owned with no walking bluff to tell: the chance per re-press that it backs into a walking gift no one has claimed. A Minion is bolder; the Demon and a Scion are careful. | `sim/mind_press.gd` |
 | `PRESSED_AGAIN_BACKUP_CAREFUL` | `0.3` |  | `sim/mind_press.gd` |
 | `GUESS_NERVES_STRENGTH` | `0.5` | "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up gets the same deflection as a wrong one, and either may show the press's nervous tell, at PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this. | `sim/social_approaches.gd` |
@@ -666,6 +671,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CONNECTIONS_CASE_FLOOR` | `0.05` |  | `workshop/connections.gd` |
 | `CONNECTIONS_CASE_FADE_BOUGHT` | `0.9` | Buy-in (Michael, Nov 13): a case a listener bought fades slower. It keeps between CASE_FADE and CASE_FADE_BOUGHT of its weight a day, by how far it moves that listener: the largest move its cards make together on anyone, at the listener's trust in the presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade). | `workshop/connections.gd` |
 | `CONNECTIONS_CASE_BUYIN_FULL` | `0.7` |  | `workshop/connections.gd` |
+| `WITHHELD_DEFER_FACTOR` | `1.15` | Withheld readings (docs/design/withheld_readings.md §4; Michael, Nov 28): a claimant asked for the reading its gift owes, who holds it back, looks a little more suspicious to whoever saw the refusal (the asker in private, everyone at the meeting). A fixed cost, the same whatever the claimant's alignment: odds of DEFER_FACTOR for a refusal with a reason (a friend, a burden, distrust of the asker), DEFLECT_FACTOR for a bare one, each growing DAY_STEP-fold in log-odds for every further day the reading stays out. One cost per withheld reading, the strongest seen, at the listener's distrust of the claimant (typical trust counts it as is, full trust cancels it, none doubles it). Once the reading comes out it stops growing, and a deferral's cost is lifted. | `workshop/connections.gd` |
+| `WITHHELD_DEFLECT_FACTOR` | `1.6` |  | `workshop/connections.gd` |
+| `WITHHELD_DAY_STEP` | `1.25` |  | `workshop/connections.gd` |
 | `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity_factors.gd` |
 | `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity_factors.gd` |
 | `BREATH_HUNT_REACH` | `0.7` | A hunting Breathstealer in a free phase: the chance it is on its victim's block, for the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where good people are working. | `workshop/day_presence.gd` |
