@@ -413,6 +413,15 @@ class Social:
 	const PLANTER_TARGET_TRUST_MIN = 0.48
 	const MURDER_RELAY_BONUS = 0.35
 	const IDLE_CHAT_WEIGHT = 0.18  # was 0.30 (meeting plan M1: more leads, less weather)
+	## Withheld readings, asking in private (docs/design/withheld_readings.md; Michael, Nov 28):
+	## in a conversation with someone it heard claim an information gift a day or more ago, and
+	## from whom it has heard no reading since, a good NPC asks for the reading with this chance:
+	## the base, plus the wary part times its suspicion of the claimant, plus the Insight part
+	## times its Insight. At most once per pair per day. About 0.15 for an average asker, 0.35 for
+	## a wary, sharp one.
+	const ASK_PRIVATE_BASE = 0.10
+	const ASK_PRIVATE_WARY = 0.30
+	const ASK_PRIVATE_INSIGHT = 0.10
 	const DAY_RUMOR_WEIGHT = 0.45
 	const UNEASE_SUSP_MIN = 0.34
 	const HEARSAY_TRUST_SCALE = 0.75
@@ -630,6 +639,12 @@ class Meeting:
 	## town?" decision as that much more pressure would, and lowers the bar for volunteering a
 	## night sighting by as much.
 	const CALL_ON_PRESSURE_BUMP = 0.3
+	## Withheld readings, pressing at the meeting (Michael, Nov 28): a good NPC at least this
+	## confident, suspecting (at the accusing level, GOOD_ACCUSE_MIN_SUSP) a public claimant who
+	## has gone a day without giving a reading, presses them before the town with chance
+	## PRESS_WITHHELD_SCALE x its Confidence (about 0.15 to 0.25). At most once per meeting.
+	const PRESS_WITHHELD_CONFIDENCE_MIN = 0.6
+	const PRESS_WITHHELD_SCALE = 0.25
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
 	const REVEAL_COST_PRIVACY_SLOPE = 0.8
 	const REVEAL_COST_BASE = 0.2

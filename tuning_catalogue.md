@@ -228,7 +228,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLANTER_TARGET_GOSSIP_MIN` | `0.45` |  | `sim/social.gd` |
 | `PLANTER_TARGET_TRUST_MIN` | `0.48` |  | `sim/social.gd` |
 | `MURDER_RELAY_BONUS` | `0.35` |  | `sim/social.gd` |
-| `IDLE_CHAT_WEIGHT` | `0.18` | was 0.30 (meeting plan M1: more leads, less weather) | `sim/social.gd` |
+| `IDLE_CHAT_WEIGHT` | `0.18` | was 0.30 (meeting plan M1: more leads, less weather) | `sim/mind_withheld.gd`, `sim/social.gd` |
+| `ASK_PRIVATE_BASE` | `0.10` | Withheld readings, asking in private (docs/design/withheld_readings.md; Michael, Nov 28): in a conversation with someone it heard claim an information gift a day or more ago, and from whom it has heard no reading since, a good NPC asks for the reading with this chance: the base, plus the wary part times its suspicion of the claimant, plus the Insight part times its Insight. At most once per pair per day. About 0.15 for an average asker, 0.35 for a wary, sharp one. | `sim/mind_withheld.gd` |
+| `ASK_PRIVATE_WARY` | `0.30` |  | `sim/mind_withheld.gd` |
+| `ASK_PRIVATE_INSIGHT` | `0.10` |  | `sim/mind_withheld.gd` |
 | `DAY_RUMOR_WEIGHT` | `0.45` |  | `sim/social.gd` |
 | `UNEASE_SUSP_MIN` | `0.34` |  | `sim/social.gd` |
 | `HEARSAY_TRUST_SCALE` | `0.75` |  | `sim/social.gd`, `tools/measure_evidence.gd` |
@@ -324,7 +327,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CROWD_FADE_PRIVACY_FLOOR` | `0.45` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SIGHTING_BAR` | `0.10` |  | `sim/mind_meeting.gd` |
-| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd` |
+| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd`, `sim/mind_withheld.gd` |
 | `SILENCE_USEFUL_MIN` | `3` |  | `sim/mind_meeting.gd` |
 | `SILENCE_SPEAK_BONUS` | `0.6` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_FULL_MARGIN` | `3.0` | Block safety (Step 2): how safe a nominee is because someone else is firmly on the block. | `sim/mind_meeting.gd` |
@@ -376,7 +379,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PUBLIC_CLAIM_DAY_SLOPE` | `0.4` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
 | `PUBLIC_CLAIM_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_meeting.gd`, `sim/mind_podium.gd` |
-| `CALL_ON_PRESSURE_BUMP` | `0.3` | "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC the Demonologist calls on feels, in pressure units: it adds to the "say it before the town?" decision as that much more pressure would, and lowers the bar for volunteering a night sighting by as much. | `sim/mind_call_on.gd` |
+| `CALL_ON_PRESSURE_BUMP` | `0.3` | "Call on" (docs/design/withheld_readings.md, Michael, Nov 22): the light pressure an NPC the Demonologist calls on feels, in pressure units: it adds to the "say it before the town?" decision as that much more pressure would, and lowers the bar for volunteering a night sighting by as much. | `sim/mind_call_on.gd`, `sim/mind_withheld.gd` |
+| `PRESS_WITHHELD_CONFIDENCE_MIN` | `0.6` | Withheld readings, pressing at the meeting (Michael, Nov 28): a good NPC at least this confident, suspecting (at the accusing level, GOOD_ACCUSE_MIN_SUSP) a public claimant who has gone a day without giving a reading, presses them before the town with chance PRESS_WITHHELD_SCALE x its Confidence (about 0.15 to 0.25). At most once per meeting. | `sim/mind_withheld.gd` |
+| `PRESS_WITHHELD_SCALE` | `0.25` |  | `sim/mind_withheld.gd` |
 | `PUBLIC_CLAIM_FEW_LEFT` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `REVEAL_COST_BASE` | `0.2` |  | `sim/mind_meeting.gd` |

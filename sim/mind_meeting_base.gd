@@ -13,6 +13,7 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const Recency = preload("res://sim/recency.gd")
 const Connections = preload("res://workshop/connections.gd")
 const Burdens = preload("res://sim/burdens.gd")
+const MindWithheld = preload("res://sim/mind_withheld.gd")
 const CaseGraph = preload("res://workshop/case_graph.gd")
 static var _mind_script
 

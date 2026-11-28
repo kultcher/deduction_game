@@ -79,6 +79,8 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
 			reasoned_acc = 1 if acc.get("reasoned", false) else 0
+		# Pressing a suspected public claimant for the reading its gift owes (withheld readings).
+		MindWithheld.meeting_press(w, n, lines, facts)
 		_late_relay(w, n, lines, facts)
 		_volunteer_night_sightings(w, n, lines, facts)
 		st["reactive"].erase(n.id)
@@ -789,6 +791,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 			if e["shared"] or e.get("disowned", false) or Burdens.withholds_for_beloved(w, n, e):
 				continue
 			e["shared"] = true
+			MindWithheld.note_shared(w, n, e, "public")
 			var weights = {}
 			for x in implicated(e):
 				weights[x] = ReasonAttribution.score_reading_entry_in_world(w, n.id, e, x)["strength"]
