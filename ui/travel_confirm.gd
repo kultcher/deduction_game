@@ -87,9 +87,7 @@ static func request(host: Control, g, block: String, go: Callable) -> void:
 		l.text = "  • " + str(line)
 		box.add_child(l)
 	var skip := CheckBox.new()
-	# The theme draws checkboxes without a box: mark the state in the text, as the menus do.
-	skip.text = "☐ Don't ask again"
-	skip.toggled.connect(func(on): skip.text = ("✓ " if on else "☐ ") + "Don't ask again")
+	skip.text = "Don't ask again"   # the theme draws its box (Limner, #595)
 	box.add_child(skip)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_END

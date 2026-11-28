@@ -31,7 +31,7 @@ The wording comes from his example. The rest is mine, so he can change it:
 - "Don't ask again", "Stay" and "Travel" on the dialog.
 - "Travel to the Square" on the button (his own phrase).
 - "Visit" in the left panel asks too.
-- The tick shows as "☐ / ✓" in its text, because the theme draws checkboxes without a box. That's true everywhere, and Limner may want to look at it.
+- The tick is a real CheckBox. After Limner's #595 the theme draws its box, so the interim "☐ / ✓" text marks are gone.
 
 ## Measured
 
