@@ -222,9 +222,11 @@ jobs:
             Write-Output "::error::The capture logged script errors."
             exit 1
           }
-      - name: Diff against the Linux baseline (--tol 0)
+      - name: Diff against the Linux baseline (--tol 1e-12)
+        # glibc (Linux) and UCRT (Windows) differ by up to 1 ULP (~2.22e-16) in exp/log/pow;
+        # --tol 1e-12 absorbs that libm noise while still catching any discrete decision flip.
         shell: pwsh
-        run: python tools/golden_diff.py "$env:BASELINE" "$env:RUNNER_TEMP\golden" --tol 0 | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+        run: python tools/golden_diff.py "$env:BASELINE" "$env:RUNNER_TEMP\golden" --tol 1e-12 | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
       - name: Upload capture
         if: always()
         uses: actions/upload-artifact@v4

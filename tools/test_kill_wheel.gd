@@ -195,6 +195,11 @@ func _run() -> void:
 	_check(w.focus_centre().distance_to(w.size / 2.0) < 2.0, "it lays out again when resized")
 	w.queue_free()
 
+	# The portrait shader takes the texture once: in fragment(), COLOR already holds it, and
+	# multiplying again gave every portrait a deep red cast (Michael, Nov 28).
+	var code: String = PortraitFx.material(true).shader.code
+	_check(not code.contains("texture(TEXTURE, UV) * COLOR") and code.contains("vec4 c = COLOR;"), "the portrait shader doesn't apply the texture twice")
+
 	# The execution mark.
 	var face = TextureRect.new()
 	face.size = Vector2(200, 200)

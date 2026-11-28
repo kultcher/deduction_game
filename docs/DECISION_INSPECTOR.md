@@ -72,6 +72,39 @@ readings (`info_log`), what it was told in private (`known_claims` and their rea
 (`own_home`), and its lean carried over from the day before. None of those is taken out,
 so a suspicion no ledger entry explains is likely held up by one of them.
 
+**Elimination after a Demon kill.** A death at night moves suspicion with no new card. The
+dead person is no longer a candidate, the number of evil people is unchanged, and the
+suspicion that rested on the victim spreads over whoever is left. explain_case can't
+attribute this rise to any ledger entry, because none caused it. Taking out a card leaves
+it in place.
+
+Its typical size was measured on 30 passive 10-NPC autoplay games, seeds 1–30 (100 night
+kills, 403 living good listener-nights). Each rise compares a person's evil chance at the
+listener's last refresh before the night with the dawn refresh after it:
+
+| Overnight, the largest rise for one person | Median | 90th percentile | Max |
+|---|---|---|---|
+| Victim was one of the listener's top two suspects (87) | 0.20 | 0.43 | 0.83 |
+| Victim was not (316) | 0.12 | 0.37 | 0.75 |
+| No new card overnight, victim a top-two suspect (17) | 0.13 | 0.30 | 0.36 |
+| No new card overnight, victim not a top-two suspect (82) | 0.09 | 0.25 | 0.47 |
+
+Across everyone a listener suspects, the rises add up to about 0.3 on a typical night, and
+about 0.5 when the victim was a top suspect.
+
+Of the nights with no new card, 29% had someone rise by 0.15 or more. 6 of 99 had three or
+more people rise by 0.14 or more each, like 51795 after Nisha's death (Kiran 0.21→0.42,
+Isolde 0.15→0.39, Dorian 0.27→0.41, Odette 0.02→0.22). That is uncommon but within range.
+
+How to recognise it:
+- The rise lands between the last refresh of one day and the first of the next.
+- Several people rise together, rather than one.
+- The listener most suspected the victim, or the victim was a large share of what it
+  suspected.
+- Belief mode at the dawn seq shows no mover large enough to explain the change.
+
+Compare the two refreshes on either side of the night before looking for a missing card.
+
 ```text
 godot --headless --path . --script res://tools/explain_case.gd -- logs/case_13910.jsonl --belief fenwick --at 372 [--top 8]
 ```
