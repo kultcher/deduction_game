@@ -7,6 +7,9 @@ const Formatter = preload("res://ui/text_formatter.gd")
 const Renderer = preload("res://ui/rich_text_renderer.gd")
 const FormattedLabel = preload("res://ui/formatted_text_label.gd")
 const VNPortraits = preload("res://ui/vn_portraits.gd")
+## Line boil (Limner, Nov 18): an opt-in test of redrawn-ink portraits, off by default.
+## During a talk with someone who has ink layers (Edda for now), B flips it, Shift+B flares.
+const LineBoil = preload("res://ui/line_boil.gd")
 const EXPRESSIONS = VNPortraits.EXPRESSIONS
 const FADE_SECONDS = 0.15
 const PORTRAIT_FRAME = [0.01, 0.02, 0.48, 1.0]   # anchors: left, top, right, bottom
@@ -48,6 +51,8 @@ var controls: HFlowContainer
 var action_hint: Label
 var person_id = ""
 var lines: Array = []
+var line_boil = LineBoil.new()
+var expression_shown = "neutral"
 ## The room the talk happens in (Nov 8): a papercraft interior behind the portrait for the
 ## town's buildings, softened and dimmed so the portrait reads first. Homes, crime scenes and
 ## anywhere without art keep the blurred map.
@@ -184,7 +189,10 @@ func begin(id: String, name: String) -> void:
 	lines.clear()
 	_stop_portrait_fade()
 	_portrait_frame(PORTRAIT_FRAME)
+	expression_shown = "neutral"
 	portrait.texture = _expression_texture(id, "neutral")
+	line_boil.rest()
+	line_boil.apply([portrait, previous_portrait])
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
@@ -209,6 +217,7 @@ func show_item(title: String, texture: Texture2D, text: String) -> void:
 	_stop_portrait_fade()
 	_portrait_frame(ITEM_FRAME)
 	portrait.texture = texture
+	line_boil.apply([portrait, previous_portrait])
 	speaker.text = title
 	speaker.add_theme_color_override("font_color", UITheme.color("ink"))
 	lines = [text]
@@ -224,17 +233,21 @@ func _portrait_frame(frame: Array) -> void:
 		r.anchor_bottom = frame[3]
 
 func _expression_texture(id: String, expression: String) -> Texture2D:
-	return VNPortraits.texture(id, expression)
+	var boiling = LineBoil.base_texture(id, expression)
+	return boiling if boiling != null else VNPortraits.texture(id, expression)
 
 ## Presentation only: callers supply a public expression cue, not hidden game state.
 func set_expression(expression: String) -> void:
 	_build()
+	expression_shown = expression
 	var texture = _expression_texture(person_id, expression)
 	if portrait.texture == texture:
 		return
 	_stop_portrait_fade()
 	previous_portrait.texture = portrait.texture
 	portrait.texture = texture
+	line_boil.flare(expression)
+	line_boil.apply([portrait, previous_portrait])
 	if not is_visible_in_tree() or previous_portrait.texture == null:
 		return
 	previous_portrait.modulate.a = 1.0
@@ -281,11 +294,30 @@ func _render() -> void:
 		reveal_hint.visible = reveal_total > 0
 
 func _process(delta: float) -> void:
+	if portrait != null and portrait.material != null and is_visible_in_tree():
+		line_boil.advance(delta)
 	if is_visible_in_tree() and speech != null and speech.visible_characters >= 0 and speech.visible_characters < reveal_total:
 		reveal_position = minf(float(reveal_total), reveal_position + delta * REVEAL_PER_SECOND)
 		speech.visible_characters = int(reveal_position)
 		if speech.visible_characters >= reveal_total:
 			reveal_hint.hide()
+
+## Line boil test: B flips it on and off, Shift+B fires a flare as an expression change would.
+## Only in a talk with someone who has ink layers, so the key does nothing anywhere else.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (is_visible_in_tree() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_B):
+		return
+	if person_id == "" or not EXPRESSIONS.any(func(e): return LineBoil.has_layers(person_id, e)):
+		return
+	if event.shift_pressed:
+		line_boil.flare("harsh")
+	else:
+		LineBoil.enabled = not LineBoil.enabled
+		_stop_portrait_fade()
+		portrait.texture = _expression_texture(person_id, expression_shown)
+		line_boil.flare()
+		line_boil.apply([portrait, previous_portrait])
+	get_viewport().set_input_as_handled()
 
 func reveal_all() -> void:
 	_build()
