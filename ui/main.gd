@@ -247,6 +247,21 @@ func _new_case() -> void:
 	conversation_finished = false
 	_phase_held = false
 	pacing_open = false
+	# Nothing from the last case carries over: its overlays, the meeting's held events, the
+	# approach, the reveal and the guess window (release audit, Nov 27).
+	for overlay in ["Pacing", "GrimReveal", "DailyGuess"]:
+		var node = get_node_or_null(overlay)
+		if node != null:
+			remove_child(node)
+			node.queue_free()
+	_reveal_after_pacing = false
+	daily_guess_open = false
+	daily_guess_off_for = null
+	reveal_seen_for = null
+	_deferred_meeting_events = []
+	meeting_show_map = false
+	approach_stage = ""
+	_approach_key = ""
 	_deferred_log_events = []
 	_day_pick = ""
 	conversation_show_map = false
@@ -282,7 +297,10 @@ func _new_case() -> void:
 	if is_inside_tree() and show_script_at_start:
 		Roles.open(self)
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open:
+	# Esc focuses the command line, but not under an overlay that owns the screen (the pacing
+	# sequence, the New Case screen, the grim reveal, the guess window) (release audit, Nov 27).
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open \
+			and not pacing_open and not (new_case_screen != null and new_case_screen.visible) and get_node_or_null("GrimReveal") == null:
 		input.grab_focus()
 func _open_case_view() -> void:
 	case_view.refresh()
@@ -381,7 +399,7 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	# While a finished conversation or a reading holds the old phase, nothing runs until the
 	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
-	if conversation_finished or _phase_held or pacing_open:
+	if conversation_finished or _phase_held or pacing_open or daily_guess_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -463,7 +481,7 @@ func _log_events(evs: Array) -> void:
 func _presenting() -> bool:
 	if g == null:
 		return false
-	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty()
+	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty() or daily_guess_open
 ## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
 func _capture_meeting(previous_state: String) -> void:
 	var was: bool = previous_state in ["meeting", "nomination"]
@@ -708,6 +726,31 @@ func _refresh_all() -> void:
 	day_label.text = "Day %d\n%s" % [g.w.day, phase_name]
 	if case_view.visible:
 		case_view.refresh()
+## The Day/Phase plaque on every screen (Michael, Nov 27): top centre of the map (and of a
+## conversation over it), the meeting circle's top-left corner, or beside the Case board's
+## "Back to town".
+func _process(_delta: float) -> void:
+	_place_day_panel()
+
+func _place_day_panel() -> void:
+	if day_panel == null:
+		return
+	day_panel.visible = g != null and (new_case_screen == null or not new_case_screen.visible)
+	if not day_panel.visible:
+		return
+	day_panel.size = day_panel.get_combined_minimum_size()
+	if case_view != null and case_view.visible and case_view.back_button != null:
+		# The board's title holds the top centre: sit beside "Back to town" instead.
+		var b: Rect2 = case_view.back_button.get_global_rect()
+		day_panel.global_position = Vector2(b.end.x + 12.0, round(b.get_center().y - day_panel.size.y / 2.0))
+	elif meeting_view != null and meeting_view.visible:
+		# The top seat of the circle holds the top centre: take the free top-left corner.
+		var mr: Rect2 = meeting_view.get_global_rect()
+		day_panel.global_position = mr.position + Vector2(12.0, 8.0)
+	else:
+		var r: Rect2 = map_stage.get_global_rect()
+		day_panel.global_position = Vector2(round(r.position.x + (r.size.x - day_panel.size.x) / 2.0), r.position.y + 8.0)
+
 ## Hold the map's sunrise/sunset wave whenever a cutscene, meeting or non-approach
 ## conversation covers the map so the player sees the sweep when returning to town.
 ## NPC approaches let the lighting transition finish off-screen.

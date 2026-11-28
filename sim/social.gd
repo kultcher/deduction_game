@@ -638,7 +638,9 @@ static func _describe(w, s, item: Dictionary) -> String:
 static func tavern_whispers(w) -> void:
 	if w.npcs_at("tavern").size() < Tuning.Social.TAVERN_WHISPER_MIN_CROWD:
 		return
-	var here: Array = w.evil_team().filter(func(x): return x.loc == "tavern" and x.busy_with == "")
+	# A silenced member can't whisper either (Michael, Nov 27: a silenced NPC shares nothing,
+	# in private too).
+	var here: Array = w.evil_team().filter(func(x): return x.loc == "tavern" and x.busy_with == "" and not x.silenced)
 	for i in range(here.size()):
 		for j in range(i + 1, here.size()):
 			var d = here[i]

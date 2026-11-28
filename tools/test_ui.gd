@@ -166,7 +166,7 @@ func _init() -> void:
 		print("after hide: cards listed ", cv.card_list.count())
 		cv.hidden_check.button_pressed = true
 		print("show hidden: cards listed ", cv.card_list.count())
-		cv._input(_esc())
+		cv._unhandled_key_input(_esc())
 		print("escape closes: ", not cv.visible)
 	cv.prof_opt.select(1)
 	cv._refresh_profile()

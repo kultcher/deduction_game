@@ -225,11 +225,6 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			settled_sincere[ex2] = true
 
 	# Pass 3: Unowned template deduction metadata (`meta.conclusion` + `weight`; never `effects`).
-	var delusion_odds: Dictionary = {}
-	var word_ids: Dictionary = {}
-	for wc in cards:
-		if str(wc.get("id", "")).begins_with("word:secret:"):
-			word_ids[str(wc.id)] = true
 	for eid in ledger:
 		if owned_map.has(eid):
 			continue
@@ -255,25 +250,9 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			var cn2: int = int(conc.get("night", -1))
 			var k_lied: String = "%s:%s" % [ca, str(cn2) if cn2 >= 0 else "*"]
 			pre_eval[k_lied] = minf(maxf(float(pre_eval.get(k_lied, 0.0)), Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE * wgt), Tuning.Workshop.DOUBT_ARG_CAP)
-		elif ctype == "secret_mod" and str(conc.get("mod", "")) == "delusional":
-			# An argued "X carries a hidden burden: Delusional" moves belief in the burden, and the
-			# judge's worlds do the rest (shared Delusion doubt, Michael, Nov 22; Lantern's hook):
-			# no discount on X's readings, which would count Delusion twice. The old doubt
-			# (DOUBT_ARG_DELUSIONAL_SCALE x weight, capped) is now the odds it multiplies X's
-			# Delusional worlds by: 1 / (1 - doubt).
-			# The player's word for the same (X, Delusional) already argues it (SharedLedger's
-			# word:secret card, when the presented case's arg stays unowned): count it once.
-			if word_ids.has("word:secret:%s:delusional" % ca):
-				continue
-			var d_del: float = minf(Tuning.Workshop.DOUBT_ARG_DELUSIONAL_SCALE * wgt, Tuning.Workshop.DOUBT_ARG_CAP)
-			delusion_odds[ca] = maxf(float(delusion_odds.get(ca, 1.0)), 1.0 / (1.0 - d_del))
-
-	# The argued Delusion odds go on the case the judge weighs (CaseEval.delusion_odds_fits).
-	if not delusion_odds.is_empty() and prepared.get("case") is Dictionary:
-		var held_odds: Dictionary = prepared.case.get("delusion_odds", {})
-		for who in delusion_odds:
-			held_odds[who] = maxf(float(held_odds.get(who, 1.0)), float(delusion_odds[who]))
-		prepared.case["delusion_odds"] = held_odds
+		# An argued "X carries a hidden burden: Delusional" reaches the listener as the player's
+		# word (SharedLedger's word:secret card) and the judge's Delusional worlds do the rest; the
+		# Pass 3 odds that once stood here never fired in play and were removed (Michael, Nov 27).
 
 	for s_good in settled_sincere:
 		if not seed_doubt.has(s_good + ":*"):
