@@ -48,7 +48,6 @@ var case_state = CaseState.new()   # view, filters and selection shared by every
 var map
 var map_stage: Control
 ## Top right of the map during a conversation or meeting: back to it (Michael, Nov 17).
-var map_return: Button
 var conversation_view
 var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
@@ -660,7 +659,6 @@ func _refresh_all() -> void:
 		map_stage.visible = true
 		conversation_view.visible = true
 		meeting_view.visible = false
-		map_return.visible = false
 		input.editable = false
 		return
 	if pacing_open:
@@ -680,7 +678,6 @@ func _refresh_all() -> void:
 			map_stage.visible = true
 			conversation_view.visible = false
 			meeting_view.visible = false
-			map_return.visible = false
 		input.editable = false
 		_sync_map_lighting_defer()
 		return
@@ -708,10 +705,6 @@ func _refresh_all() -> void:
 	map_stage.visible = conversation_finished or reading or (not meeting and not last_words) or meeting_show_map
 	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading or (g.state == "approach" and approach_stage != "")
 	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished and not reading
-	var in_talk_map: bool = g.state == "talk" and conversation_show_map and not conversation_view.visible
-	var in_meeting_map: bool = meeting and meeting_show_map and map_stage.visible
-	map_return.visible = in_talk_map or in_meeting_map
-	map_return.text = "Return to conversation" if in_talk_map else "Return to meeting"
 	input.editable = not conversation_finished and not _presenting()
 	if meeting:
 		meeting_view.refresh()
@@ -851,15 +844,6 @@ func _on_map_clicked(kind: String, id: String) -> void:
 	map.reduced_motion = reduced_motion
 	_sync_map_lighting_defer()
 	map.refresh()
-## The map's "Return to conversation" / "Return to meeting" button.
-func _on_map_return() -> void:
-	if g == null:
-		return
-	if g.state == "talk":
-		conversation_show_map = false
-	else:
-		meeting_show_map = false
-	_refresh_all()
 ## Informational notes (never a confirmation): a short toast that fades on its own.
 func _show_notes() -> void:
 	for e in g.last_events:

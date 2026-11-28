@@ -3,7 +3,7 @@
 - **Agent:** Claude-Herald
 - **Base:** main at 6770f32e
 - **Status:** PR open, zero drift (UI only)
-- **Next actor:** Bailiff (review, merge). Michael has one question (below).
+- **Next actor:** Bailiff (review, merge). Michael approved option (a), the crumb labels and tooltips, and retiring the duplicates (Nov 28, Seneschal relay).
 
 ## What changed
 
@@ -17,7 +17,7 @@
   - The row sits top-left of the map or conversation (the day plaque is top centre) and top-right of the meeting circle (the plaque is top-left there). It hides when there's nowhere to step back to, and on the Case board, the New Case screen, cutscenes and the guess window.
 - The map's own "◀ Whole town" sign is turned off (`map_view.show_back_sign`). The Town crumb sits where it was.
 - **"Speaker":** I built Seneschal's option (a). The crumb marks the speech, and the speech keeps its own pacing. Option (b), leaving a speech paused for the ring, would change the meeting's flow, and Michael hasn't asked for it.
-- **Kept for now:** the map's "Return to conversation/meeting" button and the left panel's "Look at the map / Look at conversation" and "Back to the meeting" toggles. They're Michael's earlier controls (`test_map_return`), and they now duplicate a crumb. Retiring them waits for his word.
+- **Retired (Michael, Nov 28, via Seneschal):** the old duplicates are gone. That covers the map's "Return to conversation/meeting" button and the left panel's "Look at the map / Look at conversation" and "Back to the meeting" toggles. `test_map_return` and `test_day_conversation_view` now go through the crumbs.
 - Code: `ui/nav_crumbs.gd`, created in `ui/main_layout.gd` and placed each frame by `main._place_nav_crumbs`.
 - **Flaky tests:** the same `test_day_plaque` / `test_audit_ui` fix as #571, with identical content.
 
@@ -26,7 +26,7 @@
 - The crumbs read "Town" and "Meeting", the block's own name ("Chapel Hill", "Docks"), and the person's name.
 - The separator is "▸", in the muted colour (Limner).
 - While someone is speaking, the Town crumb is greyed out with the tooltip "Not while someone is speaking". The meeting keeps the circle up during a speech, so the map can't open then (Codex on #591).
-- The duplicates are kept until he says.
+- The labels and tooltips were approved with the plan (Seneschal, Nov 28).
 
 ## Measured
 

@@ -100,9 +100,8 @@ static func refresh(m) -> void:
 			approach(m, w)
 			m.actions = lower_actions
 		"talk":
-			m._button(m.actions, "Look at conversation" if m.conversation_show_map else "Look at the map", func():
-				m.conversation_show_map = not m.conversation_show_map
-				m._refresh_all())
+			# The breadcrumb row moves between the map and the conversation (Michael, Nov 28:
+			# it replaces the "Look at the map / Look at conversation" toggle).
 			if m.conversation_show_map:
 				# The conversation's options wait while the map is up: go back to it to carry on
 				# (Michael, Nov 17).
@@ -118,7 +117,6 @@ static func refresh(m) -> void:
 			for pc in m.g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not m.g.shown_protection.has(int(c.n))):
 				var pnum: int = int(pc.n)
 				m._button(m.actions, "Show the town %s" % m.g.protection_label(pc), func(): m._run("present %d" % pnum))
-			map_toggle(m)
 			m._button(m.actions, "Let the town speak (wait)", func(): m._run("wait"))
 			if not m.g.presented_today:
 				m._button(m.actions, "Present a deduction to everyone…", func(): Pickers.card(m, "Present a deduction to the meeting",
@@ -153,7 +151,6 @@ static func refresh(m) -> void:
 		"nomination":
 			var nm: Dictionary = w.meeting["pending"]
 			m.action_title.text = "Vote on %s" % w.by_id[nm["nominee"]].name
-			map_toggle(m)
 			m._button(m.actions, "Vote to execute", func(): m._run("vote yes"))
 			m._button(m.actions, "Vote to spare", func(): m._run("vote no"))
 			if not nm.get("supporters_done", false):
@@ -325,12 +322,6 @@ static func talk(m, w) -> void:
 		func(c): return not c.get("tavern_gossip", false) and c.get("pressable", true) and c.get("workshop_usable", true),
 		func(num, extra): m._run(("present %d" % num) + extra), false, true))
 	m._button(m.actions, "Leave", func(): m._run("bye"))
-
-## During the meeting: switch the top-left view between the meeting circle and the map.
-static func map_toggle(m) -> void:
-	m._button(m.actions, "Back to the meeting" if m.meeting_show_map else "Look at the map", func():
-		m.meeting_show_map = not m.meeting_show_map
-		m._refresh_all())
 
 static func hint(m, t: String) -> void:
 	if m.actions == m.conversation_view.controls:

@@ -134,17 +134,6 @@ static func build(m) -> void:
 	m.conversation_view = preload("res://ui/day_conversation_view.gd").new()
 	m.conversation_view.visible = false
 	m.map_stage.add_child(m.conversation_view)
-	m.map_return = Button.new()
-	m.map_return.name = "MapReturn"
-	m.map_return.visible = false
-	m.map_return.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	m.map_return.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	m.map_return.offset_left = -10
-	m.map_return.offset_right = -10
-	m.map_return.offset_top = 10
-	m.map_return.offset_bottom = 10
-	m.map_return.pressed.connect(m._on_map_return)
-	m.map_stage.add_child(m.map_return)
 	# While the town meets, the meeting circle takes the map's place.
 	m.meeting_view = MeetingView.new()
 	m.meeting_view.custom_minimum_size = Vector2(500, 300)
