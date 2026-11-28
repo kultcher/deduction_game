@@ -134,17 +134,17 @@ static func build(m) -> void:
 	m.conversation_view = preload("res://ui/day_conversation_view.gd").new()
 	m.conversation_view.visible = false
 	m.map_stage.add_child(m.conversation_view)
-	m.map_return = Button.new()
-	m.map_return.name = "MapReturn"
-	m.map_return.visible = false
-	m.map_return.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	m.map_return.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	m.map_return.offset_left = -10
-	m.map_return.offset_right = -10
-	m.map_return.offset_top = 10
-	m.map_return.offset_bottom = 10
-	m.map_return.pressed.connect(m._on_map_return)
-	m.map_stage.add_child(m.map_return)
+	m.travel_button = Button.new()
+	m.travel_button.name = "TravelButton"
+	m.travel_button.visible = false
+	m.travel_button.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	m.travel_button.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	m.travel_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	m.travel_button.offset_top = -14
+	m.travel_button.offset_bottom = -14
+	m.travel_button.add_theme_font_size_override("font_size", 19)
+	m.travel_button.pressed.connect(m._on_travel_pressed)
+	m.map_stage.add_child(m.travel_button)
 	# While the town meets, the meeting circle takes the map's place.
 	m.meeting_view = MeetingView.new()
 	m.meeting_view.custom_minimum_size = Vector2(500, 300)
@@ -350,6 +350,11 @@ static func build(m) -> void:
 	# On every screen (Michael, Nov 27): above the map, the meeting, a conversation and the
 	# Case board, placed each frame at the top centre of whichever is showing (main.gd).
 	m.add_child(m.day_panel)
+	# Where you are and where you can step back to (Michael, Nov 28): placed each frame in the
+	# stage's top corner opposite the day plaque (main.gd).
+	m.nav_crumbs = preload("res://ui/nav_crumbs.gd").new()
+	m.add_child(m.nav_crumbs)
+	m.map.show_back_sign = false   # the Town crumb takes its place
 	m.case_view.notes_requested.connect(m._open_notes)
 	m.case_view.roles_requested.connect(func(): Roles.open(m))
 	m.case_view.visibility_changed.connect(func():

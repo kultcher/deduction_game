@@ -121,6 +121,7 @@ test_meeting_reasons
 test_meeting_stage
 test_meeting_stream
 test_mistake_signpost
+test_nav_crumbs
 test_new_case_memory
 test_night0_fake_sightings
 test_night_sighting_rebuttal
@@ -164,6 +165,7 @@ test_reading_confirm
 test_reading_trust
 test_readings_agree
 test_recency
+test_regular_clues
 test_relay_bluff
 test_relay_challenge_menu
 test_relay_lie_attribution
@@ -206,6 +208,7 @@ test_town_ui
 test_town_vibe
 test_trace_art
 test_trapped_explanation
+test_travel_confirm
 test_turned_premise
 test_vigil_nightwatch
 test_vote_shape

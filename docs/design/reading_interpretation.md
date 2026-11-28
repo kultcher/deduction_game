@@ -138,6 +138,30 @@ The order (Michael, Nov 21):
 4. the dead: Gravedigger, Medium;
 5. the Magistrate, the Psychologist, and the protective gifts.
 
+### 1.7 Passing information on (Michael, Nov 28)
+
+How information moves when someone other than its source tells it. This applies to every
+role, not only the Seer.
+
+- **The source is always hidden.** Whoever passes information on doesn't say where it came
+  from, whether in private, to the player or at the meeting. Two exceptions:
+  - a dead person's reading, which can be credited to them;
+  - anything the source has since said publicly.
+- **Deliberate seeding.** Any good holder may pass its information through someone it trusts
+  (at least 0.7 trust), so the town is pointed the right way without exposing the holder.
+  - It seeds 35% of the time, or half as often again when the reading points at someone it
+    suspects of being the Demon.
+  - The person seeded passes it on 40% of the time.
+- **"Ask about <person>" is separate from that person's gossip.** What an NPC brings up goes by
+  role:
+  - asked "are you the Seer, or have you heard of one", an NPC that has heard a Seer reading
+    always gives it, with the source hidden; likewise for each role;
+  - asked about a dead person, it always gives their claim and readings, if it knows them;
+  - an evil NPC brings such information up only 25% of the time, and never if it incriminates
+    the Demon.
+- **Later, perhaps:** evil seeding made-up information through a townsperson who trusts it
+  (tentative, Michael, Nov 28).
+
 ### 2.1 The Seer (Michael, Nov 21)
 
 **What the reading does.** Each night the Seer chooses two people. If one of them registers as
@@ -200,6 +224,7 @@ Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
   being killed at random before its information is out. The average reveal is around day 2.5.
 - **Seed information without revealing:** it may find someone it trusts and pass its
   information through them. Hearsay has limited weight, but it can point people the right way.
+  Widened to every good role (section 1.7, Michael, Nov 28).
 - **Seek protection before revealing:** when it plans to reveal, it may look for protection
   from the player or a known Warden.
 
@@ -333,6 +358,6 @@ reveal timing across all roles at once.
     trusted; Beadle is fixing the code.
   - **The Red Herring defence** stays as built, after two shared yeses.
   - **The Dowser's reveal timing** is deferred to an overhaul of reveal timing across roles.
-  - **"Not being seen out" as evidence:** on the backlog, under the circumstantial hub.
+  - **"Not being seen out" as evidence:** on the backlog, under the circumstantial hub; deferred (Michael, Nov 28).
   - **Still with Michael:** the strength wording ("good, and not the Red Herring"; two Dowser
     readings of 1) and how Delusion's game-long doubt is shared across nights.
