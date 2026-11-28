@@ -302,7 +302,7 @@ static func _observe(g) -> void:
 	elif l.begins_with("home_"):
 		acts = "Actions: talk <name> | wait"
 	if not g.free_move_used:
-		acts += "   (or 'go <place>' once more within %s)" % C.block_name(g.w.loc_block(l))
+		acts += "   (you may still move once within %s: 'go <place>')" % C.block_name(g.w.loc_block(l))
 	g._prompt(acts)
 
 

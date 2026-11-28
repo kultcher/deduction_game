@@ -28,7 +28,7 @@ func _init() -> void:
 	kind = "info"
 	min_gift_day = 1
 	tags = ["ongoing_info", "evil_id"]
-	desc = "Each night (not the first), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."
+	desc = "Each night (not the night before you arrived), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."
 	shape = "PSYCH_STATEMENTS"
 	conversation_nudge = Tuning.Roles.PSYCHOLOGIST.conversation_nudge
 
