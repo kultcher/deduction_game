@@ -196,9 +196,16 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false, pr
 		facts.append(_alibi_home(d, nd))
 		vantage = d.home_block
 		outcome = "home"
-		if presses > 0:
-			# Truly home and pressed again about it before the town: it stands by its account and
-			# trusts the Demonologist less, as in private (MindPress._answer_pressed_night).
+		# Truly home and pressed again about it before the town: it stands by its account and
+		# trusts the Demonologist less, as in private. One count for both venues: the private
+		# ladder's `pressed_nights` (MindPress._answer_pressed_night), so switching venues doesn't
+		# reset it (Codex on #580).
+		var home_presses: int = int(d.dialogue_memory.get("pressed_nights", {}).get(str(nd), 0))
+		if pressed:
+			var pn: Dictionary = d.dialogue_memory.get("pressed_nights", {})
+			pn[str(nd)] = home_presses + 1
+			d.dialogue_memory["pressed_nights"] = pn
+		if pressed and home_presses > 0:
 			var drop: float = (Tuning.Trust.QUESTION_FATIGUE_BASE + Tuning.Trust.QUESTION_FATIGUE_PRIVACY * _trait(d, "privacy")) * (1.0 - Tuning.Trust.QUESTION_FATIGUE_COMPOSURE_DAMP * _trait(d, "composure"))
 			_mind().set_trust(w, d, d.trust - drop, "pressed again before the town about night %d, when they were home" % nd)
 	else:

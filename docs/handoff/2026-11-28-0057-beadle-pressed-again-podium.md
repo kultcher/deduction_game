@@ -23,7 +23,9 @@
     now rolls to give the gift when pressed again (`_gives_way`, with the reveal's cost), instead of
     always repeating the plain account.
 - **Truly home, pressed again before the town:** the same lines, and it trusts the Demonologist
-  less, by the question-fatigue amount, as in private.
+  less, by the question-fatigue amount, as in private. One count for both venues, the private
+  ladder's `pressed_nights` (Codex on #580), so a private press then a podium one, or the other
+  way round, is a repeat.
 - **Evil that owned the night with nothing to tell, pressed again:** it may back into a spare
   walking gift (`MindPress.back_into_walking_gift`, split out of #560's private path with the same
   guards and roll) and claims it before the town.
@@ -48,9 +50,9 @@ Michael's call.
 
 ## Measured
 
-- **New:** `tools/test_pressed_again_podium.gd`, 5 checks, on the slow CI list (about 50 seconds):
+- **New:** `tools/test_pressed_again_podium.gd`, 7 checks, on the slow CI list (about 50 seconds):
   - a podium card press counts for the private ladder;
-  - truly home: no extra cost at the first press, trust drops on the next;
+  - truly home: no extra cost at the first press, trust drops on the next, across venues both ways;
   - the Unrequited walk confessed 0.47 → 0.88 with three earlier presses (60 deals from 7100);
   - evil backed into a walking gift in 9 of 19 deals (from 7200), always claimed publicly and
     always a walking gift.

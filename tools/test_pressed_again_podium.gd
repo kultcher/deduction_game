@@ -50,6 +50,26 @@ func _init() -> void:
 	var after_first: float = d1.trust
 	Podium.press_card(w1, d1, _card(w1, d1, 1, d1.home_block), true)
 	_check(after_first >= 0.6 - 0.0001 and d1.trust < after_first, "truly home, the first press costs nothing extra; pressed again, it trusts the Demonologist less")
+	# One count across venues (Codex on #580): pressed in private first, then at the podium; and
+	# the other way round.
+	var w2 = _world(7002)
+	var d2 = w2.living_good()[0]
+	d2.history[w2.time_key(1, C.NIGHT)] = "home:" + d2.home_block
+	d2.trust = 0.6
+	d2.pressed_today = 0
+	Press._answer_pressed_night(w2, d2, 1)
+	var before_podium: float = d2.trust
+	Podium.press_card(w2, d2, _card(w2, d2, 1, d2.home_block), true)
+	_check(d2.trust < before_podium, "pressed in private, then at the podium about the same night: the podium press is a repeat")
+	var w3 = _world(7003)
+	var d3 = w3.living_good()[0]
+	d3.history[w3.time_key(1, C.NIGHT)] = "home:" + d3.home_block
+	d3.trust = 0.6
+	Podium.press_card(w3, d3, _card(w3, d3, 1, d3.home_block), true)
+	var before_private: float = d3.trust
+	d3.pressed_today = 0
+	Press._answer_pressed_night(w3, d3, 1)
+	_check(d3.trust < before_private, "pressed at the podium, then in private: the private press is a repeat")
 	# A known burden's walk (an Unrequited's) is confessed more often after earlier presses.
 	var told := {0: 0, 3: 0}
 	var tries := {0: 0, 3: 0}
