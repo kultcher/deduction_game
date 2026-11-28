@@ -101,15 +101,13 @@ static func _day_command(g, verb: String, rest: String) -> void:
 					g._err("Where? Try 'map' for places (a location, a block, or a person).")
 				return
 			if g.moved:
+				# Within the block you move freely (Michael, Nov 28: the one-free-move limit is gone).
 				if l == g.loc:
 					g._err("You're already here.")
-				elif g.free_move_used:
-					g._err("You've already moved once this %s. Talk, search, or wait." % g.w.phase_name().to_lower())
 				elif g.w.loc_block(l) != g.w.loc_block(g.loc):
-					g._err("You can only move within %s now (one free move per phase)." % C.block_name(g.w.loc_block(g.loc)))
+					g._err("You can only move within %s now." % C.block_name(g.w.loc_block(g.loc)))
 				else:
 					_warn_busy_visit(g, sought)
-					g.free_move_used = true
 					g.loc = l
 					g.w.player_loc = l
 					g.w.dlog.add("player_move", "player", "", {"loc": l, "free_move": true})
@@ -123,7 +121,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			g.w.dlog.add("player_move", "player", "", {"loc": l})
 			_observe(g)
 			if sought != null and not sought.at_home() and sought.loc != l and g.w.loc_block(sought.loc) == g.w.loc_block(l):
-				g._narr("%s isn't here, but you spot them at %s. ('talk %s' walks you over, using your free move.)" %
+				g._narr("%s isn't here, but you spot them at %s. ('talk %s' walks you over.)" %
 					[sought.name, g.w.loc_name(sought.loc), sought.name.to_lower()])
 		"talk", "t":
 			if not g.moved:
@@ -139,15 +137,11 @@ static func _day_command(g, verb: String, rest: String) -> void:
 					g._err("%s is at home (on %s) this %s. 'go %s' to call on them." % [n.name, C.block_name(n.home_block),
 						g.w.phase_name().to_lower(), n.name.to_lower()])
 					return
-				if g.w.loc_block(n.loc) == g.w.loc_block(g.loc) and not g.free_move_used:
-					g.free_move_used = true
+				if g.w.loc_block(n.loc) == g.w.loc_block(g.loc):
 					g.loc = n.loc
 					g.w.player_loc = g.loc
 					g.w.dlog.add("player_move", "player", "", {"loc": g.loc, "free_move": true, "via": "talk"})
 					g._narr("You walk over to %s." % g.w.loc_name(g.loc))
-				elif g.w.loc_block(n.loc) == g.w.loc_block(g.loc):
-					g._err("%s is at %s, and you've already used your free move this %s." % [n.name, g.w.loc_name(n.loc), g.w.phase_name().to_lower()])
-					return
 				else:
 					g._err("%s isn't here." % n.name)
 					return
@@ -301,8 +295,6 @@ static func _observe(g) -> void:
 		acts = "Actions: %swait" % rec_opt
 	elif l.begins_with("home_"):
 		acts = "Actions: talk <name> | wait"
-	if not g.free_move_used:
-		acts += "   (or 'go <place>' once more within %s)" % C.block_name(g.w.loc_block(l))
 	g._prompt(acts)
 
 
@@ -449,7 +441,7 @@ static func _search_regulars(g, l: String) -> bool:
 ## (HAUNT_SIGHTING_DAYS; more for the tavern) teaches you it's a haunt of theirs.
 ## The player saw everyone at every public place on this block this phase (the location
 ## itself plus "Nearby"): a full roster, so the solver can count not being seen
-## (workshop/day_presence.gd). A free move stays on the block, so one entry per phase.
+## (workshop/day_presence.gd). Moving within the block stays on it, so one entry per phase.
 static func _note_watch(g, l: String) -> void:
 	if g.w.phase > C.EVENING:
 		return

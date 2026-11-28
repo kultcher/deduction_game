@@ -70,6 +70,7 @@ test_fabrication_check
 test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
+test_free_move
 test_gift_doubt
 test_gift_doubt_good
 test_gossip_tiers
