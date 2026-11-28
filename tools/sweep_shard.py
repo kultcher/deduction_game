@@ -111,6 +111,11 @@ class Worker:
                 seed += 1
                 continue
             games = self.last - seed
+            if self.a.games_per_proc > 0:
+                # Restart autoplay every N games: a 10-NPC process's memory grows game by game
+                # (passive: about 2.3 GB after one game and 4.5 GB by the third; bot: 5.3 GB after two, Nov 28), and four of them
+                # running a whole shard's seeds outgrew a hosted runner (run 46079890031).
+                games = min(games, self.a.games_per_proc)
             cmd = [self.a.godot, "--headless", "--path", self.a.project, "--script", "res://tools/autoplay.gd", "--",
                    "--seed", str(seed), "--games", str(games), "--npcs", str(self.a.npcs), "--no-trace",
                    "--dynamic", "--results-jsonl", self.results, "--sha", self.a.sha,
@@ -137,16 +142,19 @@ class Worker:
             err_lines = []
             killed = {"flag": False}
 
-            def watchdog():
-                while proc.poll() is None:
-                    if current_holder[0] is not None and time.time() - current_holder[1] > self.a.game_timeout:
-                        killed["flag"] = True
-                        proc.kill()
+            # Each batch's watchdog is bound to its own process and state, and is joined when the
+            # batch ends: with --games-per-proc restarts, a closure over the loop's reassigned
+            # `proc` kept every old watchdog alive watching the newest process (Codex, #585).
+            def watchdog(p, holder, flag):
+                while p.poll() is None:
+                    if holder[0] is not None and time.time() - holder[1] > self.a.game_timeout:
+                        flag["flag"] = True
+                        p.kill()
                         return
-                    time.sleep(5)
+                    time.sleep(1)
 
             current_holder = [None, started]
-            t = threading.Thread(target=watchdog, daemon=True)
+            t = threading.Thread(target=watchdog, args=(proc, current_holder, killed), daemon=True)
             t.start()
             for line in proc.stdout:
                 line = line.rstrip("\n")
@@ -169,6 +177,7 @@ class Worker:
                 if line.startswith("case ") and self.a.echo:
                     print("[w%d] %s" % (self.idx, line), flush=True)
             proc.wait()
+            t.join(timeout=10)
             recorded = self._recorded()
             if current is not None and current not in recorded:
                 # The process died (or was killed) inside this game: record it and move on.
@@ -235,6 +244,8 @@ def main():
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
     ap.add_argument("--procs", type=int, default=4)
+    ap.add_argument("--games-per-proc", type=int, default=0,
+                    help="restart autoplay after this many games, to bound its memory (0: never)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--sha", default=os.environ.get("GITHUB_SHA", ""))
     ap.add_argument("--game-timeout", type=float, default=1800.0)

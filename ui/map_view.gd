@@ -138,6 +138,7 @@ var zoom_block: String = "":
 		zoom_block = v
 		_snap_zoom()
 var _last_zoom_block: String = ""
+var show_back_sign: bool = true   # the main screen's Town crumb replaces it (Michael, Nov 28)
 var _current_view: Rect2 = OVERVIEW
 var _zoom_dim_alpha: float = 0.0
 var _zoom_tween: Tween
@@ -595,7 +596,7 @@ func _draw() -> void:
 	if _zoom_dim_alpha > 0.01 and dim_block != "" and BLOCK_RECTS.has(dim_block):
 		_ui_commands.append({"kind": "zoom_dim", "rect": _r(_block_rect(dim_block)), "alpha": _zoom_dim_alpha})
 	# Back button and status.
-	if zoom_block != "":
+	if zoom_block != "" and show_back_sign:
 		var br = _sign(font, "◀ Whole town", Vector2(70, 24), 13)
 		_hits.push_front({"rect": br, "kind": "back", "id": "", "label": "Back to the whole town", "hint": ""})
 	if not _hover.is_empty():
