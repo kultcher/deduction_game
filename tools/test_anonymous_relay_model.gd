@@ -37,6 +37,14 @@ func _init() -> void:
 		"a privately passed-on reading is the relayer's account, marked private")
 	var md: Dictionary = Shared.Evidence.normalize_card({"kind": "info", "source": original.id, "role": "surveyor", "day": 0, "phase": 3, "data": {"count": 2}, "text": "", "anonymous": true, "via": teller.id})
 	check(not Assess.testimony_card(md, snapshot).get("private_relay", false), "one told at the meeting isn't")
+	# Reliability: full for the private one, even when the listener doubts the relayer's own
+	# gift that night; RELAY_WEIGHT for the meeting one (Codex on #599).
+	var mcard: Dictionary = Assess.testimony_card(md, snapshot)
+	var snap_d: Dictionary = snapshot.duplicate(true)
+	snap_d.listener["source_doubt"] = {"%s:0" % teller.id: 0.9, "%s:*" % teller.id: 0.9}
+	var rel: Dictionary = Assess._listener(snap_d, [rcard, mcard]).reading_reliability
+	check(absf(float(rel.get(rcard.id, -1.0)) - 1.0) < 1e-9 and absf(float(rel.get(mcard.id, -1.0)) - Assess.C.RELAY_WEIGHT) < 1e-9,
+		"doubt of the relayer's own gift leaves its accounts alone: private %.3f, meeting %.3f" % [float(rel.get(rcard.id, -1.0)), float(rel.get(mcard.id, -1.0))])
 	# One relayer's unnamed accounts of one gift stay separate items; its own readings group.
 	var people: Array = snapshot.people
 	var mk = func(id: String, testimony: bool, night: int) -> Dictionary:

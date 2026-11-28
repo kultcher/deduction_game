@@ -893,10 +893,12 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			# A save is the Warden's inference from a quiet night, not something they saw: an
 			# unknown ward, an unclaimed Veteran, or their own failed gift could explain it.
 			reliability[card.id] *= Tuning.Roles.WARDEN_SAVE_RELIABILITY
-		elif card.get("testimony_only", false) and not card.get("private_relay", false):
-			# A relay told at the meeting; one passed on in private keeps its hearsay weight in
-			# the ledger and counts in full here (Michael, Nov 28: hearsay weight unchanged).
-			reliability[card.id] = C.RELAY_WEIGHT
+		elif card.get("testimony_only", false):
+			# A relay told at the meeting counts at RELAY_WEIGHT; one passed on in private keeps
+			# its hearsay weight in the ledger and counts in full here (Michael, Nov 28: hearsay
+			# weight unchanged). Either way it's someone else's reading, so doubt about the
+			# relayer's own gift doesn't touch it (Codex on #599).
+			reliability[card.id] = 1.0 if card.get("private_relay", false) else C.RELAY_WEIGHT
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),

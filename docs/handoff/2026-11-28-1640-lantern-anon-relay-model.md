@@ -25,7 +25,7 @@
 
 ## Measured
 
-- **New:** `tools/test_anonymous_relay_model.gd`, 4 checks, on the fast list.
+- **New:** `tools/test_anonymous_relay_model.gd`, 5 checks, on the fast list. Codex round 1: an unnamed account's reliability ignores doubt about the relayer's own gift (full in private, `RELAY_WEIGHT` at the meeting).
 - **Suites:** test_mechanics_relays, test_workshop_provenance, test_gossip_tiers, test_connections_core and test_workshop_regressions pass.
 - **Golden:** identical to `baseline_2e97efe` on all five seeds at `--tol 0`. No golden seed has an unnamed relay of a gift reading by one relayer twice, or a private one.
 
