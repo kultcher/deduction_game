@@ -389,6 +389,9 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 static func press_count(n, night: int) -> int:
 	return int(n.dialogue_memory.get("caught_presses", {}).get(str(night), 0))
 
+static func note_press(n, night: int) -> void:
+	_note_press(n, night)
+
 static func _note_press(n, night: int) -> void:
 	var c: Dictionary = n.dialogue_memory.get("caught_presses", {})
 	c[str(night)] = int(c.get(str(night), 0)) + 1
@@ -466,25 +469,33 @@ static func _evil_caught_out(w, n, night: int, presses: int = 0) -> Dictionary:
 ## it has named another gift to anyone; with no spare gift it stays put, wary of a double
 ## claim. {} when it doesn't, else the gift's answer.
 static func _backup_walking_gift(w, n, night: int) -> Dictionary:
+	if back_into_walking_gift(w, n, night) == "":
+		return {}
+	# The press already counted the question (Codex on #560).
+	return _answers().answer_gift(w, n, 3, false)
+
+## The choice behind the backup, shared with the podium (MindPodium.press_night): the guards,
+## the roll and the bluff switch, logged as a lie. Returns the gift it backs into, or "".
+static func back_into_walking_gift(w, n, night: int) -> String:
 	# Never once it has named a gift to anyone, publicly or in private; nor a Revenant-turned
 	# townsperson, whose real gift is its cover (Codex on #560, as the bluff switch and the
 	# double claim exclude it).
 	if n.turned or n.claim_public or n.max_tier >= 3 or n.claimed_role != "":
-		return {}
+		return ""
 	# Named to another NPC, or a made-up reading of it told: the listener holds the claim, not
 	# the speaker (Codex on #560), as choose_double_claim checks.
 	if w.npcs.any(func(o): return o != n and str(o.known_claims.get(n.id, {}).get("role", "")) != ""):
-		return {}
+		return ""
 	if n.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
-		return {}
+		return ""
 	var spare: Array = spare_walking_gifts(w, n, night)
 	if spare.is_empty():
 		w.dlog.think(n.id, "pressed_again", "Pressed again about night %d: no unclaimed walking gift fits; stays with \"being out isn't wicked\"." % night, {"spare": 0})
-		return {}
+		return ""
 	var careful: bool = n.id == w.demon_id or n.role == "scion" or C.is_demon(n.role)
 	var p: float = Tuning.Dialogue.PRESSED_AGAIN_BACKUP_CAREFUL if careful else Tuning.Dialogue.PRESSED_AGAIN_BACKUP_MINION
 	if not w.decision_roll(n, "pressed_again_backup", p, {"careful": careful, "spare": spare.size()}):
-		return {}
+		return ""
 	var old: String = str(w.evil_plan.get("bluffs", {}).get(n.id, ""))
 	var pick: String = spare[0]
 	load("res://sim/mind_meeting.gd")._change_bluff(w, n, old, pick)
@@ -495,8 +506,7 @@ static func _backup_walking_gift(w, n, night: int) -> Dictionary:
 	var soft: Dictionary = n.dialogue_memory.get("caught_soft", {})
 	soft[str(night)] = w.day
 	n.dialogue_memory["caught_soft"] = soft
-	# The press already counted the question (Codex on #560).
-	return _answers().answer_gift(w, n, 3, false)
+	return pick
 
 ## Spare walking gifts for n (evil's bluff pool, as the bluff switch uses it): none a teammate
 ## bluffs, none anyone n knows of has claimed, and only those whose night work would explain
