@@ -168,7 +168,7 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			g.state = "day"
 			g.w.dlog.add("approach_declined", "player", n.id)
 			g._narr("You excuse yourself. %s shrugs and goes about their day." % n.name)
-			g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
+			g._prompt("Where will you spend the %s? ('go <place | block | person>', e.g. 'go town hall', or a crime scene by the victim's name)" % g.w.phase_name().to_lower())
 		_:
 			# An approach waits for an answer (Nov 7): nothing else, a wait included, moves on.
 			g._err("%s is waiting for an answer: 'accept' to hear them out, or 'decline'." % n.name)
@@ -181,12 +181,12 @@ static func _protect_approach_answer(g, n, verb: String, rest: String) -> void:
 			n.pressed_today = 0  # Includes protection requests and their free disclosure.
 			g.state = "day"
 			_grant_protection(g, n, g.approach["what"] if g.approach.has("what") else Mind.protection_kind(g.w, n))
-			g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
+			g._prompt("Where will you spend the %s? ('go <place | block | person>', e.g. 'go town hall', or a crime scene by the victim's name)" % g.w.phase_name().to_lower())
 		"no", "n", "decline", "refuse":
 			g.state = "day"
 			g.w.dlog.add("protection_declined", "player", n.id)
 			g._line(Mind.say_voiced(n, "request_declined", "I see. I'll manage."))
-			g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
+			g._prompt("Where will you spend the %s? ('go <place | block | person>', e.g. 'go town hall', or a crime scene by the victim's name)" % g.w.phase_name().to_lower())
 		_:
 			g._err("%s is waiting for an answer: 'yes' to promise it, or 'no'." % n.name)
 
@@ -221,7 +221,7 @@ static func _phase_header(g) -> void:
 	g._screen(GameScreens._map(g))
 	GameScreens._card_workers(g)
 	GameScreens._card_conversations(g)
-	g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
+	g._prompt("Where will you spend the %s? ('go <place | block | person>', e.g. 'go town hall', or a crime scene by the victim's name)" % g.w.phase_name().to_lower())
 
 
 ## Store only the last *spoken* exchange in this talk, separate from the
@@ -288,7 +288,10 @@ static func _talk_options(g, n) -> String:
 		# They can't answer (playtest 52102, seq 747): only what doesn't need their voice.
 		return "(silenced: present <card#> [for|against <name>] | offer ward|vigil (free) | bye)"
 	var why = " | ask why" if Mind.has_live_hint(g.w, n) else ""
-	return "(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % why
+	# Michael, Nov 27: approved wording (playtest 52102).
+	var gift: String = "ask gift (their readings)" if n.claim_public or n.max_tier >= 3 else "ask gift"
+	var seen: String = "ask seen today" if g.w.day <= 1 else "ask seen today | ask seen yesterday [morning|afternoon|evening]"
+	return "(3 questions: %s | ask night | %s | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % [gift, seen, why]
 
 
 ## A repeated refusal only saves a player question slot. Keep the original NPC

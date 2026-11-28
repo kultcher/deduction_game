@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 23, lazy Delusion exposure): `baseline_1bf8a4b`
+### Current baseline (Nov 28, Michael's 52102 wording and the Psychologist's all-clear): `baseline_c0cb269`
+
+`tools/golden/baseline_c0cb269/` is the capture from `claude/herald-52102-wording` at `c0cb269`:
+`baseline_1bf8a4b` plus the nine prompt and description lines Michael approved on Nov 27, and the
+Psychologist's all-clear reading reworded on Nov 28 ("I learned that none of the information I
+heard on day N was a lie or misread"). #561, #565 and #571 are zero drift, and come before it.
+- **Divergence from `baseline_1bf8a4b`:** text only.
+  - Every seed differs in its first prompts (step 0, day 1), in reply text: the day prompt's places, and
+    later the night gifts' descriptions,
+    Clemency at an NPC's nomination, and "No one rises to speak for or against …".
+  - Seed 900 also differs at record 175 (day 4 morning), in the text of Constance's Psychologist
+    reading.
+  - With `--tol 0 --ignore engine,reply,text`, all five seeds are identical (104, 296, 265, 177 and
+    320 records): no belief, vote, nomination, RNG state or execution moves.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings as `baseline_1bf8a4b`.
+- **Stability:** captured twice; the two are identical at `--tol 0`.
+
+### Earlier baseline (Nov 23, lazy Delusion exposure): `baseline_1bf8a4b`
 
 `tools/golden/baseline_1bf8a4b/` is the Linux CI capture from `argon/lazy-delusion-exposure` at `1bf8a4b`
 (main at `f9ec1258`, #552). `WorkshopOwnership.delusion_exposed` is now `false` in play, so

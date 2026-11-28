@@ -557,7 +557,7 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	var walker = w2.living().filter(func(p): return p.is_evil())[0]
 	_give_role(w2, psych2, "psychologist")
 	w2.day = 1
-	var nf_entry: Dictionary = {"day": 1, "role": "psychologist", "data": {"mode": "none_false", "day_heard": 1}, "true": false, "fake": true, "shared": true, "text": "none of the information I heard on day 1 was a lie or misread"}
+	var nf_entry: Dictionary = {"day": 1, "role": "psychologist", "data": {"mode": "none_false", "day_heard": 1}, "true": false, "fake": true, "shared": true, "text": "I learned that none of the information I heard on day 1 was a lie or misread"}
 	var c_nf_num: int = GameBoard.add_card(g2, {"kind": "info", "source": psych2.id, "role": "psychologist", "day": 1, "data": nf_entry.data, "subject": [], "text": "Psychologist none_false"})
 	var c_sight_num: int = GameBoard.add_card(g2, {"kind": "sighting", "source": wit.id, "subject": [walker.id], "block": wit.home_block, "day": 0, "phase": C.NIGHT, "text": "%s saw %s" % [wit.name, walker.name]})
 	var c_alibi_num: int = GameBoard.add_card(g2, {"kind": "alibi", "source": walker.id, "subject": [walker.id], "home": true, "block": walker.home_block, "day": 0, "phase": C.NIGHT, "text": "%s says home" % walker.name})

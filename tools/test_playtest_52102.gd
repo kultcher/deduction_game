@@ -34,6 +34,7 @@ func _run() -> void:
 	_lie_nights()
 	_guess_source()
 	_text_gaps()
+	_approved_wording()
 	print("Playtest 52102: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -102,3 +103,23 @@ func _text_gaps() -> void:
 	check("ask gift" in preload("res://game/game_conversation.gd")._talk_options(g, n), "anyone else still is")
 	var out: String = g.command("guess %s minion" % g.w.npcs[3].name.to_lower())
 	check("Name the Minion's gift" in out, "a generic Minion guess says how to name one (seq 556)")
+
+## Michael, Nov 27: the nine 52102 wording drafts, approved as written.
+func _approved_wording() -> void:
+	var g = _case()
+	var n = g.w.npcs[4]
+	n.claim_public = true
+	var opts: String = preload("res://game/game_conversation.gd")._talk_options(g, n)
+	check("ask gift (their readings)" in opts, "(d) after a claim, the gift question says it's about their readings")
+	g.w.day = 1
+	check("ask seen today" in preload("res://game/game_conversation.gd")._talk_options(g, n) and not "yesterday" in preload("res://game/game_conversation.gd")._talk_options(g, n), "(e) on the first day only 'ask seen today'")
+	g.w.day = 2
+	check("ask seen yesterday [morning|afternoon|evening]" in preload("res://game/game_conversation.gd")._talk_options(g, n), "(e) later, yesterday with its phase")
+	check(C.ROLES["demon"]["desc"] == "Kills one person each night (not the night before you arrived), walking to their block to do it.", "(h, i) the Demon's description")
+	check(["confessor", "monitor", "psychologist"].all(func(r): return C.ROLES[r]["desc"].begins_with("Each night (not the night before you arrived),")), "(h) the other three night gifts")
+	var src: String = FileAccess.get_file_as_string("res://game/game_meeting.gd") + FileAccess.get_file_as_string("res://game/game_day_night.gd") + FileAccess.get_file_as_string("res://game/game_conversation.gd")
+	for line in [", or 'clemency' to spare them", "No one rises to speak for or against %s.", "You promised %s a vigil on %s tonight.",
+			"e.g. 'go town hall', or a crime scene by the victim's name"]:
+		check(line in src, "the approved line is in place: %s" % line)
+	# (f), the move hint, went with the one-move rule itself (#586, Michael Nov 28).
+	check(not "move once within" in src, "(f) the one-move hint is gone with its rule")
