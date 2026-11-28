@@ -134,6 +134,17 @@ static func build(m) -> void:
 	m.conversation_view = preload("res://ui/day_conversation_view.gd").new()
 	m.conversation_view.visible = false
 	m.map_stage.add_child(m.conversation_view)
+	m.travel_button = Button.new()
+	m.travel_button.name = "TravelButton"
+	m.travel_button.visible = false
+	m.travel_button.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	m.travel_button.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	m.travel_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	m.travel_button.offset_top = -14
+	m.travel_button.offset_bottom = -14
+	m.travel_button.add_theme_font_size_override("font_size", 19)
+	m.travel_button.pressed.connect(m._on_travel_pressed)
+	m.map_stage.add_child(m.travel_button)
 	# While the town meets, the meeting circle takes the map's place.
 	m.meeting_view = MeetingView.new()
 	m.meeting_view.custom_minimum_size = Vector2(500, 300)

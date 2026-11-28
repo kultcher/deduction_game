@@ -47,7 +47,7 @@ var case_view
 var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
 var map_stage: Control
-## Top right of the map during a conversation or meeting: back to it (Michael, Nov 17).
+var travel_button: Button   # "Travel to <block>" at the foot of a block's close-up (Michael, Nov 28)
 var conversation_view
 var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
@@ -732,7 +732,29 @@ func _refresh_all() -> void:
 ## "Back to town".
 func _process(_delta: float) -> void:
 	_place_day_panel()
+	_sync_travel_button()
 	_place_nav_crumbs()
+
+## Shown on a block's close-up while the player hasn't chosen where to spend the phase.
+func _sync_travel_button() -> void:
+	if travel_button == null:
+		return
+	var zb: String = map.zoom_block if map != null else ""
+	var show: bool = g != null and g.state == "day" and not g.moved and zb != "" and C.BLOCKS.has(zb) \
+		and map_stage.visible and not conversation_view.visible and not pacing_open and not conversation_finished \
+		and (new_case_screen == null or not new_case_screen.visible) and not daily_guess_open
+	travel_button.visible = show
+	if show:
+		var label: String = "Travel to %s" % C.block_name(zb)
+		if travel_button.text != label:
+			travel_button.text = label
+		travel_button.set_meta("block", zb)
+
+func _on_travel_pressed() -> void:
+	if g == null or not travel_button.has_meta("block"):
+		return
+	var zb: String = str(travel_button.get_meta("block"))
+	preload("res://ui/travel_confirm.gd").request(self, g, zb, func(): _run("go " + zb))
 
 func _place_nav_crumbs() -> void:
 	if nav_crumbs == null:

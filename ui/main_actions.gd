@@ -239,7 +239,8 @@ static func day(m, w) -> void:
 			# to its crime scene, or back out.
 			var zb: String = m.map.zoom_block
 			hint(m, "Click a spot on the block to go straight there, or a person to inspect their profile.")
-			m._button(m.actions, "Visit %s" % C.block_name(zb), func(): m._run("go " + zb))
+			m._button(m.actions, "Visit %s" % C.block_name(zb), func():
+				preload("res://ui/travel_confirm.gd").request(m, m.g, zb, func(): m._run("go " + zb)))
 			for sid in w.scenes:
 				if w.scenes[sid].get("block", "") == zb:
 					var scene_id: String = sid
