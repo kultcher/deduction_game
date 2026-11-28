@@ -32,7 +32,7 @@
   - **Who counts it:** private and public visibility, and never the claimant itself.
   - **In play** (seed 1, day 2): a private deflection raises the asker's suspicion of the claimant from 0.100 to 0.179. An NPC that wasn't asked is unmoved.
 - **Suites:** test_withheld_asks, test_connections_core, test_call_on_respond, test_workshop_regressions, test_workshop_action and test_connections_cache pass.
-- **Golden:** identical to `baseline_446c9c2` (#588's) on all five seeds at `--tol 0`. Golden's one private ask (seed 42) ends without a refusal, so no golden refresh sees a cost.
+- **Golden:** identical to #588's baseline on all five seeds at `--tol 0`: first `baseline_446c9c2`, then `baseline_2e97efe` after #588's head b5274609 was merged in. Golden's one private ask (seed 42) ends without a refusal, so no golden refresh sees a cost.
 
 ## Not measured
 
