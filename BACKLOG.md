@@ -32,7 +32,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    3. Withheld readings: asking for what someone hasn't said `[decided]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
     6. Good NPCs lie tactically `[open]`
@@ -219,11 +219,12 @@ Lantern). Nothing is open here.
     some suspicion and makes a circumstantial card.
 
   Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
-  The action's name is Michael's. [decided: direction]
+  [decided]
 
-  - **Held (Michael, Nov 23):** not to be built for now. The player's "Call on" is built (#542,
-    #545); the NPC asking, pressing and cost are not.
-  - **Beadle's proposed shape (proposed, not approved):**
+  - **Un-held (Michael, Nov 28),** after a hold from Nov 23. The player's "Call on" is built
+    (#542, #545); the NPC asking, pressing and cost are now to be built, to the shape and
+    values below.
+  - **Beadle's shape (approved, Nov 28):**
     - **Asking in private:** in an NPC-to-NPC conversation, a good NPC that heard someone claim
       an information gift at least a day ago, and has heard no reading from them since, may
       ask for it (Herald's `ask_reading_private` line). At most once per pair per day. A
@@ -236,7 +237,7 @@ Lantern). Nothing is open here.
       (a friend, a burden, or distrust of the asker); or deflects. A bluffer with a fabricated
       reading mostly answers. A private ask is answered to the asker only. Both pushes reuse
       `CALL_ON_PRESSURE_BUMP`.
-    - **Five new constants, proposed, not approved:**
+    - **Five new constants (approved, Michael, Nov 28):**
 
       | Constant | Value | What it does |
       |---|---|---|
@@ -254,8 +255,20 @@ Lantern). Nothing is open here.
       deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
     - `known_to`: the asker alone for a private ask, "public" at the meeting;
     - `shared_at`, set when the claimant later gives that reading.
-    - Open for Michael: whether a reason-given refusal later answered stops costing, or is
-      partly refunded. A bare deflection later answered still counts.
+  - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
+    sized from bot runs.
+
+    | Constant | Value | What it does |
+    |---|---|---|
+    | `WITHHELD_DEFER_FACTOR` | 1.15 | the cost of a deferral with a reason |
+    | `WITHHELD_DEFLECT_FACTOR` | 1.6 | the cost of a bare deflection |
+    | `WITHHELD_DAY_STEP` | 1.25 | how much more it costs for each day the reading stays out |
+
+    - **Alignment-blind** (Michael): the cost doesn't depend on whether good or evil is likelier
+      to dodge, so there's no metagaming of who defers.
+    - **It doesn't stack:** several refusals over the same claim don't add up.
+    - **Trust-discounted:** it costs less when the asker trusts the holder.
+    - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
 
 - **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
   revealing, a Seer passes its information through someone it trusts, as hearsay, so the town

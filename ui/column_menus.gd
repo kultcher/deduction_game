@@ -195,6 +195,14 @@ static func balance(content: Control) -> Control:
 		offset += size
 	return section
 
+## Where a popup should open for a point in `ctrl`'s own coordinates. Embedded popups (the
+## default) take logical viewport units, not OS screen pixels; the two only agree at 1080p,
+## 100% scale, fullscreen (release audit, Nov 27). Same rule as main_pickers.gd's anchor.
+static func popup_point(ctrl: Control, local: Vector2) -> Vector2i:
+	if ctrl.get_window().gui_embed_subwindows:
+		return Vector2i(ctrl.get_global_transform_with_canvas() * local)
+	return Vector2i(ctrl.get_screen_transform() * local)
+
 static func fit_picker(popup: PopupPanel, content: Control, at: Vector2i) -> void:
 	var scroll = ScrollContainer.new()
 	scroll.follow_focus = true

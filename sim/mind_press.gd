@@ -281,6 +281,8 @@ static func _soft_tier(w, n, night: int) -> Dictionary:
 		return {}
 	soft[str(night)] = w.day
 	n.dialogue_memory["caught_soft"] = soft
+	# A press of that night too, for the shared count the podium reads (Codex on #580).
+	_note_press(n, night)
 	_dialogue().on_question(w, n)
 	var where: String = str(n.history.get(w.time_key(night, C.NIGHT), ""))
 	if night not in n.lied_nights:

@@ -34,6 +34,7 @@ session notes are kept for the record; code pointers may have moved since.
       With no spare, it's wary of a double claim. The Demon and a Scion are careful; a
       Minion is bolder;
     - the same ladder runs at the podium: private first, then the podium.
+  - **The podium part (#580)** keeps the shared 0.15 per press (Michael, Nov 28).
 
   [decided]
   - **Built:** Beadle, #560 (private presses) and the podium PR that closes this item.

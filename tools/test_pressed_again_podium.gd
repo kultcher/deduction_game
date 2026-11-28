@@ -70,6 +70,24 @@ func _init() -> void:
 	d3.pressed_today = 0
 	Press._answer_pressed_night(w3, d3, 1)
 	_check(d3.trust < before_private, "pressed at the podium, then in private: the private press is a repeat")
+	# A walking gift's soft admission in private ("Fine, I was out") is a press too, so the
+	# podium sees it (Codex on #580).
+	var soft_cases := 0
+	var soft_counted := 0
+	for sd in range(7010, 7040):
+		var ws = _world(sd)
+		for m in ws.living_good():
+			if C.ROLES[m.role].get("night_walk", false) and not m.claim_public and m.max_tier < 3:
+				var far = ws.living().filter(func(x): return x != m and x.home_block != m.home_block)[0]
+				m.history[ws.time_key(1, C.NIGHT)] = "night:" + far.home_block
+				m.pressed_today = 0
+				var rs: Dictionary = Press._answer_pressed_night(ws, m, 1)
+				if rs.get("soft", false):
+					soft_cases += 1
+					soft_counted += int(Press.press_count(m, 1) == 1)
+				break
+	print("soft admissions in private: %d, counted as a press: %d" % [soft_cases, soft_counted])
+	_check(soft_cases >= 3 and soft_counted == soft_cases, "a walking gift's soft admission in private counts as a press of that night")
 	# A known burden's walk (an Unrequited's) is confessed more often after earlier presses.
 	var told := {0: 0, 3: 0}
 	var tries := {0: 0, 3: 0}
