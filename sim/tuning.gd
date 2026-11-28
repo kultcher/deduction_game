@@ -765,6 +765,15 @@ class Dialogue:
 	const PRESS_NERVES_HIDING = 0.6
 	const PRESS_NERVES_HONEST = 0.2
 	const PRESS_PRESSURE_GAIN = 0.35
+	## Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned
+	## a night but kept the reason: each earlier press about that night adds this to the
+	## openness check for giving the reason (its gift, or a known burden's walk).
+	const PRESSED_AGAIN_OPENNESS = 0.15
+	## Evil pressed again about a night it owned with no walking bluff to tell: the chance per
+	## re-press that it backs into a walking gift no one has claimed. A Minion is bolder; the
+	## Demon and a Scion are careful.
+	const PRESSED_AGAIN_BACKUP_MINION = 0.6
+	const PRESSED_AGAIN_BACKUP_CAREFUL = 0.3
 
 	## Night whereabouts, confession, stonewalling & slip rates
 	const CONFESS_TRUST_PIVOT = 0.6
