@@ -209,8 +209,29 @@ internal static class RoleConstraintsKernel
     /// Preserves exact ascending r_bit summation order and final division.
     /// </summary>
     /// The chance a Marked person registers as the Demon to the Seer (Tuning.Setup.MARKED_DEMON_CHANCE,
-    /// set from GDScript when the bridge loads; SolverBackend._bridge).
-    public static double MarkedDemonChance = 0.5;
+    /// injected from sim/tuning.gd via SolverBridge.ConfigureTuning() when the bridge loads).
+    private static double _markedDemonChance = double.NaN;
+
+    public static bool IsTuningConfigured => !double.IsNaN(_markedDemonChance);
+
+    public static double MarkedDemonChance
+    {
+        get
+        {
+            if (double.IsNaN(_markedDemonChance))
+                throw new InvalidOperationException(
+                    "RoleConstraintsKernel.MarkedDemonChance was read before SolverBridge.ConfigureTuning() initialized it from sim/tuning.gd.");
+            return _markedDemonChance;
+        }
+        set
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+                throw new ArgumentOutOfRangeException(nameof(value), "MarkedDemonChance must be finite.");
+            _markedDemonChance = value;
+        }
+    }
+
+    internal static void ClearTuningForTest() => _markedDemonChance = double.NaN;
 
     public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts) =>
         SeerRhWeight(candidatesMask, demon, marked, readingInts, ReadOnlySpan<int>.Empty);

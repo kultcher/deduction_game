@@ -40,13 +40,53 @@ internal static class LiveActivityKernel
     public const int KindTrace = 3;
     public const int KindCoverage = 4;
 
-    // Mirrors of sim/tuning.gd Workshop.VIGIL_MISS and WALKER_CLAIM_* (Nov 5).
-    public const double VigilMiss = 0.05;
-    /// Mirrors Tuning.Workshop.GOOD_OWN_ALIBI_OUT.
-    public const double GoodOwnAlibiOut = 0.2;
-    public const double WalkerClaimGift = 0.95;
-    public const double WalkerClaimHome = 0.03;
-    public const double WalkerClaimSecret = 0.02;
+    // Tuning values from sim/tuning.gd, injected at bridge init via SolverBridge.ConfigureTuning().
+    // Initialized to NaN so any unconfigured access fails loudly in debug and release builds.
+    private static double _vigilMiss = double.NaN;
+    private static double _walkerClaimGift = double.NaN;
+    private static double _walkerClaimHome = double.NaN;
+    private static double _walkerClaimSecret = double.NaN;
+
+    private static double RequireTuning(double value, string name)
+    {
+        if (double.IsNaN(value))
+            throw new InvalidOperationException(
+                $"LiveActivityKernel.{name} was read before SolverBridge.ConfigureTuning() initialized it from sim/tuning.gd.");
+        return value;
+    }
+
+    public static double VigilMiss => RequireTuning(_vigilMiss, nameof(VigilMiss));
+    public static double WalkerClaimGift => RequireTuning(_walkerClaimGift, nameof(WalkerClaimGift));
+    public static double WalkerClaimHome => RequireTuning(_walkerClaimHome, nameof(WalkerClaimHome));
+    public static double WalkerClaimSecret => RequireTuning(_walkerClaimSecret, nameof(WalkerClaimSecret));
+
+    public static bool IsTuningConfigured =>
+        !double.IsNaN(_vigilMiss) && !double.IsNaN(_walkerClaimGift)
+        && !double.IsNaN(_walkerClaimHome) && !double.IsNaN(_walkerClaimSecret);
+
+    public static void ConfigureTuning(double vigilMiss, double walkerClaimGift, double walkerClaimHome, double walkerClaimSecret)
+    {
+        if (double.IsNaN(vigilMiss) || double.IsInfinity(vigilMiss))
+            throw new ArgumentOutOfRangeException(nameof(vigilMiss), "VigilMiss must be finite.");
+        if (double.IsNaN(walkerClaimGift) || double.IsInfinity(walkerClaimGift))
+            throw new ArgumentOutOfRangeException(nameof(walkerClaimGift), "WalkerClaimGift must be finite.");
+        if (double.IsNaN(walkerClaimHome) || double.IsInfinity(walkerClaimHome))
+            throw new ArgumentOutOfRangeException(nameof(walkerClaimHome), "WalkerClaimHome must be finite.");
+        if (double.IsNaN(walkerClaimSecret) || double.IsInfinity(walkerClaimSecret))
+            throw new ArgumentOutOfRangeException(nameof(walkerClaimSecret), "WalkerClaimSecret must be finite.");
+        _vigilMiss = vigilMiss;
+        _walkerClaimGift = walkerClaimGift;
+        _walkerClaimHome = walkerClaimHome;
+        _walkerClaimSecret = walkerClaimSecret;
+    }
+
+    internal static void ClearTuningForTest()
+    {
+        _vigilMiss = double.NaN;
+        _walkerClaimGift = double.NaN;
+        _walkerClaimHome = double.NaN;
+        _walkerClaimSecret = double.NaN;
+    }
     public const int KindAlibi = 5;
     // 6 was KindDropped (drops removed, Nov 19).
     public const int KindReport = 7;
