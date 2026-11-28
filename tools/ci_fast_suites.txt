@@ -250,4 +250,5 @@ test_workshop_ui_selection
 test_workshop_vote_and_alibi
 test_workshop_votes
 test_workshop_why
+test_withheld_cost
 test_would_vote

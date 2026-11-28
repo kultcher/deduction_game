@@ -903,6 +903,9 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
 		"ledger": {}, "case_memory": {}, "recency": src.get("recency", {}).duplicate(true)}
+	# The refusals to share a reading this listener saw (Connections.withheld).
+	if src.has("withheld"):
+		result["withheld"] = src.withheld.duplicate(true)
 	# The connections model's memory for this listener (workshop/connections.gd); only there
 	# for a real listener's capture (the Test juror and ghost listeners have none).
 	if src.has("connections"):
