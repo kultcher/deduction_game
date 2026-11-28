@@ -56,8 +56,9 @@ func _run() -> void:
 		_check(profile.body.get_local_mouse_position().distance_to(seer_at) < 1.0, "synthetic motion updates the pointer used by rich-text hover")
 		_check(profile._hovered_card == number, "hovering a role hint retains the enclosing card target")
 		await _click(profile.body.global_position + seer_at, MOUSE_BUTTON_RIGHT)
-		_check(scene.case_view.card_menu.visible and scene.case_view._context_card == number, "right-clicking the role text opens the enclosing card's actions")
-		scene.case_view.card_menu.hide()
+		# Menus open as a panel of buttons (#589): ask ColumnMenus whether it's up, and close both.
+		_check(preload("res://ui/column_menus.gd").is_open(scene.case_view.card_menu) and scene.case_view._context_card == number, "right-clicking the role text opens the enclosing card's actions")
+		preload("res://ui/column_menus.gd").close(scene.case_view.card_menu)
 		await _click(profile.body.global_position + seer_at, MOUSE_BUTTON_LEFT)
 		_check(scene.case_view.visible and scene.case_state.selected_card == number, "left-clicking role text still follows the enclosing card link")
 	var cv = scene.case_view
