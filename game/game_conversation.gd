@@ -143,7 +143,6 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			n.pressed_today = 0  # A new conversation they chose to initiate.
 			g.state = "talk"
 			g.moved = true
-			g.free_move_used = true
 			g.loc = n.loc
 			g.w.player_loc = g.loc
 			g.talk_with = n
@@ -285,6 +284,9 @@ static func greeting_context(g, n) -> Dictionary:
 
 
 static func _talk_options(g, n) -> String:
+	if n.silenced:
+		# They can't answer (playtest 52102, seq 747): only what doesn't need their voice.
+		return "(silenced: present <card#> [for|against <name>] | offer ward|vigil (free) | bye)"
 	var why = " | ask why" if Mind.has_live_hint(g.w, n) else ""
 	return "(3 questions: ask gift | ask night | ask seen <today|yesterday [phase]> | ask are <gift> | ask about <name or gift>%s | present <card#> [for|against <name>] | offer ward|vigil (free) | bye)" % why
 

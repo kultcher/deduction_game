@@ -348,7 +348,7 @@ func approach_arrival():
 	control.command("go tavern")
 	var arrival = control.last_events.filter(func(e): return e.k == "narration").map(func(e): return e.text)
 	check(arrival.all(func(text): return text in output) and ("Present: " in output) and companion.name in output, "acceptance prints the ordinary go arrival block including other people")
-	check(g.state == "talk" and g.talk_with == n and g.loc == "tavern" and g.w.player_loc == "tavern" and g.free_move_used and g.questions_left == 3, "approach acceptance retains its conversation and movement rules")
+	check(g.state == "talk" and g.talk_with == n and g.loc == "tavern" and g.w.player_loc == "tavern" and g.questions_left == 3, "approach acceptance retains its conversation and movement rules")
 	check(g.w.phase == phase and g.w.rng.state == rng, "arrival narration adds no phase advance or RNG draws")
 	var expected = control.board.filter(func(c): return c.get("loc", "") == "tavern" and c.kind == "sighting").map(func(c): return Mind.fact_id(c))
 	var actual = g.board.filter(func(c): return c.get("loc", "") == "tavern" and c.kind == "sighting").map(func(c): return Mind.fact_id(c))

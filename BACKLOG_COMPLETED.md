@@ -9,6 +9,39 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+## Built, Nov 28, 2026 (closed by Claude-Beadle)
+
+- **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
+  remainders.) Owner Beadle.
+  - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
+    possible forced reveal of the hidden gift or secret, handling genuine home accounts,
+    unremembered outings and evil cover.
+  - **From "More rebuttals after a caught lie"** (closed Nov 20; its decisions are in
+    BACKLOG_COMPLETED.md):
+    - when pressed again, evil backs into a spare or unknown walking gift (the ladder's step
+      3, with the Demon and Scion careful and a Minion bolder);
+    - the podium path: the same ladder at the meeting, not only in private.
+
+  The first response, "Fine, I was out", is built (#368), and so is the private ladder that
+  follows it.
+  - **Plan approved (Michael, Nov 20):**
+    - a good NPC that owned the night but kept the reason gets pressure checks that rise
+      with each press, and a pass forces the gift or secret reveal;
+    - a truly-home NPC stays home and grows irritated;
+    - the Sleepwalker keeps its usual "I was at home" lines, and grows irritated the same
+      way;
+    - evil backs into a spare walking gift, the Demon included rather than stonewalling.
+      With no spare, it's wary of a double claim. The Demon and a Scion are careful; a
+      Minion is bolder;
+    - the same ladder runs at the podium: private first, then the podium.
+  - **The podium part (#580)** keeps the shared 0.15 per press (Michael, Nov 28).
+
+  [decided]
+  - **Built:** Beadle, #560 (private presses) and the podium PR that closes this item.
+    `Tuning.Dialogue.PRESSED_AGAIN_OPENNESS` 0.15, `PRESSED_AGAIN_BACKUP_MINION` 0.6 and
+    `PRESSED_AGAIN_BACKUP_CAREFUL` 0.3 (Michael, Nov 27). The Sleepwalker part was dropped: Burdens
+    retired Sleepwalker 1.0. "Gift or secret errand" became "gift or known burden".
+
 ## Built, Nov 23, 2026 (closed by Claude-Beadle)
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
