@@ -350,6 +350,87 @@ public partial class SolverBridge : RefCounted
 
     public static void RoleSetMarkedDemonChance(double chance) => RoleConstraintsKernel.MarkedDemonChance = chance;
 
+    /// <summary>
+    /// Injects every sim/tuning.gd constant used by C# kernels (single source of truth).
+    /// Fails loudly on NaN/Infinity; kernels throw InvalidOperationException if read unconfigured.
+    /// </summary>
+    public static void ConfigureTuning(
+        double markedDemonChance,
+        double vigilMiss,
+        double walkerClaimGift,
+        double walkerClaimHome,
+        double walkerClaimSecret)
+    {
+        RoleConstraintsKernel.MarkedDemonChance = markedDemonChance;
+        LiveActivityKernel.ConfigureTuning(vigilMiss, walkerClaimGift, walkerClaimHome, walkerClaimSecret);
+    }
+
+    public static bool IsTuningConfigured() =>
+        RoleConstraintsKernel.IsTuningConfigured && LiveActivityKernel.IsTuningConfigured;
+
+    public static Godot.Collections.Dictionary GetConfiguredTuning() => new()
+    {
+        ["marked_demon_chance"] = RoleConstraintsKernel.MarkedDemonChance,
+        ["vigil_miss"] = LiveActivityKernel.VigilMiss,
+        ["walker_claim_gift"] = LiveActivityKernel.WalkerClaimGift,
+        ["walker_claim_home"] = LiveActivityKernel.WalkerClaimHome,
+        ["walker_claim_secret"] = LiveActivityKernel.WalkerClaimSecret,
+    };
+
+    public static Godot.Collections.Dictionary GetModifierCodes() => new()
+    {
+        ["delusional"] = WorldEntry.ModDelusional,
+        ["marked"] = WorldEntry.ModMarked,
+        ["ill_omened"] = WorldEntry.ModIllOmened,
+        ["unrequited"] = WorldEntry.ModUnrequited,
+    };
+
+    /// <summary>
+    /// Self-test for the fail-loud tuning guard: verifies unconfigured reads throw
+    /// InvalidOperationException and non-finite inputs throw ArgumentOutOfRangeException,
+    /// then restores the previously configured values.
+    /// </summary>
+    public static bool VerifyTuningFailLoud()
+    {
+        double savedMarked = RoleConstraintsKernel.MarkedDemonChance;
+        double savedVigil = LiveActivityKernel.VigilMiss;
+        double savedGift = LiveActivityKernel.WalkerClaimGift;
+        double savedHome = LiveActivityKernel.WalkerClaimHome;
+        double savedSecret = LiveActivityKernel.WalkerClaimSecret;
+        try
+        {
+            RoleConstraintsKernel.ClearTuningForTest();
+            LiveActivityKernel.ClearTuningForTest();
+            if (IsTuningConfigured()) return false;
+
+            bool threwMarked = false;
+            try { _ = RoleConstraintsKernel.MarkedDemonChance; }
+            catch (InvalidOperationException) { threwMarked = true; }
+
+            bool threwVigil = false;
+            try { _ = LiveActivityKernel.VigilMiss; }
+            catch (InvalidOperationException) { threwVigil = true; }
+
+            bool threwGift = false;
+            try { _ = LiveActivityKernel.WalkerClaimGift; }
+            catch (InvalidOperationException) { threwGift = true; }
+
+            bool threwNan = false;
+            try { ConfigureTuning(double.NaN, savedVigil, savedGift, savedHome, savedSecret); }
+            catch (ArgumentOutOfRangeException) { threwNan = true; }
+
+            bool threwInf = false;
+            try { ConfigureTuning(savedMarked, double.PositiveInfinity, savedGift, savedHome, savedSecret); }
+            catch (ArgumentOutOfRangeException) { threwInf = true; }
+
+            return threwMarked && threwVigil && threwGift && threwNan && threwInf;
+        }
+        finally
+        {
+            ConfigureTuning(savedMarked, savedVigil, savedGift, savedHome, savedSecret);
+        }
+    }
+
     public static int GetUniverseSize(int handle) =>
         SolverContext.GetUniverseSize(handle);
 
