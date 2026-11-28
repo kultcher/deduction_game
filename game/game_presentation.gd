@@ -426,6 +426,14 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 	for x in card.get("data", {}).get("pair", []):
 		if not (x in subj):
 			subj.append(x)
+	# A reading about a block's residents (a Surveyor's parity) is about each of them (52102
+	# finding 5, Michael, Nov 27).
+	if str(card.get("kind", "")) in ["info", "report"] and C.has_role_def(str(card.get("role", ""))):
+		var res_blk: String = C.role_def(str(card.get("role", ""))).residents_block(card.get("data", {}))
+		if res_blk != "":
+			for m in g.w.npcs:
+				if m.home_block == res_blk and not (m.id in subj):
+					subj.append(m.id)
 	if who == null and (n.id in subj or card.get("owner", "") == n.id):
 		return {"verb": "press", "rest": str(num), "note": "You put it to %s directly." % n.name}
 	if who == n and dir != "for":

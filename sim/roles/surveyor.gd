@@ -18,6 +18,10 @@ func _init() -> void:
 	marked_registers = true
 
 
+## A parity reading ({block, same}) is about the block's residents; a count names no block.
+func residents_block(d: Dictionary) -> String:
+	return str(d.get("block", "")) if d.has("same") else ""
+
 func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
 	if d.has("block") and d.has("same"):
 		var bname: String = content().block_name(str(d.get("block", "square"))).trim_prefix("the ")
