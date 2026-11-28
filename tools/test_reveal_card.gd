@@ -143,6 +143,9 @@ func _run() -> void:
 	_check(not card.playing, "after a skip it has stopped")
 	_check(card.tag.visible and card.tag_label.text == "…and Delusional", "the burden tag is up after a skip")
 	_check(card.seal.visible and not card.seal.evil, "the good seal is down")
+	var slip_r: Rect2 = card.tag.get_node("Slip").get_global_rect()
+	var card_r: Rect2 = card.final_card.get_global_rect()
+	_check(slip_r.end.x <= card_r.position.x - 1.0, "the burden tag hangs clear of the card (%.0f px gap)" % (card_r.position.x - slip_r.end.x))
 	card.landed.disconnect(on_l)
 	card.finished.disconnect(on_f)
 

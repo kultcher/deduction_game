@@ -315,12 +315,15 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 			var c_name: String = C.role_name(claimed)
 			return {"lines": [Mind.say_voiced(n, "role_already_claimed", "No. I told you: I'm the %s." % c_name, {"role": c_name})], "facts": []}
 		return {"lines": [Mind.say_voiced(n, "role_already_claimed_none", "No.")], "facts": []}
-	if mine == role:
+	var right: bool = mine == role
+	if right:
 		var first = n.role_guesses == 0
 		var tier: int = Mind._target_tier(w, n) + (1 if first and w.decision_roll(n, "correct_role_guess_bonus", Tuning.Social.CORRECT_ROLE_GUESS_BONUS_PROB) else 0)
 		w.dlog.think(n.id, "about_role", "Asked if they are the %s (right): disclosure tier %d%s." % [role, tier,
 			"" if first else " (no bonus: you guessed wrong before)"])
-		if tier >= 2:
+		# Willing, it owns up. Short of that, the same deflection as a wrong guess, not a hint
+		# that tells a right guess from a wrong one (playtest 52102, Michael, Nov 27).
+		if tier >= 3:
 			n.pressed_today -= 1  # answer_gift counts the question again
 			return Mind.answer_gift(w, n, mini(tier, 4))
 	else:
@@ -333,4 +336,18 @@ static func answer_is_role(w, n, role: String) -> Dictionary:
 	if n.role_guesses == 2:
 		line = "You're grasping at straws, and I'm running out of patience."
 		guess_key = "guess_2"
-	return {"lines": [Mind.say_voiced(n, guess_key, line)], "facts": [], "refusal_line": 0}
+	var lines: Array = [Mind.say_voiced(n, guess_key, line)]
+	# A rattled NPC may show the press's nervous tell: likelier on a right guess, never proof
+	# (Michael, Nov 27).
+	var comp: float = trait_of(n, "composure")
+	var p_nerves: float = (Tuning.Dialogue.PRESS_NERVES_HIDING if right else Tuning.Dialogue.PRESS_NERVES_HONEST) * (1.0 - comp) * Tuning.Dialogue.GUESS_NERVES_STRENGTH
+	# Its own seeded draw, so a guess never moves the world's stream (a wrong guess introduces
+	# no random choice, test_conversation_gifts).
+	var nr := RandomNumberGenerator.new()
+	nr.seed = hash([w.seed_value, w.day, n.id, "guess_nerves", role, n.role_guesses, n.pressed_today])
+	var draw: float = nr.randf()
+	w.dlog.decision(n.id, "guess_nerves", "nervous", draw < p_nerves, {"p": p_nerves, "draw": draw, "composure": comp, "right": right})
+	if draw < p_nerves:
+		lines.append("%s %s" % [n.name, ["looks away a moment too quickly.", "shifts uneasily.", "goes a little pale.", "fumbles for an answer."][nr.randi_range(0, 3)]])
+		w.dlog.think(n.id, "nerves", "Asked if they are the %s: a nervous tell shows (p=%.2f)." % [role, p_nerves], {"right": right, "p": p_nerves})
+	return {"lines": lines, "facts": [], "refusal_line": 0}

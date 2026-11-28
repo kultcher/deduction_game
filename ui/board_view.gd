@@ -61,6 +61,7 @@ var _cards_tex: Array = []
 var _role_tex = {}
 var _fitted = false
 var _fit_pending = false
+var right_cover: float = 0.0     # screen px of the board's right side under the Workshop sheet
 
 func _init() -> void:
 	clip_contents = true
@@ -141,6 +142,24 @@ func _measure() -> void:
 func _content_rect() -> Rect2:
 	return Rect2(Vector2(HEAD_W, HEAD_H), size - Vector2(HEAD_W, HEAD_H))
 
+## The part of the content area the player can see: the Workshop sheet covers the right of it
+## (Michael, Nov 28: with the sheet out, the latest columns couldn't be panned into view).
+func _visible_rect() -> Rect2:
+	var cr: Rect2 = _content_rect()
+	cr.size.x = maxf(cr.size.x - right_cover, minf(cr.size.x, 160.0))
+	return cr
+
+## How much of the board's right side the Workshop sheet covers; the pan clamp, the fits and
+## the day in view all go by what's left.
+func set_right_cover(px: float) -> void:
+	px = maxf(px, 0.0)
+	if is_equal_approx(px, right_cover):
+		return
+	right_cover = px
+	_clamp_pan()
+	queue_redraw()
+	view_changed.emit()
+
 func to_screen(p: Vector2) -> Vector2:
 	return Vector2(HEAD_W, HEAD_H) + (p - pan) * zoom
 
@@ -148,7 +167,7 @@ func to_world(s: Vector2) -> Vector2:
 	return (s - Vector2(HEAD_W, HEAD_H)) / zoom + pan
 
 func _clamp_pan() -> void:
-	var view = _content_rect().size / zoom
+	var view = _visible_rect().size / zoom
 	pan.x = clampf(pan.x, -view.x * 0.5, maxf(0.0, world_size.x - view.x * 0.5))
 	pan.y = clampf(pan.y, -view.y * 0.25, maxf(0.0, world_size.y - view.y * 0.5))
 
@@ -172,7 +191,7 @@ func fit_day(d: int) -> void:
 		return
 	var x0: float = col_x[keys[0]]
 	var span = COL_W * maxf(5.0, keys.size())
-	var cr = _content_rect()
+	var cr = _visible_rect()
 	zoom = clampf(cr.size.x / (span + 20.0), ZOOM_MIN, ZOOM_MAX)
 	_measure()
 	pan = Vector2(x0 - 10.0, 0)
@@ -182,7 +201,7 @@ func fit_day(d: int) -> void:
 
 func fit_all() -> void:
 	_fitted = true
-	var cr = _content_rect()
+	var cr = _visible_rect()
 	if world_size.x <= 0:
 		return
 	zoom = clampf(minf(cr.size.x / (world_size.x + 20.0), cr.size.y / (world_size.y + 20.0)), ZOOM_MIN, ZOOM_MAX)
@@ -207,7 +226,7 @@ func fit_selection() -> void:
 	for p in pts:
 		r = r.expand(p)
 	r = r.grow(COL_W * 0.6)
-	var cr = _content_rect()
+	var cr = _visible_rect()
 	zoom = clampf(minf(cr.size.x / r.size.x, cr.size.y / maxf(r.size.y, 1.0)), ZOOM_MIN, 1.6)
 	_measure()
 	pan = r.position
@@ -216,7 +235,7 @@ func fit_selection() -> void:
 
 ## The day whose columns are mostly in view.
 func day_in_view() -> int:
-	var mid = to_world(_content_rect().get_center()).x
+	var mid = to_world(_visible_rect().get_center()).x
 	for c in lay.get("cols", []):
 		if col_x[c["key"]] <= mid and mid < col_x[c["key"]] + COL_W:
 			return c["day"]
@@ -886,7 +905,7 @@ func _gui_input(ev: InputEvent) -> void:
 					return
 			var h2 = _hit(mb.position)
 			if not h2.is_empty():
-				card_context_requested.emit(h2["n"], Vector2i(get_screen_transform() * mb.position))
+				card_context_requested.emit(h2["n"], preload("res://ui/column_menus.gd").popup_point(self, mb.position))
 				accept_event()
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_panning = mb.pressed

@@ -530,7 +530,7 @@ class Social:
 	const ROLE_WILLING_TRUST_SCALE = 0.5
 	const ROLE_WILLING_PRESSURE_SCALE = 0.3
 	const ROLE_WILLING_THRESHOLD = 0.55
-	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.5
+	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.6  # was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure)
 
 
 # ---------------------------------------------------------------- 6. Town Meeting: Claims, Consensus, Nominations & Votes
@@ -765,6 +765,19 @@ class Dialogue:
 	const PRESS_NERVES_HIDING = 0.6
 	const PRESS_NERVES_HONEST = 0.2
 	const PRESS_PRESSURE_GAIN = 0.35
+	## Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned
+	## a night but kept the reason: each earlier press about that night adds this to the
+	## openness check for giving the reason (its gift, or a known burden's walk).
+	const PRESSED_AGAIN_OPENNESS = 0.15
+	## Evil pressed again about a night it owned with no walking bluff to tell: the chance per
+	## re-press that it backs into a walking gift no one has claimed. A Minion is bolder; the
+	## Demon and a Scion are careful.
+	const PRESSED_AGAIN_BACKUP_MINION = 0.6
+	const PRESSED_AGAIN_BACKUP_CAREFUL = 0.3
+	## "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up
+	## gets the same deflection as a wrong one, and either may show the press's nervous tell, at
+	## PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this.
+	const GUESS_NERVES_STRENGTH = 0.5
 
 	## Night whereabouts, confession, stonewalling & slip rates
 	const CONFESS_TRUST_PIVOT = 0.6
@@ -1236,10 +1249,6 @@ class Workshop:
 	const DOUBT_GD_GOOD_TRUST_MIN = 0.60
 	const DOUBT_ARG_MISLED_SCALE = 0.8
 	const DOUBT_ARG_UNRELIABLE_SCALE = 0.5
-	## An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped
-	## at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared
-	## Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3.
-	const DOUBT_ARG_DELUSIONAL_SCALE = 0.7
 	const DOUBT_ARG_CAP = 0.9
 	const DOUBT_CHALLENGE_LYING_MIN_AGR = 0.6
 	const DOUBT_CHALLENGE_STRONG_AGR = 0.75

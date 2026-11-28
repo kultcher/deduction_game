@@ -28,14 +28,14 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
     2. Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval` `[open]`
+    3. A case-strength helper that names what would firm the case up `[decided: direction]`
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided: direction]`
+    3. Withheld readings: asking for what someone hasn't said `[decided]`
     4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
     5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. Caught out and pressed again: what's left `[decided]`
-    7. Good NPCs lie tactically `[open]`
+    6. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -56,6 +56,21 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. A case archive `[decided: direction]`
   9. Scoring system `[open]`
   10. Storyteller/director and solvability check `[open]`
+- [Release readiness](#release-readiness)
+  1. Platforms and resolution `[decided: direction]`
+  2. Developer tools in player builds `[decided]`
+  3. A Settings menu `[decided: direction]`
+  4. A title screen, or main menu `[decided: direction]`
+  5. How to Play `[decided: direction]`
+  6. Credits, licences and a visible version `[decided: direction]`
+  7. Quit confirmation `[decided: direction]`
+  8. Case notes that are actually saved `[decided: direction]`
+  9. Mid-case save and resume `[decided: direction]`
+  10. Basic UI sound effects `[decided: direction]`
+  11. A "case history" module `[open]`
+  12. Shrinking the assets `[decided: direction]`
+  13. Sharp UI plaques at 1440p and 4K `[decided: direction]`
+  14. Architecture cleanup `[decided: direction]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -136,6 +151,20 @@ Lantern). Nothing is open here.
   reaches), and decide whether NPC `present_points_elsewhere` should stay aligned with it.
   [open]
 
+- **A case-strength helper that names what would firm the case up** (Michael, Nov 27, via
+  Seneschal; he discussed it with Argon earlier). When a case rests on several unverified
+  claims or on people taken as good, the Workshop says which ones, and what kind of evidence
+  would strengthen it. For example: "your case rests on Constance and Greta being good; a
+  Confessor's yes or a Dowser clear on either would strengthen it."
+  - **Owner:** Quill for what's computed: which premises, answers and people the case's
+    strength leans on (the judge's pivotal cards and the case's assumptions), and which gifts
+    or evidence kinds could settle each.
+  - **Herald** owns how it's shown and worded.
+  - **Not yet decided:** where it shows (the badge's words, a hover, the Why readout), how
+    many items it names, and whether it names only gifts on the script.
+
+  [decided: direction]
+
 ### NPC behaviour
 
 - **Legwork that shapes the meeting** (Michael, Nov 22). Today, who the player talks to during
@@ -190,11 +219,12 @@ Lantern). Nothing is open here.
     some suspicion and makes a circumstantial card.
 
   Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
-  The action's name is Michael's. [decided: direction]
+  [decided]
 
-  - **Held (Michael, Nov 23):** not to be built for now. The player's "Call on" is built (#542,
-    #545); the NPC asking, pressing and cost are not.
-  - **Beadle's proposed shape (proposed, not approved):**
+  - **Un-held (Michael, Nov 28),** after a hold from Nov 23. The player's "Call on" is built
+    (#542, #545); the NPC asking, pressing and cost are now to be built, to the shape and
+    values below.
+  - **Beadle's shape (approved, Nov 28):**
     - **Asking in private:** in an NPC-to-NPC conversation, a good NPC that heard someone claim
       an information gift at least a day ago, and has heard no reading from them since, may
       ask for it (Herald's `ask_reading_private` line). At most once per pair per day. A
@@ -207,7 +237,7 @@ Lantern). Nothing is open here.
       (a friend, a burden, or distrust of the asker); or deflects. A bluffer with a fabricated
       reading mostly answers. A private ask is answered to the asker only. Both pushes reuse
       `CALL_ON_PRESSURE_BUMP`.
-    - **Five new constants, proposed, not approved:**
+    - **Five new constants (approved, Michael, Nov 28):**
 
       | Constant | Value | What it does |
       |---|---|---|
@@ -225,8 +255,20 @@ Lantern). Nothing is open here.
       deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
     - `known_to`: the asker alone for a private ask, "public" at the meeting;
     - `shared_at`, set when the claimant later gives that reading.
-    - Open for Michael: whether a reason-given refusal later answered stops costing, or is
-      partly refunded. A bare deflection later answered still counts.
+  - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
+    sized from bot runs.
+
+    | Constant | Value | What it does |
+    |---|---|---|
+    | `WITHHELD_DEFER_FACTOR` | 1.15 | the cost of a deferral with a reason |
+    | `WITHHELD_DEFLECT_FACTOR` | 1.6 | the cost of a bare deflection |
+    | `WITHHELD_DAY_STEP` | 1.25 | how much more it costs for each day the reading stays out |
+
+    - **Alignment-blind** (Michael): the cost doesn't depend on whether good or evil is likelier
+      to dodge, so there's no metagaming of who defers.
+    - **It doesn't stack:** several refusals over the same claim don't add up.
+    - **Trust-discounted:** it costs less when the asker trusts the holder.
+    - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
 
 - **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
   revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
@@ -237,32 +279,6 @@ Lantern). Nothing is open here.
 - **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
   reveal looks for protection first, from the player or a known Warden. Same source; it may
   generalise. Owner Beadle. [decided: direction]
-
-- **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
-  remainders.) Owner Beadle.
-  - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
-    possible forced reveal of the hidden gift or secret, handling genuine home accounts,
-    unremembered outings and evil cover.
-  - **From "More rebuttals after a caught lie"** (closed Nov 20; its decisions are in
-    BACKLOG_COMPLETED.md):
-    - when pressed again, evil backs into a spare or unknown walking gift (the ladder's step
-      3, with the Demon and Scion careful and a Minion bolder);
-    - the podium path: the same ladder at the meeting, not only in private.
-
-  The first response, "Fine, I was out", is built (#368), and so is the private ladder that
-  follows it.
-  - **Plan approved (Michael, Nov 20):**
-    - a good NPC that owned the night but kept the reason gets pressure checks that rise
-      with each press, and a pass forces the gift or secret reveal;
-    - a truly-home NPC stays home and grows irritated;
-    - the Sleepwalker keeps its usual "I was at home" lines, and grows irritated the same
-      way;
-    - evil backs into a spare walking gift, the Demon included rather than stonewalling.
-      With no spare, it's wary of a double claim. The Demon and a Scion are careful; a
-      Minion is bolder;
-    - the same ladder runs at the podium: private first, then the podium.
-
-  [decided]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
@@ -523,6 +539,78 @@ The one performance item, "Late-game meeting and presenting cost", is in
     commune with his spirit", chosen by a director. (Oct 19) [open] (Folded in Nov 18, Michael.)
 
 ---
+
+## Release readiness
+
+From Argon's release audit ([the release audit](docs/maintenance/codebase_and_release_audit_2026-11-27.md), merged in #563). Michael accepted these on Nov 27. Each cites
+the audit section it comes from. The fix-as-you-go bugs went straight to the leads, and the
+architecture items are still a proposal for Michael, so neither is here.
+
+- **Platforms and resolution** (audit Part 2, and P2 item 11). Windows is the primary target, and
+  the Steam Deck (1280×800, 16:10) is worth pursuing. The scope:
+  - readable fonts at 720p and on the Deck;
+  - a clamp for the ultrawide centre stage;
+  - clamped windows;
+  - bundled open-licence fonts.
+
+  **From now on, new UI is checked at 1280×800 as well as 1080p.** Owner Herald.
+  [decided: direction]
+- **Developer tools in player builds** (audit P1 items 7 and 8).
+  - **Hidden in release builds:** the Debug checkbox, Write dev log, and the raw command line.
+  - **Kept:** the case seed box, since players may share seeds.
+  - **Logging:** the logging itself stays, since Michael plans a case history that may build on
+    it (below). The end-of-case file dumps stop going into the player's log with an OS path,
+    and the heavy tracing is gated on a debug flag. How much feeds the case history is to decide
+    with Michael.
+
+  Owners Herald, with Bailiff. [decided]
+- **A Settings menu** (audit P0 items 4 and 5): display mode, resolution, UI scale, music
+  volume and mute, and reduced motion remembered. Owner Herald. [decided: direction]
+- **A title screen, or main menu** (audit P1 item 9). Owner Herald. [decided: direction]
+- **How to Play** (audit P1 item 9): after the mechanics settle, under onboarding ("Learning
+  resources", section 4). Owner Herald. [decided: direction]
+- **Credits, licences and a visible version** (audit P1 item 9). Owners Herald, and Bailiff for
+  the version. [decided: direction]
+- **Quit confirmation**, including the window's close button (audit P1 item 6). Owner Herald.
+  [decided: direction]
+- **Case notes that are actually saved** (audit P1 item 6). Today they say "saved as you type",
+  but live only in memory. Owner Herald. [decided: direction]
+- **Mid-case save and resume** (audit P1 item 6). A large item: Herald for the UI, and the sim
+  state needs Lantern and Beadle. [decided: direction]
+- **Basic UI sound effects** (audit P0 item 4). Owners Herald, and Limner for sourcing.
+  [decided: direction]
+- **A "case history" module** (Michael's idea, Nov 27): a post-game breakdown, possibly built on
+  the logging (above). It's to shape with Vicar. Related: "A case archive" (section 4) and the
+  grim reveal. [open]
+- **Shrinking the assets** (audit P2 item 10). Compress and prune about 380 MB of lossless PNGs
+  and unused prototype folders, likely much of it redundant. Do it late, and show Michael samples
+  before any lossy step. It belongs to the final phases. Owner Limner. [decided: direction]
+
+- **Sharp UI plaques at 1440p and 4K** (audit Part 2, item 5, the second half; Michael, Nov 27).
+  Low priority.
+  - **The problem:** plaques and signs are shrunk on the CPU to about 34 px at logical size,
+    then stretched by the content scale, so they blur on high-DPI screens. Herald is fixing the
+    first half of that audit item, the cache leak.
+  - **The fix:** keep the art at full or 2× resolution, and draw it as a nine-patch with
+    separate source and screen margins, through a custom draw or RenderingServer's nine-patch.
+    That drops the CPU resize.
+
+  Owner Limner, with Herald consulted on `ui/theme.gd`. [decided: direction]
+
+- **Architecture cleanup** (audit Part 4; Michael, Nov 27). It's opportunistic: do each part
+  when a lead is already working in that code.
+  - Retire the remaining GDScript solver mirrors, and the dead ModeGdscript and ModeVerify
+    scaffolding.
+  - Give the burden and modifier codes, and the GDScript↔C# wire strides, one definition.
+  - Fold the scattered hard-coded role checks into RoleRegistry.
+  - Flatten the deep `extends` chains and the runtime `load()` cycles, and fix the sim→workshop
+    and workshop→game layer inversions.
+  - Split the largest files.
+  - Consolidate `ui/main.gd`'s modal state into one overlay stack, and unify the duplicated VN and
+    courtroom stage (Herald).
+
+  **Not part of this:** a single source for tuning values is in progress with Argon.
+  [decided: direction]
 
 ## Workshop gaps (NYI)
 

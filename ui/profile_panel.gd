@@ -221,10 +221,10 @@ func build() -> void:
 	body.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed:
 			if ev.button_index == MOUSE_BUTTON_RIGHT and _hovered_card > 0:
-				card_context_requested.emit(_hovered_card, Vector2i(body.get_screen_transform() * ev.position))
+				card_context_requested.emit(_hovered_card, preload("res://ui/column_menus.gd").popup_point(body, ev.position))
 				body.accept_event()
 			elif ev.button_index == MOUSE_BUTTON_RIGHT and not _hovered_profile.is_empty():
-				_open_profile_menu(_hovered_profile.duplicate(), Vector2i(body.get_screen_transform() * ev.position))
+				_open_profile_menu(_hovered_profile.duplicate(), preload("res://ui/column_menus.gd").popup_point(body, ev.position))
 				body.accept_event()
 			elif ev.button_index == MOUSE_BUTTON_LEFT and ev.double_click and not _hovered_profile.is_empty():
 				profile_workshop_requested.emit(_hovered_profile.person, _hovered_profile.facet)
@@ -319,13 +319,13 @@ func save() -> void:
 	if id == "" or g == null:
 		return
 	if not g.w.game_over:
-		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
+		g.set_guess(id, guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt), "profile_save")
 	changed.emit()
 
 func _save_guess() -> void:
 	if _setting or g == null or current() == "" or g.w.game_over:
 		return
-	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt))
+	g.set_guess(current(), guess_opt.get_item_metadata(guess_opt.selected), _conf_of(conf_opt), "profile_menu")
 	changed.emit()
 
 func _open_profile_menu(target: Dictionary, at: Vector2i) -> void:

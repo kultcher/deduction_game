@@ -35,10 +35,10 @@ func _gui_input(ev: InputEvent) -> void:
 	if row_idx < 0 or row_idx >= ROWS.size() or not revealed.has(ROWS[row_idx][0]):
 		return
 	if ev.button_index == MOUSE_BUTTON_LEFT and ev.double_click:
-		workshop_requested.emit(Vector2i(get_screen_transform() * ev.position), false)
+		workshop_requested.emit(preload("res://ui/column_menus.gd").popup_point(self, ev.position), false)
 		accept_event()
 	elif ev.button_index == MOUSE_BUTTON_RIGHT:
-		workshop_requested.emit(Vector2i(get_screen_transform() * ev.position), true)
+		workshop_requested.emit(preload("res://ui/column_menus.gd").popup_point(self, ev.position), true)
 		accept_event()
 
 func reset_observations() -> void:

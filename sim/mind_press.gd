@@ -81,7 +81,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var subj: Array = card.get("subject", [])
 	var pair: Array = card.get("data", {}).get("pair", [])
 	var trace_fits_me: bool = card.get("kind") == "trace" and card.get("trace_family", "") != "" and w.actor_fits_trace_truth(n, {"trace_family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "day": card.get("day", -1)})
-	var about_me = trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
+	# A reading about their block's residents (a Surveyor's parity) is about them (52102 finding 5).
+	var rdef_p = C.role_def(str(card.get("role", ""))) if str(card.get("kind", "")) in ["info", "report"] and C.has_role_def(str(card.get("role", ""))) else null
+	var my_block: bool = rdef_p != null and rdef_p.residents_block(card.get("data", {})) != "" and rdef_p.residents_block(card.get("data", {})) == n.home_block
+	var about_me = my_block or trace_fits_me or n.id in subj or c.get("a", "") == n.id or n.id in pair or (card.get("kind") == "claim" and card.get("source") != n.id and n.claim_public and card.get("role") == n.claimed_role)
 	if not about_me:
 		_dialogue().on_question(w, n)
 		lines.append(say_voiced(n, "press_not_about_me", "What has that to do with me?"))
@@ -278,6 +281,8 @@ static func _soft_tier(w, n, night: int) -> Dictionary:
 		return {}
 	soft[str(night)] = w.day
 	n.dialogue_memory["caught_soft"] = soft
+	# A press of that night too, for the shared count the podium reads (Codex on #580).
+	_note_press(n, night)
 	_dialogue().on_question(w, n)
 	var where: String = str(n.history.get(w.time_key(night, C.NIGHT), ""))
 	if night not in n.lied_nights:
@@ -355,14 +360,21 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 		return {}
 	if not str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:"):
 		return {}
+	var presses: int = press_count(n, night)
 	if n.is_evil():
-		return _evil_caught_out(w, n, night)
+		var ev: Dictionary = _evil_caught_out(w, n, night, presses)
+		if not ev.is_empty():
+			_note_press(n, night)
+		return ev
 	if _gift_outing(w, n, night):
 		return {}
+	_note_press(n, night)
 	_dialogue().on_question(w, n)
 	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")]
 	var facts: Array = []
-	var tier: int = _dialogue()._target_tier(w, n)
+	# Pressed again about the same night (Michael, Nov 20): each earlier press makes giving the
+	# reason likelier, until it comes out.
+	var tier: int = _dialogue()._target_tier(w, n, 0, Tuning.Dialogue.PRESSED_AGAIN_OPENNESS * presses)
 	var why: Dictionary = trapped_explanation(w, n, night) if tier >= 2 else {}
 	lines.append_array(why.get("lines", []))
 	facts.append_array(why.get("facts", []))
@@ -371,8 +383,21 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 		# plain "I was out" account, not the home alibi it replaced (Codex on #330).
 		_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
 		facts.append(_excuse_fact(w, n, night, "not_wicked"))
-	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
+	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d, pressed %d time(s) before): %s." % [night, tier, presses, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"], {"presses": presses})
 	return {"lines": lines, "facts": facts}
+
+## How many times n has been pressed with a case placing it out on night `night` (in private;
+## the podium counts too once it runs the ladder).
+static func press_count(n, night: int) -> int:
+	return int(n.dialogue_memory.get("caught_presses", {}).get(str(night), 0))
+
+static func note_press(n, night: int) -> void:
+	_note_press(n, night)
+
+static func _note_press(n, night: int) -> void:
+	var c: Dictionary = n.dialogue_memory.get("caught_presses", {})
+	c[str(night)] = int(c.get(str(night), 0)) + 1
+	n.dialogue_memory["caught_presses"] = c
 
 ## "<witness> is lying about seeing me" in private (Michael, Nov 19), as the meeting defence
 ## says it: pressed with another NPC's sighting of it, an NPC standing by "home" may call the
@@ -426,15 +451,81 @@ static func _tag_duty_excuse(w, n, night: int, reply: Dictionary) -> Dictionary:
 ## A walking bluff, claimed or not, is answered downstream as a good walker's gift is (its
 ## duty, or the soft tier, then the bluff): {}. Otherwise it owns the night and says only that being out isn't wicked, rather than
 ## standing by a home alibi the case has just broken.
-static func _evil_caught_out(w, n, night: int) -> Dictionary:
+static func _evil_caught_out(w, n, night: int, presses: int = 0) -> Dictionary:
 	var claimed_walk: bool = _disclosed(n) and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, night, true)
 	if claimed_walk or (not n.claim_public and n.max_tier < 3 and _bluff_outing(w, n, night)):
 		return {}
 	_dialogue().on_question(w, n)
 	_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
+	if presses > 0:
+		var backed: Dictionary = _backup_walking_gift(w, n, night)
+		if not backed.is_empty():
+			return backed
 	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi on night %d: owns the night and keeps the reason (evil work)." % night, {"why": "a case broke its home alibi; nothing it could claim explains the night"})
 	return {"lines": [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")],
 		"facts": [_excuse_fact(w, n, night, "not_wicked")]}
+
+## Evil pressed again about a night it owned with nothing to tell (Michael, Nov 20): it may
+## back into a walking gift no one has claimed, one whose night work explains the night, on
+## PRESSED_AGAIN_BACKUP_MINION (a Minion, bolder) or _CAREFUL (the Demon or a Scion). Never once
+## it has named another gift to anyone; with no spare gift it stays put, wary of a double
+## claim. {} when it doesn't, else the gift's answer.
+static func _backup_walking_gift(w, n, night: int) -> Dictionary:
+	if back_into_walking_gift(w, n, night) == "":
+		return {}
+	# The press already counted the question (Codex on #560).
+	return _answers().answer_gift(w, n, 3, false)
+
+## The choice behind the backup, shared with the podium (MindPodium.press_night): the guards,
+## the roll and the bluff switch, logged as a lie. Returns the gift it backs into, or "".
+static func back_into_walking_gift(w, n, night: int) -> String:
+	# Never once it has named a gift to anyone, publicly or in private; nor a Revenant-turned
+	# townsperson, whose real gift is its cover (Codex on #560, as the bluff switch and the
+	# double claim exclude it).
+	if n.turned or n.claim_public or n.max_tier >= 3 or n.claimed_role != "":
+		return ""
+	# Named to another NPC, or a made-up reading of it told: the listener holds the claim, not
+	# the speaker (Codex on #560), as choose_double_claim checks.
+	if w.npcs.any(func(o): return o != n and str(o.known_claims.get(n.id, {}).get("role", "")) != ""):
+		return ""
+	if n.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
+		return ""
+	var spare: Array = spare_walking_gifts(w, n, night)
+	if spare.is_empty():
+		w.dlog.think(n.id, "pressed_again", "Pressed again about night %d: no unclaimed walking gift fits; stays with \"being out isn't wicked\"." % night, {"spare": 0})
+		return ""
+	var careful: bool = n.id == w.demon_id or n.role == "scion" or C.is_demon(n.role)
+	var p: float = Tuning.Dialogue.PRESSED_AGAIN_BACKUP_CAREFUL if careful else Tuning.Dialogue.PRESSED_AGAIN_BACKUP_MINION
+	if not w.decision_roll(n, "pressed_again_backup", p, {"careful": careful, "spare": spare.size()}):
+		return ""
+	var old: String = str(w.evil_plan.get("bluffs", {}).get(n.id, ""))
+	var pick: String = spare[0]
+	load("res://sim/mind_meeting.gd")._change_bluff(w, n, old, pick)
+	w.dlog.think(n.id, "lie", "Pressed again about night %d: backs into the %s, a walking gift no one has claimed (was bluffing %s)." % [night, C.role_name(pick), C.role_name(old) if old != "" else "nothing"],
+		{"lie": true, "why": "explain a night out it was caught in", "from": old, "to": pick})
+	if night not in n.lied_nights:
+		n.lied_nights.append(night)
+	var soft: Dictionary = n.dialogue_memory.get("caught_soft", {})
+	soft[str(night)] = w.day
+	n.dialogue_memory["caught_soft"] = soft
+	return pick
+
+## Spare walking gifts for n (evil's bluff pool, as the bluff switch uses it): none a teammate
+## bluffs, none anyone n knows of has claimed, and only those whose night work would explain
+## night `night`; in the pool's order.
+static func spare_walking_gifts(w, n, night: int) -> Array:
+	var M = load("res://sim/mind_meeting.gd")
+	var used: Array = w.evil_plan.get("bluffs", {}).values()
+	var out: Array = []
+	for r in w.bluffs:
+		var role: String = str(r)
+		if role in used or not C.ROLES.get(role, {}).get("night_walk", false):
+			continue
+		if not M.rival_claimants(w, n, role).is_empty():
+			continue
+		if bluff_duty_covers(w, n, role, night):
+			out.append(role)
+	return out
 
 ## The night is owned now: a later question about it, in private or at the podium, gets the
 ## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
@@ -461,6 +552,12 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	var count: int = variants.get(str(night), 0)
 	variants[str(night)] = count + 1
 	n.dialogue_memory["pressed_nights"] = variants
+	# Truly home and pressed again about that night (Michael, Nov 20): it stands by its account
+	# and grows irritated, losing trust in the asker by the question-fatigue amount, whatever
+	# today's count of questions.
+	if count >= 1 and not str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"):
+		var drop: float = (Tuning.Trust.QUESTION_FATIGUE_BASE + Tuning.Trust.QUESTION_FATIGUE_PRIVACY * trait_of(n, "privacy")) * (1.0 - Tuning.Trust.QUESTION_FATIGUE_COMPOSURE_DAMP * trait_of(n, "composure"))
+		set_trust(w, n, n.trust - drop, "pressed again about night %d, when they were home" % night)
 	var alternate = count % 2 == 1
 	var when = C.spoken_when(night, w.day)
 	var text = ""

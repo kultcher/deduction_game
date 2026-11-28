@@ -199,14 +199,16 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 			note_already_public(g, true, false)
 		else:
 			g.public_presentations[int(card.n)] = int(g.w.day)
-			for v in g.w.living():
-				if v != n:
-					if progress.is_valid():
-						await progress.call(v.name)
-					GamePresentation._evaluate_deduction(g, v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+			# The town answers aloud, summarised, as it does for 'case <#>' (Michael, Nov 19;
+			# playtest 52102: nominating on a case weighed it in silence).
+			await GamePresentation.hear_town(g, g.w.living().filter(func(v): return v != n), card, Tuning.Workshop.VENUE_MULTS.nomination, "nomination", progress)
 	g.w.dlog.add("player_nomination", "player", n.id, {"case": int(card.get("n", 0)), "raw": card.is_empty()})
 	_defend_pending(g)
 	_show_nomination(g)
+	# A nomination on a case is the player's one case on it: 'case <#>' isn't offered again
+	# (playtest 52102, seq 613).
+	if not card.is_empty():
+		g.statement_used = true
 
 
 ## Does this filed case name `id` as one to suspect (its conclusion accuses them)?
@@ -337,6 +339,9 @@ static func _show_nomination(g) -> void:
 	else:
 		opts = "'hear' the town first, or "
 	opts += "'vote yes' / 'vote no' now (the town still speaks before you vote)"
+	# Clemency works from the start of a nomination (Michael, Nov 27: approved wording).
+	if g.w.tools["clemency"] > 0 and nm["by"] != "player":
+		opts += ", or 'clemency' to spare them"
 	g._prompt("Vote on %s. %s%s %s." % [t.name, vote_requirement_text(g), blk, opts])
 
 
@@ -441,7 +446,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			GameBoard._facts(g, res.get("resistance_facts", []))  # "their readings agree with what I know" cards
 			_after_vote(g)
 		_:
-			g._err("On this nomination: %scase <case#> | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
+			g._err("On this nomination: %s%s%svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "" if g.statement_used else "case <case#> | ", "clemency | " if g.w.tools["clemency"] > 0 else ""])
 
 
 ## Step 3, the podium press: one public question to the nominee before the town weighs in.
@@ -548,6 +553,8 @@ static func _run_supporters(g) -> void:
 	var res: Dictionary = MindSupport.run(g.w, nm["nominee"], nm["by"])
 	nm["supporters"] = res.get("speakers", [])
 	if res.get("lines", []).is_empty():
+		# Say so, rather than nothing (Michael, Nov 27: approved wording; playtest 52102).
+		g._narr("No one rises to speak for or against %s." % g.w.by_id[nm["nominee"]].name)
 		return
 	g._lines(res.lines)
 	GameBoard._facts(g, res.get("facts", []))
@@ -634,4 +641,9 @@ static func _close_meeting(g) -> void:
 	var opts = "'vigil <block>' (watch who goes out from a block at night)"
 	if g.w.tools["ward"] > 0:
 		opts = "'ward <name>' (shield them from the Demon, once per case), " + opts
+	# A promised vigil, as the ward's "Keep your word" button reminds (Michael, Nov 27: approved).
+	var promised: Dictionary = g.offer.get("vigil", {})
+	for pid in promised:
+		if g.w.by_id.has(pid):
+			g._narr("You promised %s a vigil on %s tonight." % [g.w.by_id[pid].name, C.block_name(promised[pid])])
 	g._prompt("Choose your night work: %s, or 'sleep'." % opts)

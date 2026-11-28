@@ -18,7 +18,7 @@ func _init() -> void:
 	min_gift_day = 1
 	night_walk = true
 	marked_registers = true
-	desc = "Each night (not the first), visits one living person in secret and learns whether their spirit is good. Evil souls (and Marked souls) return no memory of the visit."
+	desc = "Each night (not the night before you arrived), visits one living person in secret and learns whether their spirit is good. Evil souls (and Marked souls) return no memory of the visit."
 	shape = "CONFESSOR"
 	request_refuse_line = "The confessional is secret and inviolable; I can take no direction on whose door I visit."
 

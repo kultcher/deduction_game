@@ -388,7 +388,7 @@ func _open_picker(i: int, anchor: Control) -> void:
 	none.pressed.connect(func(): _pick(i, ""))
 	box.add_child(none)
 	if is_inside_tree():
-		_picker.popup(Rect2i(Vector2i(anchor.get_screen_position() + Vector2(0, anchor.size.y)), Vector2i.ZERO))
+		_picker.popup(Rect2i(preload("res://ui/column_menus.gd").popup_point(anchor, Vector2(0, anchor.size.y)), Vector2i.ZERO))
 
 func _pick(i: int, id: String) -> void:
 	# The Demon can't be moved out of its circle once it's frozen (Codex on #496).

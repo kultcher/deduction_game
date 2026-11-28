@@ -160,11 +160,16 @@ var reduced_motion: bool = false:
 var _lighting: MapLighting = MapLighting.new()
 var _ui_overlay: Control
 var _ui_commands: Array = []
+## Standees, drawn first on the UI overlay: above the grade, under everything else there.
+var _ui_standees: Array = []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	_lighting.attach(self)
+	_lighting.on_change = func():
+		if _ui_overlay != null:
+			_ui_overlay.queue_redraw()
 	_ui_overlay = Control.new()
 	_ui_overlay.name = "MapUIOverlay"
 	_ui_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -376,6 +381,13 @@ func _draw_grave_gate(gate, foot: Vector2, tint: Color, covered: Rect2) -> Rect2
 	draw_texture_rect(gate, gr, false, tint)
 	return gr if covered.size == Vector2.ZERO else covered.merge(gr)
 
+## Where _draw_art's "contain" puts a texture in a rect (fitted, aligned to the bottom).
+static func _contain_rect(tex, rect: Rect2) -> Rect2:
+	var ts = Vector2(tex.get_width(), tex.get_height())
+	var k2 = minf(rect.size.x / ts.x, rect.size.y / ts.y)
+	var sz = ts * k2
+	return Rect2(Vector2(rect.get_center().x - sz.x / 2.0, rect.end.y - sz.y), sz)
+
 ## Draw a texture inside a rect, keeping its aspect: "contain" (fit, aligned to the bottom)
 ## or "cover" (fill, cropping the overflow from the centre).
 func _draw_art(tex, rect: Rect2, mode: String = "contain", tint: Color = Color.WHITE) -> Rect2:
@@ -417,6 +429,7 @@ func _draw() -> void:
 	_label_obstacles.clear()
 	_name_labels.clear()
 	_ui_commands.clear()
+	_ui_standees.clear()
 	if g == null:
 		draw_rect(Rect2(Vector2.ZERO, size), UITheme.color("bg"))
 		if _ui_overlay != null:
@@ -596,6 +609,9 @@ func _draw_ui_overlay() -> void:
 		return
 	var canvas: Control = _ui_overlay
 	var font = get_theme_default_font()
+	var standee_tint: Color = _lighting.standee_tint()
+	for sd in _ui_standees:
+		canvas.draw_texture_rect(sd["tex"], sd["rect"], false, standee_tint)
 	for cmd in _ui_commands:
 		match cmd["kind"]:
 			"sign":
@@ -752,7 +768,8 @@ func _draw_people(font) -> void:
 			var rr = Rect2(foot - Vector2(hh * 0.4, hh), Vector2(hh * 0.8, hh))
 			draw_circle(foot + Vector2(0, -2), hh * 0.3, Color(0, 0, 0, 0.35))
 			if t != null:
-				rr = _draw_art(t, rr, "contain", Color.WHITE)
+				rr = _contain_rect(t, rr)
+				_ui_standees.append({"tex": t, "rect": rr})   # above the grade, with a milder tint
 			else:
 				draw_circle(rr.get_center(), hh * 0.3, C.npc_color(n.id))
 			if n.busy_with != "":

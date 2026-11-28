@@ -187,15 +187,20 @@ func _test_talk_holds_phase(scene) -> void:
 		return
 	var label_before: String = scene.day_label.text
 	var phase_before: int = g.w.phase
+	var lines_before: Dictionary = {}
 	for q in ["ask gift", "ask night", "ask today", "ask seen yesterday", "ask about " + g.w.living()[0].name.to_lower(), "ask about " + g.w.living()[1].name.to_lower()]:
 		if scene.conversation_finished or g.state != "talk":
 			break
+		lines_before = {}
+		for who in g.w.npcs:
+			lines_before[who.id] = scene.cast_list._sub_line(who)
 		scene._run(q)
 		if g.state == "talk" and g.pending_request.size() > 0:
 			scene._run("no")
 	_check(scene.conversation_finished and g.w.phase != phase_before, "the last answer ends the phase in the game (state %s, finished %s)" % [g.state, scene.conversation_finished])
 	_check(scene.day_label.text == label_before, "but the clock still shows the old phase (%s)" % scene.day_label.text)
 	_check(scene.cast_list._frozen != null and scene.cast_list.mouse_filter == Control.MOUSE_FILTER_IGNORE, "and the townsfolk list holds its lines and ignores the pointer (Codex, #322)")
+	_check(scene.cast_list._frozen == lines_before, "and the lines it holds are the old phase's, from before the last answer (playtest 52102)")
 	scene._leave_finished_conversation()
 	scene.finish_streaming()
 	_check(scene.day_label.text != label_before, "leaving the conversation moves the clock on (%s)" % scene.day_label.text)

@@ -91,9 +91,14 @@ func _test_on_deck_and_anchored_nomination() -> void:
 	_check(int(deck.get("n", 0)) == second, "the latest live case naming them is on deck (#%d)" % int(deck.get("n", 0)))
 	_check(g.cases_naming(t.id).size() >= 2, "both live cases are offered as choices")
 	g.command("nominate " + t.name.to_lower())
+	var said: Array = g.last_events.filter(func(e): return e.get("k", "") == "speech" and e.get("speaker", "") != t.id)
 	var nm: Dictionary = g.w.meeting.get("pending", {})
 	_check(g.state == "nomination" and nm.get("nominee", "") == t.id and int(nm.get("case_card", 0)) == second,
 		"'nominate <name>' rests on the on-deck case")
+	_check(not said.is_empty(), "the town answers the case aloud, as for 'case <#>' (playtest 52102; %d lines)" % said.size())
+	_check(g.statement_used, "and it's the player's one case on this nomination")
+	var again: String = g.command("case %d" % second)
+	_check("already put a case" in again, "so 'case <#>' isn't taken again (52102, seq 613)")
 	_check(not nm.get("case_facts", []).is_empty(), "the defence answers the case's own cards (case_facts)")
 	_check(g.public_presentations.has(second), "the case is now public")
 	var other = g.w.living_good()[1]
