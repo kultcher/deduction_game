@@ -17,7 +17,7 @@
 
 ## Small calls made on Michael's behalf
 
-- **The clues:** Michael picked one practical clue each (Nov 28): Agnes's knitting, Bartholomew's whittling knife, Constance's prayer book, Dorian's sleeping draught, Edda's shawl, Fenwick's book on drama, Greta's walking stick, Hollis's spectacles, Isolde's pressed flower, Jory's battered ball, Lian's tin cup, Merrin's lucky charm, Nisha's chessboard and Odette's pipe and tobacco tin. Kiran's deck of cards is my pick until he confirms. He asked for more options for Odette, Lian, Hollis, Edda and Greta; those went to Seneschal.
+- **The clues:** Michael picked one practical clue each (Nov 28): Agnes's knitting, Bartholomew's whittling knife, Constance's prayer book, Dorian's sleeping draught, Edda's apron, Fenwick's book on drama, Greta's walking stick, Hollis's pocket watch, Isolde's pressed flower, Jory's battered ball, Kiran's deck of cards, Lian's account book, Merrin's lucky charm, Nisha's chessboard and Odette's pocket flask. The page and panel titles are approved too.
 - **The sentences:** the card's text is Michael's. The narration uses the same sentence. Mine are the page title "<Place> · left behind" and the panel's "Searching the place".
 
 ## Measured
