@@ -142,16 +142,19 @@ class Worker:
             err_lines = []
             killed = {"flag": False}
 
-            def watchdog():
-                while proc.poll() is None:
-                    if current_holder[0] is not None and time.time() - current_holder[1] > self.a.game_timeout:
-                        killed["flag"] = True
-                        proc.kill()
+            # Each batch's watchdog is bound to its own process and state, and is joined when the
+            # batch ends: with --games-per-proc restarts, a closure over the loop's reassigned
+            # `proc` kept every old watchdog alive watching the newest process (Codex, #585).
+            def watchdog(p, holder, flag):
+                while p.poll() is None:
+                    if holder[0] is not None and time.time() - holder[1] > self.a.game_timeout:
+                        flag["flag"] = True
+                        p.kill()
                         return
-                    time.sleep(5)
+                    time.sleep(1)
 
             current_holder = [None, started]
-            t = threading.Thread(target=watchdog, daemon=True)
+            t = threading.Thread(target=watchdog, args=(proc, current_holder, killed), daemon=True)
             t.start()
             for line in proc.stdout:
                 line = line.rstrip("\n")
@@ -174,6 +177,7 @@ class Worker:
                 if line.startswith("case ") and self.a.echo:
                     print("[w%d] %s" % (self.idx, line), flush=True)
             proc.wait()
+            t.join(timeout=10)
             recorded = self._recorded()
             if current is not None and current not in recorded:
                 # The process died (or was killed) inside this game: record it and move on.
