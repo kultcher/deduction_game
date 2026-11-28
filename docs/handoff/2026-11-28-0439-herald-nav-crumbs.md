@@ -9,6 +9,8 @@
 
 - **Item 5 (Michael, Nov 28, via Seneschal):** a row of plaque buttons in the stage's top corner says where you are and lets you step back:
   - **By day:** `Town ▸ <block> ▸ <person>`. The block is the one in close-up, else yours once you've moved, else the conversation's.
+  - **At night:** `Town ▸ <block>` while a block is in close-up. It replaces the map's own back sign there too (Codex on #591).
+  - **During an approach:** no crumbs, because the approach covers the map until it's answered (Codex on #591).
   - **At a meeting:** `Town ▸ Meeting ▸ <speaker>`. The speaker crumb shows while someone is on the courtroom stage. Meeting clears the stage, as "Back to the circle" does.
   - The crumb you're on is red and does nothing. The others take you there; in a conversation they show the map and the conversation waits.
   - The row sits top-left of the map or conversation (the day plaque is top centre) and top-right of the meeting circle (the plaque is top-left there). It hides when there's nowhere to step back to, and on the Case board, the New Case screen, cutscenes and the guess window.
@@ -27,7 +29,7 @@
 
 ## Measured
 
-- New suite `tools/test_nav_crumbs.gd` (15 checks, in the fast list):
+- New suite `tools/test_nav_crumbs.gd` (19 checks, in the fast list):
   - no row on the whole town before you move;
   - `Town ▸ Docks` in a close-up, and Town zooms out;
   - talking shows `Town ▸ <block> ▸ <person>`; the block crumb shows the block with the talk waiting, the person's crumb brings it back, and Town shows the whole town;

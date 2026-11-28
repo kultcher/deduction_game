@@ -42,7 +42,19 @@ static func crumbs(m) -> Array:
 			var who: String = _speaker_name(m)
 			out.append({"label": who if who != "" else "Speaker", "current": true, "go": Callable()})
 		return out
+	if g.state == "night":
+		# At night the map still zooms into a block; the Town crumb is the way back out
+		# (it replaced the map's "◀ Whole town" sign; Codex on #591).
+		var nb: String = m.map.zoom_block if m.map != null else ""
+		var night_out: Array = [{"label": "Town", "current": nb == "", "go": func(): _show_map(m, false, "")}]
+		if nb != "" and C.BLOCKS.has(nb):
+			night_out.append({"label": _block_label(nb), "current": true, "go": Callable()})
+		return night_out
 	if not g.state in ["day", "talk", "approach"]:
+		return []
+	if g.state == "approach" and str(m.approach_stage) != "":
+		# Someone is approaching you: the approach covers the map, and the crumbs can't take
+		# you anywhere until it's answered (Codex on #591).
 		return []
 	var talking: bool = g.state == "talk" and g.talk_with != null
 	var in_conversation: bool = talking and m.conversation_view.visible

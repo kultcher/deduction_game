@@ -71,6 +71,18 @@ func _run() -> void:
 	var buttons: Array = scene.nav_crumbs.get_children().filter(func(b): return b is Button)
 	check(buttons.size() == 3 and buttons[2].button_pressed and not buttons[0].button_pressed, "the row's buttons: the current one pressed (red)")
 
+	# An approach covers the map: no crumbs until it's answered (Codex on #591).
+	g.state = "approach"
+	scene.approach_stage = "intro"
+	check(Crumbs.crumbs(scene).is_empty(), "an approach shows no crumbs")
+	scene.approach_stage = ""
+	# At night the map still zooms; Town is the way back out (Codex on #591).
+	g.state = "night"
+	scene.map.zoom_to("docks")
+	check(_shape(scene) == [["Town", false], ["Docks", true]], "a night close-up: Town ▸ Docks (%s)" % str(_shape(scene)))
+	_press(scene, "Town")
+	check(scene.map.zoom_block == "", "and Town zooms back out at night")
+	check(_shape(scene) == [["Town", true]], "the whole town at night: just Town, so no row")
 	# At a meeting (state set directly; the circle's own flow is tested elsewhere).
 	g.state = "meeting"
 	scene.meeting_show_map = false
