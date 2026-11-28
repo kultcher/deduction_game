@@ -63,7 +63,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			continue
 		if e.id not in snapshot.selected and e.kind == "sighting":
 			continue # Own sightings enter only through a separately learned owner.
-		if e.kind == "sighting" and e.content.get("anonymous", false):
+		if e.kind in ["sighting", "conversation"] and e.content.get("anonymous", false):
 			var told: Dictionary = anonymous_sighting_card(e, snapshot)
 			if told.is_empty():
 				result.issues.append("The unnamed sighting needs an identified teller and a known place and time.")
@@ -299,7 +299,7 @@ static func _mark_excuses(cards: Array, today: int) -> void:
 
 ## Live activity receipts keep their exact original identity. Old trace cards without
 ## a structured scene cannot be reconstructed from prose or hidden scene records.
-## A night sighting passed on with its witness hidden (Michael, Nov 28): the teller's account,
+## A sighting or a daytime meeting passed on with its witness hidden (Michael, Nov 28): the teller's account,
 ## as for an unnamed reading (testimony_card). It's the sighting it reports, told by the teller,
 ## weighed at relay weight (testimony_only), and never says the teller was there.
 static func anonymous_sighting_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
@@ -313,9 +313,13 @@ static func anonymous_sighting_card(e: Dictionary, snapshot: Dictionary) -> Dict
 		return {}
 	card["testimony_only"] = true
 	card["anonymous"] = true
-	# Passed on in private: the ledger's private hearsay weight stands (no second discount).
+	# Told at the meeting, it's heard at relay weight: the movement model reads hearing_weight
+	# (live_activity_pack; Codex on #602), not the readings' reliability map. Passed on in
+	# private, the ledger's private hearsay weight stands, with no second discount.
 	if str(e.content.get("hearing", "")) == "private":
 		card["private_relay"] = true
+	else:
+		card["hearing_weight"] = C.RELAY_WEIGHT
 	return card
 
 static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:

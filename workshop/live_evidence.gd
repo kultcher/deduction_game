@@ -107,9 +107,9 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 	var observed = stamp(card.observed_at if card.get("observed_at") is Dictionary else card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
 	var content = {"kind": kind, "source": card.get("source", ""),
 		"subjects": card.get("subject", []).duplicate(), "observed_at": observed}
-	# An unnamed relay (a reading, or a night sighting passed on with its witness hidden;
+	# An unnamed relay (a reading, a night sighting or a daytime meeting passed on with its witness hidden;
 	# Michael, Nov 28) keeps who told it, never who first saw or read it.
-	if kind in ["info", "sighting"] and card.get("anonymous", false):
+	if kind in ["info", "sighting", "conversation"] and card.get("anonymous", false):
 		content.source = ""
 		content["anonymous"] = true
 		content["teller"] = card.get("via", "")

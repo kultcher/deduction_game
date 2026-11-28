@@ -1,4 +1,4 @@
-## An unnamed night sighting (Michael, Nov 28: passing information on hides its source). When
+## An unnamed night sighting, or daytime meeting (Michael, Nov 28: passing information on hides its source). When
 ## an NPC tells the player "someone saw X on the Docks last night" without naming the witness,
 ## the card is the teller's account:
 ## - the fact keeps who told it, never who saw it;
@@ -59,7 +59,7 @@ func _init() -> void:
 		if str(e.get("text", "")) == anon.text:
 			told = e
 	check(not told.is_empty() and str(told.get("source", "")) == teller.id and told.get("testimony_only", false), "the Workshop card is the teller's testimony (%s)" % str({"source": told.get("source", ""), "testimony_only": told.get("testimony_only", false)}))
-	check(not told.get("private_relay", false), "told at the meeting, it isn't marked a private relay")
+	check(not told.get("private_relay", false) and is_equal_approx(float(told.get("hearing_weight", 1.0)), C.RELAY_WEIGHT), "told at the meeting, it's heard at relay weight, not as a private relay (%s)" % str(told.get("hearing_weight", "none")))
 	# Passed on in private (hearing: "private"): the ledger's private hearsay weight stands,
 	# so the card is marked a private relay (Lantern's listener skips its relay discount).
 	# A different block from the meeting's sighting: the same person, place and night would be
@@ -79,6 +79,20 @@ func _init() -> void:
 			p_read = e
 	check(p_sight.get("private_relay", false) and not p_sight.has("hearing_weight"), "a sighting passed on in private is a private relay, with no relay weight of its own (%s)" % str(p_sight.keys()))
 	check(p_read.get("private_relay", false) and str(p_read.get("source", "")) == teller.id, "and so is a reading passed on in private, told by the teller (%s)" % str({"source": p_read.get("source", ""), "private_relay": p_read.get("private_relay", false)}))
+	# A daytime meeting passed on unnamed ("X told me they saw A and B talking at the well";
+	# Beadle's "ask about"): the same treatment.
+	var other = goods[3]
+	var convo_n: int = GameBoard.add_card(g, {"kind": "conversation", "subject": [subject.id, other.id], "block": block, "loc": "", "source": witness.id, "via": teller.id, "anonymous": true,
+		"day": 1, "phase": C.AFTERNOON, "text": "%s says someone saw %s and %s talking on the %s on day 1." % [teller.name, subject.name, other.name, block]})
+	var convo: Dictionary = g.board[convo_n - 1]
+	var cnorm: Dictionary = Evidence.normalize_card(convo)
+	check(str(cnorm.content.get("source", "x")) == "" and str(cnorm.content.get("teller", "")) == teller.id, "an unnamed meeting keeps the teller and no witness (%s)" % str(cnorm.content))
+	check(CardModel.place_markers(convo).all(func(m): return str(m.get("mark", "")) == "hollow"), "and is drawn as told to you, not as a meeting you saw")
+	var c_card: Dictionary = {}
+	for e in Live.view(g).get("cards", []):
+		if str(e.get("text", "")) == convo.text:
+			c_card = e
+	check(not c_card.is_empty() and str(c_card.get("source", "")) == teller.id and c_card.get("testimony_only", false), "the Workshop card is the teller's testimony (%s)" % str({"source": c_card.get("source", ""), "testimony_only": c_card.get("testimony_only", false)}))
 	# The same sighting from a named witness, on a fresh deal, counts for more.
 	var g2 = Game.new()
 	g2.log_dir = "user://test_logs"

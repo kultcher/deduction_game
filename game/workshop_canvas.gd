@@ -41,7 +41,7 @@ static func view(g) -> Dictionary:
 				activity = Assess.testimony_card(receipt, snapshot)
 		elif receipt.kind == "info" and content.get("anonymous", false):
 			activity = Assess.testimony_card(receipt, snapshot)
-		elif receipt.kind == "sighting" and content.get("anonymous", false):
+		elif receipt.kind in ["sighting", "conversation"] and content.get("anonymous", false):
 			activity = Assess.anonymous_sighting_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = ""
