@@ -28,6 +28,7 @@ test_canvas_card_text
 test_card_wording_fixes
 test_carried_answers
 test_case_eval
+test_case_memory
 test_case_metrics_dead
 test_case_script
 test_caught_lie_softening

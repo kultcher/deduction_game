@@ -119,7 +119,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
-	if _compiled.size() > 4096:
+	if _compiled.size() >= 1024:
 		_compiled.clear()
 		_cc_handles.clear()
 		_cc_generation += 1
@@ -1026,7 +1026,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
 			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
 		if cache_enabled:
-			if _fits_cache.size() > 16384:
+			if _fits_cache.size() >= 1024:
 				_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
@@ -1069,7 +1069,7 @@ static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, perso
 			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
 		out = _fits_over(view, cc, cards, personal, open, w_all)
 	if cache_enabled:
-		if _fits_cache.size() > 16384:
+		if _fits_cache.size() >= 1024:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 		_fits_cache[key] = {"ref": ref.duplicate(true), "out": out}

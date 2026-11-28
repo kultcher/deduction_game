@@ -53,7 +53,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		return cache[key].result
 	var result: Array = _factors_cs(view, cards, observations)
 	_ensure_factor_handle(result[0])
-	if cache.size() >= 2048:
+	if cache.size() >= 512:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result

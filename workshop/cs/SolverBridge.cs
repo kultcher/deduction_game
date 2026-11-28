@@ -45,6 +45,13 @@ public partial class SolverBridge : RefCounted
         _lastOwnCounts = Array.Empty<double>();
         _lastOwnWeights = Array.Empty<double>();
         SolverContext.Clear();
+        // Return large freed 10-NPC LOH arrays to the OS between cases without penalizing small unit tests.
+        if (GC.GetTotalMemory(false) > 64L * 1024 * 1024)
+        {
+            System.Runtime.GCSettings.LargeObjectHeapCompactionMode =
+                System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+        }
     }
 
     public static long GetContextEpoch() => _contextEpoch;
@@ -56,6 +63,26 @@ public partial class SolverBridge : RefCounted
     public static int GetRegisteredCompiledCaseCount() => SolverContext.RegisteredCompiledCaseCount;
     public static int GetWorldEntryByteSize() => Unsafe.SizeOf<WorldEntry>();
     public static double GetGdFloor1e30() => SolverContext.GdFloor1e30;
+
+    /// <summary>
+    /// Diagnostic memory snapshot: [gc_before_collect, gc_after_collect, working_set,
+    /// packed_universes, movement_factors, compiled_cases, cached_universes].
+    /// </summary>
+    public static long[] GetMemoryStats(bool forceGc = false)
+    {
+        long before = GC.GetTotalMemory(false);
+        long after = forceGc ? GC.GetTotalMemory(true) : before;
+        return new long[]
+        {
+            before,
+            after,
+            System.Environment.WorkingSet,
+            SolverContext.RegisteredHandleCount,
+            SolverContext.RegisteredMovementFactorCount,
+            SolverContext.RegisteredCompiledCaseCount,
+            SolverContext.CachedUniverseCount,
+        };
+    }
 
     // --- Handle-Based Universe Arena (Eliminates Per-Call World Repacking) ---
 

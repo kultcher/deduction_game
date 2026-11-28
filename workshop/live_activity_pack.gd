@@ -292,7 +292,7 @@ static func _routes_dispatch(view: Dictionary, cards: Array, answers: Dictionary
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
 	var result: Dictionary = _routes_cs(view, cards, answers, knowledge, strict_reports)
-	if route_cache.size() >= 2048:
+	if route_cache.size() >= 512:
 		route_cache.clear()
 	route_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
