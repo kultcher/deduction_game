@@ -17,7 +17,8 @@
 ##      venue: "private" | "meeting", kind: "deferred" | "deflected",
 ##      reason: "friend" | "burden" | "distrust" | "", known_to: [asker] | ["public"],
 ##      shared_at: the tick the reading came out (absent until then; set on every entry for
-##      that claimant and claim)}
+##      that claimant and claim), shared_to: {listener id: tick} for a refusal before the town
+##      whose reading was later told to that listener alone}
 extends RefCounted
 
 const C = preload("res://sim/content.gd")
@@ -35,6 +36,9 @@ static func _call_on():
 
 static func _evil():
 	return load("res://sim/evil.gd")
+
+static func _ledger():
+	return load("res://sim/mind_ledger.gd")
 
 static func _trait(n, t: String) -> float:
 	return float(n.traits.get(t, 0.5))
@@ -203,6 +207,11 @@ static func record_refusal(w, asker_id: String, n, claim: Dictionary, venue: Str
 	w.withheld_refusals.append(r)
 	var who: String = "the Demonologist" if asker_id == "player" else (w.by_id[asker_id].name if w.by_id.has(asker_id) else asker_id)
 	w.dlog.add("withheld_refusal", n.id, asker_id, r, "%s %s %s's ask (%s)%s." % [n.name, "defers" if kind == "deferred" else "deflects", who, venue, (", " + reason) if reason != "" else ""])
+	# Whoever saw it weighs it now (Connections.withheld), not at their next unrelated refresh
+	# (Codex on #592): the private asker, or every good mind present for one at the meeting.
+	var witnesses: Array = w.living_good().filter(func(m): return m != n and (venue != "private" or m.id == asker_id))
+	for m in witnesses:
+		_ledger().refresh_beliefs(w, m, " (a reading held back from %s)" % who)
 
 ## `n` has given reading `e` (or told a night sighting: `e` = {role: "", day: its night}), to
 ## `to_id` alone or to "public": every open refusal of that claim the hearer knows of gets
@@ -215,8 +224,15 @@ static func note_shared(w, n, e: Dictionary, to_id: String) -> void:
 		var cl: Dictionary = r.get("claim", {})
 		if str(cl.get("role", "")) != str(e.get("role", "")) or int(cl.get("day", -2)) != int(e.get("day", -1)):
 			continue
-		if to_id != "public" and not (to_id in r.get("known_to", [])):
-			continue
 		if now < 0:
 			now = tick(w)
+		if to_id != "public" and not (to_id in r.get("known_to", [])):
+			# A refusal before the town, then the reading told to one listener in private: it's
+			# shared for that listener alone (`shared_to`, Codex on #592).
+			if "public" in r.get("known_to", []):
+				var to: Dictionary = r.get("shared_to", {})
+				if not to.has(to_id):
+					to[to_id] = now
+				r["shared_to"] = to
+			continue
 		r["shared_at"] = now

@@ -213,7 +213,7 @@ static func withheld_seen(w, n) -> Array:
 		var claim: Dictionary = r.get("claim", {})
 		out.append({"claimant": str(r.claimant), "role": str(claim.get("role", "")), "night": int(claim.get("day", -1)),
 			"day": int(r.get("day", 0)), "kind": str(r.get("kind", "")),
-			"shared_day": int(r.shared_at) / 4 if r.has("shared_at") else -1})
+			"shared_day": int(r.shared_at) / 4 if r.has("shared_at") else (int(r.shared_to[n.id]) / 4 if r.get("shared_to", {}).has(n.id) else -1)})
 	return out
 
 static func _reading(source: String, e: Dictionary) -> Dictionary:

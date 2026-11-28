@@ -41,3 +41,13 @@ How often refusals happen in bot games, and so how far the cost moves outcomes. 
 ## Proposed for the backlog
 
 None.
+
+## Codex round 1
+
+- **Immediate refresh:** `MindWithheld.record_refusal` now refreshes whoever saw the refusal: the private asker, or every living good mind for one at the meeting. The cost lands at once.
+- **A public refusal then shared in private:** a public refusal whose reading is later told to one listener in private gets `shared_to: {listener: tick}`. `withheld_seen` reads it as shared for that listener alone.
+- **Night sightings and late relays:** #588's `note_shared` hooks in `MindMeeting` already close refusals over a night sighting or a dead reader's reading.
+- **Files:** the first two edit Beadle's `sim/mind_withheld.gd`, as agreed with him afterwards.
+- **test_withheld_cost:** 19 checks.
+- **Suites:** test_withheld_asks, test_call_on_respond, test_call_on and test_silence_pressure pass.
+- **Golden:** identical to `baseline_2e97efe` (main).

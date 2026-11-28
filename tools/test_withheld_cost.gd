@@ -11,6 +11,7 @@ const Connections = preload("res://workshop/connections.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Game = preload("res://game/game.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
+const MindWithheld = preload("res://sim/mind_withheld.gd")
 
 var checks = 0
 var fails = 0
@@ -94,3 +95,19 @@ func _in_play() -> void:
 	print("in play: %s's suspicion of %s %.3f -> %.3f after a private deflection; %s (not asked) %.3f -> %.3f" % [a.name, s.name, a0, a1, b.name, b0, b1])
 	check(a1 > a0 + 0.01, "the asker's refresh raises its suspicion of a claimant that deflected it")
 	check(absf(b1 - b0) < 1e-9, "a listener that didn't see the private refusal is unmoved")
+	# Recording a refusal refreshes whoever saw it, so the cost lands at once (Codex on #592).
+	var c = g.w.living().filter(func(m): return m != a and m != b and m != s)[0]
+	var a2: float = float(a.suspicion.get(c.id, 0.0))
+	var b2: float = float(b.suspicion.get(c.id, 0.0))
+	MindWithheld.record_refusal(g.w, a.id, c, {"day": 1, "role": "seer"}, "private", "deflected", "")
+	check(float(a.suspicion.get(c.id, 0.0)) > a2 + 0.01 and absf(float(b.suspicion.get(c.id, 0.0)) - b2) < 1e-9,
+		"recording a private refusal moves its asker at once, and no one else (%.3f -> %.3f)" % [a2, float(a.suspicion.get(c.id, 0.0))])
+	# A refusal before the town, then the reading told to one listener in private: shared for
+	# that listener alone (Codex on #592).
+	g.w.withheld_refusals.clear()
+	MindWithheld.record_refusal(g.w, "player", c, {"day": 1, "role": "seer"}, "meeting", "deferred", "friend")
+	MindWithheld.note_shared(g.w, c, {"role": "seer", "day": 1}, b.id)
+	var for_b: Array = Bridge.withheld_seen(g.w, b)
+	var for_a: Array = Bridge.withheld_seen(g.w, a)
+	check(for_b.size() == 1 and int(for_b[0].shared_day) == g.w.day and for_a.size() == 1 and int(for_a[0].shared_day) == -1,
+		"a publicly refused reading told to one listener is shared for it alone (%s / %s)" % [for_b, for_a])
