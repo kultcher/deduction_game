@@ -42,7 +42,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd`, `workshop/day_presence.gd` |
 | `HAUNT_SIGHTING_DAYS` | `2` |  | `game/game_day_night.gd` |
 | `HAUNT_SIGHTING_DAYS_TAVERN` | `3` |  | `game/game_day_night.gd` |
-| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd`, `sim/world_base.gd`, `ui/map_view.gd` |
+| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd`, `sim/world_base.gd`, `ui/map_view.gd`, `ui/travel_confirm.gd` |
 | `PAIR_SILENCED_WEIGHT` | `0.02` |  | `sim/world.gd` |
 | `PAIR_TRUST_PIVOT` | `0.3` |  | `sim/world.gd` |
 | `PAIR_TRUST_SLOPE` | `2.0` |  | `sim/world.gd` |
