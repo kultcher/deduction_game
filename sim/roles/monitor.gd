@@ -15,7 +15,7 @@ func _init() -> void:
 	min_gift_day = 1
 	night_walk = false
 	marked_registers = true
-	desc = "Each night (not the first), learns the role of one person who walked abroad on their home block, or that no one walked by their house. Never receives window night sightings."
+	desc = "Each night (not the night before you arrived), learns the role of one person who walked abroad on their home block, or that no one walked by their house. Never receives window night sightings."
 	shape = "MONITOR"
 
 

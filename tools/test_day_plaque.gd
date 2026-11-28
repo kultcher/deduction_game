@@ -40,7 +40,9 @@ func _run() -> void:
 	check(scene.map_stage.get_global_rect().encloses(p.get_global_rect()), "at the top of the map")
 	check(scene.actions.find_children("*", "Label", true, false).any(func(l): return l.text == "Examine a block to look closer."), "the whole-town hint is Michael's short one")
 	# A conversation covers the map; the plaque stays above it.
-	var n = g.w.living().filter(func(x): return g.can_see(x))[0]
+	# The quick-start case is random: pick someone who isn't already talking with another
+	# (CI failed on a busy first pick, Nov 28).
+	var n = g.w.living().filter(func(x): return g.can_see(x) and str(x.busy_with) == "")[0]
 	scene._run("go " + n.id)
 	scene._run("talk " + n.id)
 	await _frames()

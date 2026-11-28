@@ -413,6 +413,15 @@ class Social:
 	const PLANTER_TARGET_TRUST_MIN = 0.48
 	const MURDER_RELAY_BONUS = 0.35
 	const IDLE_CHAT_WEIGHT = 0.18  # was 0.30 (meeting plan M1: more leads, less weather)
+	## Withheld readings, asking in private (docs/design/withheld_readings.md; Michael, Nov 28):
+	## in a conversation with someone it heard claim an information gift a day or more ago, and
+	## from whom it has heard no reading since, a good NPC asks for the reading with this chance:
+	## the base, plus the wary part times its suspicion of the claimant, plus the Insight part
+	## times its Insight. At most once per pair per day. About 0.15 for an average asker, 0.35 for
+	## a wary, sharp one.
+	const ASK_PRIVATE_BASE = 0.10
+	const ASK_PRIVATE_WARY = 0.30
+	const ASK_PRIVATE_INSIGHT = 0.10
 	const DAY_RUMOR_WEIGHT = 0.45
 	const UNEASE_SUSP_MIN = 0.34
 	const HEARSAY_TRUST_SCALE = 0.75
@@ -530,7 +539,7 @@ class Social:
 	const ROLE_WILLING_TRUST_SCALE = 0.5
 	const ROLE_WILLING_PRESSURE_SCALE = 0.3
 	const ROLE_WILLING_THRESHOLD = 0.55
-	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.5
+	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.6  # was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure)
 
 
 # ---------------------------------------------------------------- 6. Town Meeting: Claims, Consensus, Nominations & Votes
@@ -630,6 +639,12 @@ class Meeting:
 	## town?" decision as that much more pressure would, and lowers the bar for volunteering a
 	## night sighting by as much.
 	const CALL_ON_PRESSURE_BUMP = 0.3
+	## Withheld readings, pressing at the meeting (Michael, Nov 28): a good NPC at least this
+	## confident, suspecting (at the accusing level, GOOD_ACCUSE_MIN_SUSP) a public claimant who
+	## has gone a day without giving a reading, presses them before the town with chance
+	## PRESS_WITHHELD_SCALE x its Confidence (about 0.15 to 0.25). At most once per meeting.
+	const PRESS_WITHHELD_CONFIDENCE_MIN = 0.6
+	const PRESS_WITHHELD_SCALE = 0.25
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
 	const REVEAL_COST_PRIVACY_SLOPE = 0.8
 	const REVEAL_COST_BASE = 0.2
@@ -774,6 +789,10 @@ class Dialogue:
 	## Demon and a Scion are careful.
 	const PRESSED_AGAIN_BACKUP_MINION = 0.6
 	const PRESSED_AGAIN_BACKUP_CAREFUL = 0.3
+	## "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up
+	## gets the same deflection as a wrong one, and either may show the press's nervous tell, at
+	## PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this.
+	const GUESS_NERVES_STRENGTH = 0.5
 
 	## Night whereabouts, confession, stonewalling & slip rates
 	const CONFESS_TRUST_PIVOT = 0.6
@@ -1074,6 +1093,18 @@ class Workshop:
 	## presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade).
 	const CONNECTIONS_CASE_FADE_BOUGHT = 0.9
 	const CONNECTIONS_CASE_BUYIN_FULL = 0.7
+	## Withheld readings (docs/design/withheld_readings.md §4; Michael, Nov 28): a claimant
+	## asked for the reading its gift owes, who holds it back, looks a little more suspicious
+	## to whoever saw the refusal (the asker in private, everyone at the meeting). A fixed
+	## cost, the same whatever the claimant's alignment: odds of DEFER_FACTOR for a refusal
+	## with a reason (a friend, a burden, distrust of the asker), DEFLECT_FACTOR for a bare
+	## one, each growing DAY_STEP-fold in log-odds for every further day the reading stays
+	## out. One cost per withheld reading, the strongest seen, at the listener's distrust of
+	## the claimant (typical trust counts it as is, full trust cancels it, none doubles it).
+	## Once the reading comes out it stops growing, and a deferral's cost is lifted.
+	const WITHHELD_DEFER_FACTOR = 1.15
+	const WITHHELD_DEFLECT_FACTOR = 1.6
+	const WITHHELD_DAY_STEP = 1.25
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4

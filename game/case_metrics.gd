@@ -23,6 +23,24 @@ static func demon_guesses(guesses: Dictionary) -> Array:
 	ids.sort()
 	return ids
 
+## The daily guess window's locked picks (ui/daily_guess.gd: the Demon's circle first, then one
+## per Minion) as guesses in the profile's shape, so the summary reads the player's verdict
+## (playtest 52102). An untyped pick takes a stand-in type of its side; the summary judges
+## who, not which type.
+static func window_guesses(picks: Array, minion_types: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for i in range(picks.size()):
+		var id: String = str(picks[i].get("id", ""))
+		if id == "":
+			continue
+		var t: String = str(picks[i].get("type", ""))
+		if i == 0:
+			out[id] = {"guess": t if C.is_demon(t) else "demon", "confidence": 3}
+		else:
+			var fallback: String = str(minion_types[0]) if not minion_types.is_empty() else t
+			out[id] = {"guess": t if C.is_minion(t) else fallback, "confidence": 3, "untyped": not C.is_minion(t)}
+	return out
+
 static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	var ids: Array = []
 	for id in guesses:
