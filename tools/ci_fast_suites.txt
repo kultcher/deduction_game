@@ -41,6 +41,7 @@ test_connections_pairings
 test_connections_why
 test_control_flow
 test_conversation_nights
+test_cs_tuning_parity
 test_csharp_slice_c0
 test_daily_guess
 test_day_defence
