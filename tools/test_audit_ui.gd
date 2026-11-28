@@ -80,7 +80,10 @@ func _run() -> void:
 	scene._reveal_after_pacing = true
 	scene._new_case()
 	await process_frame
-	check(not scene.daily_guess_open and not scene.meeting_show_map and scene.approach_stage == "" and not scene._reveal_after_pacing, "a new case resets the guess window, the meeting's map peek, the approach and the deferred reveal")
+	# The new case is random and can open with someone approaching the player, which sets
+	# its own stage (CI failed on that, Nov 28); the stale "something" must be gone.
+	var stage_ok: bool = scene.approach_stage == "" or (scene.g.state == "approach" and scene.approach_stage != "something")
+	check(not scene.daily_guess_open and not scene.meeting_show_map and stage_ok and not scene._reveal_after_pacing, "a new case resets the guess window, the meeting's map peek, the approach and the deferred reveal (guess %s, map %s, stage '%s' in %s, reveal %s)" % [scene.daily_guess_open, scene.meeting_show_map, scene.approach_stage, scene.g.state, scene._reveal_after_pacing])
 	check(scene.get_node_or_null("Pacing") == null, "and frees an overlay left over from the last case")
 	# 5. The texture caches stay bounded through a zoom, and a fractional height reuses its
 	# whole-pixel box.
