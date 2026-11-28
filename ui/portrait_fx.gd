@@ -21,15 +21,21 @@ uniform bool circle = false;
 uniform float grey = 0.0;
 uniform vec4 ring_color : source_color = vec4(0.62, 0.2, 0.17, 1.0);
 uniform float ring = 0.0;
+varying vec4 tint;
+void vertex() {
+	tint = COLOR;   // the node's modulate, before the texture is applied
+}
 void fragment() {
-	vec4 c = texture(TEXTURE, UV) * COLOR;
+	// In fragment(), COLOR already holds the texture times the modulate: multiplying by the
+	// texture again squared every colour, a deep red cast on skin (Michael, Nov 28).
+	vec4 c = COLOR;
 	float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
 	c.rgb = mix(c.rgb, vec3(l) * 0.85, grey);
 	if (circle) {
 		float d = distance(UV, vec2(0.5));
 		c.a *= 1.0 - smoothstep(0.48, 0.5, d);
 		float band = smoothstep(0.43, 0.445, d) * (1.0 - smoothstep(0.485, 0.5, d)) * ring;
-		c = mix(c, vec4(ring_color.rgb, COLOR.a), band);   // the ring fades with the portrait
+		c = mix(c, vec4(ring_color.rgb, tint.a), band);   // a whole ring, fading with the node
 	}
 	COLOR = c;
 }"""
