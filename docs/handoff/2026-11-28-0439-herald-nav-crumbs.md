@@ -11,7 +11,8 @@
   - **By day:** `Town ▸ <block> ▸ <person>`. The block is the one in close-up, else yours once you've moved, else the conversation's.
   - **At night:** `Town ▸ <block>` while a block is in close-up. It replaces the map's own back sign there too (Codex on #591).
   - **During an approach:** no crumbs, because the approach covers the map until it's answered (Codex on #591).
-  - **At a meeting:** `Town ▸ Meeting ▸ <speaker>`. The speaker crumb shows while someone is on the courtroom stage. Meeting clears the stage, as "Back to the circle" does.
+  - **Under a reading or a finished talk:** no crumbs. That covers records, gossip and a scene's traces, which hold the map until they're done (Codex on #591).
+  - **At a meeting:** `Town ▸ Meeting ▸ <speaker>`. With a block in close-up on the meeting's map, it's `Town ▸ <block> ▸ Meeting`, and Town zooms back out (Codex on #591). The speaker crumb shows while someone is on the courtroom stage. Meeting clears the stage, as "Back to the circle" does.
   - The crumb you're on is red and does nothing. The others take you there; in a conversation they show the map and the conversation waits.
   - The row sits top-left of the map or conversation (the day plaque is top centre) and top-right of the meeting circle (the plaque is top-left there). It hides when there's nowhere to step back to, and on the Case board, the New Case screen, cutscenes and the guess window.
 - The map's own "◀ Whole town" sign is turned off (`map_view.show_back_sign`). The Town crumb sits where it was.
@@ -23,13 +24,13 @@
 ## Small calls made on Michael's behalf
 
 - The crumbs read "Town" and "Meeting", the block's own name ("Chapel Hill", "Docks"), and the person's name.
-- The separator is "▸".
+- The separator is "▸", in the muted colour (Limner).
 - While someone is speaking, the Town crumb is greyed out with the tooltip "Not while someone is speaking". The meeting keeps the circle up during a speech, so the map can't open then (Codex on #591).
 - The duplicates are kept until he says.
 
 ## Measured
 
-- New suite `tools/test_nav_crumbs.gd` (19 checks, in the fast list):
+- New suite `tools/test_nav_crumbs.gd` (22 checks, in the fast list):
   - no row on the whole town before you move;
   - `Town ▸ Docks` in a close-up, and Town zooms out;
   - talking shows `Town ▸ <block> ▸ <person>`; the block crumb shows the block with the talk waiting, the person's crumb brings it back, and Town shows the whole town;

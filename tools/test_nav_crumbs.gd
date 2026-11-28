@@ -71,6 +71,10 @@ func _run() -> void:
 	var buttons: Array = scene.nav_crumbs.get_children().filter(func(b): return b is Button)
 	check(buttons.size() == 3 and buttons[2].button_pressed and not buttons[0].button_pressed, "the row's buttons: the current one pressed (red)")
 
+	# A reading page covers the map: no crumbs until it's read (Codex on #591).
+	scene.inspect_pages = [{"title": "x", "texture": null, "text": "y"}]
+	check(Crumbs.crumbs(scene).is_empty(), "a reading page shows no crumbs")
+	scene.inspect_pages = []
 	# An approach covers the map: no crumbs until it's answered (Codex on #591).
 	g.state = "approach"
 	scene.approach_stage = "intro"
@@ -91,6 +95,10 @@ func _run() -> void:
 	scene.meeting_show_map = true
 	scene.map_stage.visible = true
 	check(_shape(scene) == [["Town", true], ["Meeting", false]], "the map peek marks Town (%s)" % str(_shape(scene)))
+	scene.map.zoom_to("docks")
+	check(_shape(scene) == [["Town", false], ["Docks", true], ["Meeting", false]], "zoomed in on the meeting's map: Town can zoom back out (%s)" % str(_shape(scene)))
+	_press(scene, "Town")
+	check(scene.map.zoom_block == "" and scene.meeting_show_map, "and does, staying on the map")
 	# Someone on the courtroom stage: their crumb, current; Meeting clears the stage.
 	scene.meeting_show_map = false
 	var stage = scene.meeting_view.stage

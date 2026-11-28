@@ -23,6 +23,10 @@ static func crumbs(m) -> Array:
 	if g == null:
 		return []
 	var out: Array = []
+	if not m.inspect_pages.is_empty() or m._phase_held or m.conversation_finished:
+		# A reading (records, gossip, a scene's traces) or a finished talk covers the map
+		# until it's done: nowhere to step to yet (Codex on #591).
+		return []
 	if g.state in ["meeting", "nomination"]:
 		var speaking: bool = m.meeting_view != null and m.meeting_view.presenting()
 		var on_map: bool = m.meeting_show_map and m.map_stage.visible and not speaking
@@ -32,7 +36,17 @@ static func crumbs(m) -> Array:
 			m.meeting_show_map = true
 			m.map.zoom_to("")
 			m._refresh_all()
-		out.append({"label": "Town", "current": on_map, "go": to_town})
+		# Zoomed into a block on the meeting's map: Town zooms back out, and the block is where
+		# you are (the map's own back sign is gone; Codex on #591).
+		var mzb: String = m.map.zoom_block if m.map != null else ""
+		var zoomed: bool = on_map and mzb != "" and C.BLOCKS.has(mzb)
+		if zoomed:
+			to_town = func():
+				m.map.zoom_to("")
+				m.map.refresh()
+		out.append({"label": "Town", "current": on_map and not zoomed, "go": to_town})
+		if zoomed:
+			out.append({"label": _block_label(mzb), "current": true, "go": Callable()})
 		out.append({"label": "Meeting", "current": not on_map and not speaking, "go": func():
 			if speaking and m.meeting_view.stage != null and m.meeting_view.stage.has_method("clear"):
 				m.meeting_view.stage.clear()
@@ -111,6 +125,7 @@ func refresh(m) -> void:
 		if i > 0:
 			var sep := Label.new()
 			sep.text = "▸"
+			sep.add_theme_color_override("font_color", preload("res://ui/theme.gd").color("muted"))   # quieter than the crumbs (Limner)
 			add_child(sep)
 		var b := Button.new()
 		b.text = c.label
