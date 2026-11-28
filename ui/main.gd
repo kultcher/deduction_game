@@ -811,7 +811,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 				"location", "scene":
 					if not g.moved:
 						_run("go " + id)
-					elif id != g.loc and w.loc_block(id) == w.loc_block(g.loc) and not g.free_move_used:
+					elif id != g.loc and w.loc_block(id) == w.loc_block(g.loc):
 						_run("go " + id)
 					elif id != g.loc:
 						_print("(You've already chosen where to spend this phase.)")
@@ -819,7 +819,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 					var hn = w.by_id[id]
 					if not (hn.alive and hn.at_home()):
 						_print("(Nobody's home at %s's just now. You can only call on someone who's in.)" % hn.name)
-					elif not g.moved or (not g.free_move_used and w.loc_block("home_" + id) == w.loc_block(g.loc)):
+					elif not g.moved or w.loc_block("home_" + id) == w.loc_block(g.loc):
 						_run("go " + id)
 					else:
 						_print("(%s is in, but you've already chosen where to spend this phase.)" % hn.name)

@@ -135,6 +135,7 @@ test_own_route_knowledge
 test_pacing
 test_peer_role_gossip
 test_place_icons
+test_plaque_menus
 test_player_failed_gift
 test_playtest_23973
 test_playtest_52102
