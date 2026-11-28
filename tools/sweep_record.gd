@@ -214,6 +214,9 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	rec["player_nominations"] = player_noms
 	rec["player_nominations_executed_evil"] = player_exec_ok
 	rec["player_nominations_executed_good"] = player_exec_wrong
+	# ---- the Marked watch (Michael, Nov 27): burden claims, the claimers' standing, and what
+	# became of an evil Marked claimer once the real holder was hanged. Reads only.
+	rec.merge(_marked_watch(w, ctx.get("marked_watch_samples", [])))
 	# ---- health
 	rec["wall_s"] = ctx.get("wall_s", 0.0)
 	rec["guard"] = ctx.get("guard", 0)
@@ -221,3 +224,55 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	rec["unprepared_refreshes"] = summary.get("unprepared_refreshes", 0)
 	rec["complete"] = summary.get("complete", w.game_over)
 	return rec
+
+## Claims that answer something that named the claimer (Burdens.claim's `why`): a reading, a
+## nomination, the town turning on them, or a sighting that caught them out.
+const REACTIVE_WHY = ["reading", "nominated", "turning on me", "caught out", "someone else claimed"]
+
+static func _marked_watch(w, samples: Array) -> Dictionary:
+	var claims: Array = []
+	var claimers: Dictionary = {}
+	for e in w.dlog.entries:
+		if e["type"] != "burden_claim":
+			continue
+		var d: Dictionary = e.get("data", {})
+		var who: String = str(e.get("actor", ""))
+		var why: String = str(d.get("why", ""))
+		var n = w.by_id.get(who)
+		claims.append({"who": who, "kind": str(d.get("kind", "")), "day": int(e.get("day", -1)), "phase": str(e.get("phase", "")),
+			"public": bool(d.get("public", false)), "alignment_at_claim": "evil" if bool(d.get("evil", false)) else "good",
+			"role": start_role(w, n) if n != null else "", "reactive": REACTIVE_WHY.any(func(x): return x in why), "why": why})
+		claimers[who] = true
+	var standing: Dictionary = {}
+	for who in claimers:
+		var series: Array = []
+		for smp in samples:
+			if smp.get("mean_evil", {}).has(who):
+				series.append({"day": smp.day, "phase": smp.phase, "mean_evil": smp.mean_evil[who]})
+		standing[who] = series
+	var holder: String = ""
+	for n in w.npcs:
+		if n.secret_mod == "marked" and not n.id in w.initial_evil_ids:
+			holder = n.id
+	var hanged_day: int = -1
+	for ex in w.executions:
+		if str(ex.get("id", "")) == holder and holder != "":
+			hanged_day = int(ex.get("day", -1))
+	var evil_claimers: Array = []
+	if hanged_day >= 0:
+		var seen: Dictionary = {}
+		for c in claims:
+			if c.kind != "marked" or c.alignment_at_claim != "evil" or seen.has(c.who):
+				continue
+			seen[c.who] = true
+			var n = w.by_id.get(c.who)
+			var first_nom: int = -1
+			for e in w.dlog.entries:
+				if e["type"] == "nomination" and str(e.get("target", "")) == c.who and int(e.get("day", -1)) > hanged_day:
+					first_nom = int(e.get("day", -1))
+					break
+			var hanged: bool = w.executions.any(func(ex): return str(ex.get("id", "")) == c.who)
+			evil_claimers.append({"id": c.who, "role": start_role(w, n) if n != null else "", "demon": n != null and n.id == w.first_demon_id,
+				"first_nominated_after": first_nom, "hanged": hanged, "survived": n != null and n.alive})
+	return {"burden_claims": claims, "claimer_suspicion": standing,
+		"after_holder": {"holder": holder, "holder_hanged_day": hanged_day, "evil_claimers": evil_claimers}}

@@ -125,6 +125,14 @@ static func demon_chances_of_npc(n) -> Dictionary:
 		staged["demon_chances"] = out
 	return staged.demon_chances.duplicate()
 
+## {person id: evil chance} for the NPC: the posterior of its last connections refresh (the
+## chance its beliefs use, not its suspicion). Read-only, a copy; {} when no refresh is staged.
+## For sweep records (tools/sweep_record.gd, the Marked watch).
+static func evil_chances_of_npc(n) -> Dictionary:
+	if not n.has_meta(OwnGiftDoubt.META):
+		return {}
+	return n.get_meta(OwnGiftDoubt.META).get("posterior", {}).duplicate()
+
 ## P(`pid` is the Demon) for the NPC, on its own evil chance for them: P(Demon | evil) from the
 ## joint judgement times `evil_chance` (the NPC's belief, e.g. its suspicion's evil chance).
 static func demon_chance(n, pid: String, evil_chance: float) -> float:
