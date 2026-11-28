@@ -74,7 +74,10 @@ static func refresh(m) -> void:
 		var more: bool = m.inspect_index < m.inspect_pages.size() - 1
 		var page_now: Dictionary = m.inspect_pages[m.inspect_index]
 		m._button(m.conversation_view.controls, "Next trace" if more else str(page_now.get("button", "Done")), m._inspect_next)
-		m.action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
+		if page_now.has("action"):
+			m.action_title.text = str(page_now.action)
+		else:
+			m.action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
 		hint(m, "Finish reading before you move on.")
 		return
 	if m._presenting():
