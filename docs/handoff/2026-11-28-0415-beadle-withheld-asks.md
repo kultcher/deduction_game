@@ -1,9 +1,9 @@
 # Withheld readings: NPCs ask, press and answer; the refusal record
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `7b9a63c5` (`baseline_1bf8a4b`)
+- **Base:** main at `7b9a63c5`, merged again after #576 (`baseline_c0cb269`)
 - **Branch:** `claude/beadle-withheld-asks`
-- **Status:** PR open. Moves golden, re-baselined here (`baseline_446c9c2`).
+- **Status:** PR open. Moves golden, re-baselined here (`baseline_2e97efe`).
 - **Next actor:** Bailiff (review and merge). Then Lantern builds the cost off
   `w.withheld_refusals`.
 - **Item:** BACKLOG "Withheld readings: asking for what someone hasn't said" [decided].
@@ -91,7 +91,7 @@
 - **Also pass:** test_call_on_respond, test_call_on (every voice has both new lines),
   test_conversation_gifts, test_silenced_shares_nothing, test_dialogue_voices,
   test_dialogue_fixes_testimony, test_silence_pressure.
-- **Golden:** moves on seed 42 only, re-baselined as `baseline_446c9c2`. Two captures were
+- **Golden:** moves on seed 42 only, re-baselined as `baseline_2e97efe`. Two captures were
   identical at `--tol 0`.
   - On day 2, Kiran asks Fenwick in private what the Medium showed. Fenwick has no reading
     yet and says so. That extra roll moves later draws: Fenwick, not Dorian, nominates Agnes.
