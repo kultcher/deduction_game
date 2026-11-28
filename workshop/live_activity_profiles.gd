@@ -772,7 +772,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"evening":
 			if person in card.get("subjects", [card.get("subject", "")]):
-				return 1.0 if card.block == evening else 0.0
+				# Heard at relay weight when passed on (Codex on #602); a firsthand card weighs 1.
+				return 1.0 if card.block == evening else 1.0 - float(card.get("hearing_weight", 1.0))
 		"coverage":
 			if person not in card.get("excluded", []):
 				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS

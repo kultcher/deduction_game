@@ -16,6 +16,7 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const C = preload("res://sim/content.gd")
+const LiveProfiles = preload("res://workshop/live_activity_profiles.gd")
 var checks := 0
 var fails := 0
 
@@ -93,6 +94,18 @@ func _init() -> void:
 		if str(e.get("text", "")) == convo.text:
 			c_card = e
 	check(not c_card.is_empty() and str(c_card.get("source", "")) == teller.id and c_card.get("testimony_only", false), "the Workshop card is the teller's testimony (%s)" % str({"source": c_card.get("source", ""), "testimony_only": c_card.get("testimony_only", false)}))
+	# An unnamed meeting seen in the evening is an evening card: it too is heard at relay
+	# weight (Codex on #602), so the movement model doesn't take it as firsthand.
+	var eve_n: int = GameBoard.add_card(g, {"kind": "conversation", "subject": [subject.id, other.id], "block": block, "loc": "", "source": witness.id, "via": teller.id, "anonymous": true,
+		"day": 1, "phase": C.EVENING, "text": "%s says someone saw %s and %s talking on the %s on the first evening." % [teller.name, subject.name, other.name, block]})
+	var e_card: Dictionary = {}
+	for e in Live.view(g).get("cards", []):
+		if str(e.get("text", "")) == g.board[eve_n - 1].text:
+			e_card = e
+	check(str(e_card.get("kind", "")) == "evening" and is_equal_approx(float(e_card.get("hearing_weight", 1.0)), C.RELAY_WEIGHT), "an unnamed evening meeting is an evening card heard at relay weight (%s)" % str({"kind": e_card.get("kind", ""), "hearing_weight": e_card.get("hearing_weight", "none")}))
+	var off_block: String = "hill" if block != "hill" else "square"
+	var lk: float = LiveProfiles._observed(e_card, subject.id, off_block, [], "good", {}, 1)
+	check(is_equal_approx(lk, 1.0 - C.RELAY_WEIGHT), "and doesn't rule out another evening block outright (x%.2f)" % lk)
 	# The same sighting from a named witness, on a fresh deal, counts for more.
 	var g2 = Game.new()
 	g2.log_dir = "user://test_logs"

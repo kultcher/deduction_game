@@ -16,7 +16,8 @@ Michael, Nov 28: passing on someone else's information hides its source, everywh
    - **The Workshop** (`live_assessment.anonymous_sighting_card`, used by the live assessment and the canvas) makes it the teller's account:
      - the sighting it reports, with `source` = the teller;
      - `testimony_only`, and, told at the meeting, `hearing_weight` = `RELAY_WEIGHT`. The movement model reads `hearing_weight`, not the readings' reliability map (Codex on #602);
-     - it doesn't place the teller there (`teller_place_eligible` already skips testimony).
+     - it doesn't place the teller there (`teller_place_eligible` already skips testimony);
+     - seen in the evening, it's an evening card, and the evening likelihood now honours the relay weight too (`LiveActivity.cs` `KindEvening`, and `live_activity_profiles._observed`). It used to rule out every other evening block outright. Firsthand evening cards weigh 1, so nothing else moves (Codex's second finding on #602).
    - A missing or unknown teller is refused with an issue.
 2. **The board** (`CardModel.place_markers`) draws an anonymous card as "someone told you" (hollow), never as the player's own sighting. An empty source used to read as firsthand.
 3. **A relay passed on in private** (`hearing: "private"` on the receipt, now carried into the fact):
@@ -33,12 +34,13 @@ On the Test juror, an unnamed sighting reads 1.02 and the same sighting from a n
 
 ## What I measured
 
-- **New:** `test_anonymous_sighting`, 11 checks, 0 failures, on the fast list. It checks:
+- **New:** `test_anonymous_sighting`, 13 checks, 0 failures, on the fast list. It checks:
   - the fact keeps the teller and no witness;
   - the board draws it hollow;
   - a case on it is ready, and the Workshop card is the teller's testimony;
   - a meeting relay is heard at relay weight and isn't marked private;
   - an unnamed meeting keeps the teller, is drawn hollow, and is the teller's testimony;
+  - an unnamed evening meeting is heard at relay weight and leaves other evening blocks possible;
   - a private sighting and a private reading are both marked private relays, and the sighting has no relay weight of its own;
   - both the named and the unnamed sighting are weighed.
 - **Related suites:** `test_workshop_live`, `test_workshop_live_canvas`, `test_workshop_secrets`, `test_workshop_ui`, `test_board`, `test_board_fixes_marks_crowd`, `test_sighting_followup`, `test_night_sighting_rebuttal`, `test_juror_listener`, `test_juror_claims`, `test_meeting_flow`, `test_workshop_regressions`, `test_ui`, `test_medium_relay_challenge`, `test_roles_dead`, `test_conversation_nights`, `test_conversation_gifts`. All pass.

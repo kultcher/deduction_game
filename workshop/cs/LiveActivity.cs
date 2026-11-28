@@ -1133,7 +1133,8 @@ internal static class LiveActivityKernel
             {
                 if ((cardInts[off + 4] & personBit) != 0)
                 {
-                    return cardInts[off + 10] == eveningBlock ? 1.0 : 0.0;
+                    // Heard at relay weight when passed on (Codex on #602); a firsthand card packs 1.
+                    return cardInts[off + 10] == eveningBlock ? 1.0 : (1.0 - cardDoubles[cardIdx * 2]);
                 }
                 return 1.0;
             }
