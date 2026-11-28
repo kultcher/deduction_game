@@ -13,6 +13,7 @@ test_augur_wording
 test_badge_text
 test_bare_compile
 test_beliefs
+test_block_reading_subjects
 test_bluff_blend
 test_board
 test_bot_m4

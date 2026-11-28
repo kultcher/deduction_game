@@ -144,6 +144,11 @@ func _role_group_list(d: Dictionary) -> Array:
 # ---------------------------------------------------------------- reading semantics (gifts.gd)
 
 ## People the reading points toward evil (shape-driven default; override for bespoke roles).
+## The block whose residents a reading speaks about, or "" (52102 finding 5, Michael, Nov 27): a
+## Surveyor's parity reading names no one, but it's about everyone living on its block.
+func residents_block(_d: Dictionary) -> String:
+	return ""
+
 func implicated(d: Dictionary) -> Array:
 	match shape:
 		"PING":
