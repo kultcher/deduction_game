@@ -28,7 +28,7 @@ func _init() -> void:
 	kind = "info"
 	min_gift_day = 1
 	tags = ["ongoing_info", "evil_id"]
-	desc = "Each night (not the first), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."
+	desc = "Each night (not the night before you arrived), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."
 	shape = "PSYCH_STATEMENTS"
 	conversation_nudge = Tuning.Roles.PSYCHOLOGIST.conversation_nudge
 
@@ -190,7 +190,7 @@ static func _none_false_dict(day_heard: int, is_true: bool, why_false: String = 
 			"day_heard": day_heard,
 		},
 		"true": is_true,
-		"text": "none of the information I heard on day %d was a lie or misread" % day_heard,
+		"text": "I learned that none of the information I heard on day %d was a lie or misread" % day_heard,
 	}
 	if not is_true and why_false != "":
 		out["why"] = why_false
@@ -275,5 +275,5 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: Callable, e: Dictionary, _demon_implicated: bool) -> Dictionary:
 	var dh: int = maxi(1, int(e.get("day", 1)))
 	e["data"] = {"mode": "none_false", "day_heard": dh}
-	e["text"] = "none of the information I heard on day %d was a lie or misread" % dh
+	e["text"] = "I learned that none of the information I heard on day %d was a lie or misread" % dh
 	return {"entry": e, "why": "made up a reading from the late Psychologist %s that swore nobody lied on %s, to protect a fellow evil" % [dd.id, content().spoken_day(dh)], "frames": false}

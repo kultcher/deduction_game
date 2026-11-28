@@ -32,7 +32,7 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7.2"
-  BASELINE: tools/golden/baseline_446c9c2
+  BASELINE: tools/golden/baseline_c0cb269
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_NOLOGO: "1"
 
