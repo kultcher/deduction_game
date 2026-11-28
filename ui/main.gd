@@ -82,6 +82,7 @@ var roll_window
 var roll_button: Button
 var debug_check: CheckBox
 var day_panel: PanelContainer
+var nav_crumbs   # ui/nav_crumbs.gd: Town ▸ block ▸ person, or Town ▸ Meeting ▸ speaker
 var day_label: Label
 var cast_list                # ui/cast_list.gd
 var cast_header: Label
@@ -729,6 +730,27 @@ func _refresh_all() -> void:
 ## "Back to town".
 func _process(_delta: float) -> void:
 	_place_day_panel()
+	_place_nav_crumbs()
+
+func _place_nav_crumbs() -> void:
+	if nav_crumbs == null:
+		return
+	var blocked: bool = g == null or (new_case_screen != null and new_case_screen.visible) or (case_view != null and case_view.visible) \
+		or pacing_open or conversation_finished or daily_guess_open
+	if blocked:
+		nav_crumbs.visible = false
+		return
+	nav_crumbs.refresh(self)
+	if not nav_crumbs.visible:
+		return
+	nav_crumbs.size = nav_crumbs.get_combined_minimum_size()
+	if meeting_view != null and meeting_view.visible:
+		# The day plaque holds the circle's top-left: take the top-right.
+		var mr: Rect2 = meeting_view.get_global_rect()
+		nav_crumbs.global_position = Vector2(mr.end.x - nav_crumbs.size.x - 12.0, mr.position.y + 8.0)
+	else:
+		var r: Rect2 = map_stage.get_global_rect()
+		nav_crumbs.global_position = r.position + Vector2(10.0, 8.0)
 
 func _place_day_panel() -> void:
 	if day_panel == null:

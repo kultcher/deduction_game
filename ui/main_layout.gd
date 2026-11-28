@@ -347,6 +347,11 @@ static func build(m) -> void:
 	# On every screen (Michael, Nov 27): above the map, the meeting, a conversation and the
 	# Case board, placed each frame at the top centre of whichever is showing (main.gd).
 	m.add_child(m.day_panel)
+	# Where you are and where you can step back to (Michael, Nov 28): placed each frame in the
+	# stage's top corner opposite the day plaque (main.gd).
+	m.nav_crumbs = preload("res://ui/nav_crumbs.gd").new()
+	m.add_child(m.nav_crumbs)
+	m.map.show_back_sign = false   # the Town crumb takes its place
 	m.case_view.notes_requested.connect(m._open_notes)
 	m.case_view.roles_requested.connect(func(): Roles.open(m))
 	m.case_view.visibility_changed.connect(func():
