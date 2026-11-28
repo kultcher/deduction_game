@@ -810,7 +810,10 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 	var tellings: Dictionary = {}
 	for id in held:
 		var c: Dictionary = by_id[id]
-		if c.kind == "report" and not placed.has(id) and str(c.get("role", "")) != "" and str(c.get("source", "")) != "":
+		# An unnamed account (testimony_only: a relay with its source hidden) stays its own item:
+		# one relayer's accounts may come from different readers (Nov 28, passing on hides the source).
+		if c.kind == "report" and not placed.has(id) and str(c.get("role", "")) != "" and str(c.get("source", "")) != "" \
+				and not c.get("testimony_only", false):
 			var tk: String = "%s:%s" % [str(c.source), str(c.role)]
 			if not tellings.has(tk):
 				tellings[tk] = []

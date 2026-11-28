@@ -111,6 +111,8 @@ static func normalize_card(card: Dictionary) -> Dictionary:
 		content.source = ""
 		content["anonymous"] = true
 		content["teller"] = card.get("via", "")
+		if str(card.get("hearing", "")) == "private":
+			content["hearing"] = "private"  # passed on in private, not told at the meeting
 	if kind == "martyr" and content.subjects.size() == 2:
 		# Public subject order is actor, saved. Preserve those roles before the
 		# generic person set is sorted for stable receipt identity.
