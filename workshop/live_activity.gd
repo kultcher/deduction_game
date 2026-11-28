@@ -41,7 +41,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		# The Hexer factor reads schedules, sightings and the watch record (day presence).
 		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
 			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening", "watch_log"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
-	var mixed: Array = cards.filter(func(c): return float(c.get("broken_chance", 0.0)) > 0.0 or c.get("count_mix", false)).map(func(c): return [c.get("id", ""), float(c.get("broken_chance", 0.0)), c.get("count_mix", false)])
+	var mixed: Array = cards.filter(func(c): return float(c.get("broken_chance", 0.0)) > 0.0 or c.get("count_mix", false) or not c.get("omen_claimants", []).is_empty()).map(func(c): return [c.get("id", ""), float(c.get("broken_chance", 0.0)), c.get("count_mix", false), c.get("omen_claimants", [])])
 	if not mixed.is_empty():
 		input.append({"list_mix": mixed})
 		if mixed.any(func(m): return m[2]):
