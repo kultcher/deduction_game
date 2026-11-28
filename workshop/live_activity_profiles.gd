@@ -18,7 +18,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor", "sexton"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -29,6 +29,14 @@ static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) ->
 		if not card.get("quoted", false) and not card.get("testimony_only", false) and card.get("source", "") == person and card.kind in ["claim", "report"]:
 			return card.role
 	return ""
+
+## Whether the person's own (unquoted) Sexton report says it tolled on this night.
+static func sexton_tolled(cards: Array, person: String, night: int) -> bool:
+	for card in cards:
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "sexton" and not card.get("quoted", false) \
+				and str(card.get("source", "")) == person and int(card.get("data", {}).get("night", card.get("night", -1))) == night:
+			return true
+	return false
 
 static func role_hearing(cards: Array, person: String, role: String) -> float:
 	var strength = 0.0
@@ -46,7 +54,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 	var paths: Array = [[]]
 	for block in C.BLOCKS:
 		paths.append(C.route(person.home, block))
-	if role in ["", "lamplighter"]:
+	if role in ["", "lamplighter"] or (role == "sexton" and sexton_tolled(cards, person.id, night)):
 		paths.append(C.BLOCKS.keys())
 	var result: Array = []
 	for path in paths:
@@ -320,6 +328,13 @@ static func _unrequited_likelihood_gd(view: Dictionary, cards: Array, person: Di
 						s_v = 0.0
 						s_m = 0.0
 						continue
+					if role == "sexton" and sexton_tolled(cards, person.id, night):
+						# The toll walk first, then no visit; a due visit stays due (as the kernel).
+						var t_m: float = (s_v + s_m) * fo
+						s_n = s_n * fo
+						s_v = 0.0
+						s_m = t_m
+						continue
 					var nn: float = s_n * (1.0 - q) * fo
 					var nv: float = (s_n * q + s_v * q + s_m) * fv
 					var nm: float = s_v * (1.0 - q) * fo
@@ -404,6 +419,9 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 				rate = maxf(rate, lerpf(float(rates.ordinary), float(rates.secret), float(card.get("hearing_weight", 1.0))))
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
+	# A good Sexton walks every block on the night it says it tolled (Michael, Nov 21).
+	if profile in ["gift", "secret", "ordinary"] and role_of(cards, person.id) == "sexton" and sexton_tolled(cards, person.id, night):
+		return [{"path": C.BLOCKS.keys(), "weight": 1.0}]
 	var destinations: Array = C.BLOCKS.keys()
 	if profile == "gift":
 		var role = role_of(cards, person.id)

@@ -99,6 +99,9 @@ internal static class LiveActivityKernel
     public const int MoveRoleMedium = 5;
     public const int MoveRoleOther = 6;
     public const int MoveRoleMonitor = 7;
+    /// The Sexton: it walks every block on the night it tolls (Michael, Nov 21), told by its
+    /// own toll report, whose night is in slot 17.
+    public const int MoveRoleSexton = 8;
 
     // Profile kind codes:
     private const int ProfOrdinary = 0;
@@ -520,7 +523,8 @@ internal static class LiveActivityKernel
                     candBuf[2] = PathSpec.Route(home, BlockMarket);
                     candBuf[3] = PathSpec.Route(home, BlockDocks);
                     candBuf[4] = PathSpec.Route(home, BlockHill);
-                    if (roleCode == MoveRoleEmpty || roleCode == MoveRoleLamplighter)
+                    if (roleCode == MoveRoleEmpty || roleCode == MoveRoleLamplighter
+                        || (roleCode == MoveRoleSexton && SextonTolled(i, night, cardInts, cardCount)))
                     {
                         candBuf[5] = PathSpec.LampTour(home);
                         candCount = 6;
@@ -667,7 +671,9 @@ internal static class LiveActivityKernel
                     }
                     if (allOut) forced |= (1 << i);
                     if (anyOut) possible |= (1 << i);
-                    if (allLamp && !forcedLamp.Contains(i))
+                    // A Sexton's toll walk covers every block too, but it's no sign of a Lamplighter
+                    // (Codex on #562): only a walker the routes force onto the tour is inferred one.
+                    if (allLamp && personMoveRole[i] != MoveRoleSexton && !forcedLamp.Contains(i))
                     {
                         forcedLamp.Add(i);
                     }
@@ -838,6 +844,22 @@ internal static class LiveActivityKernel
         }
     }
 
+    /// Whether the person's own (unquoted) Sexton report says it tolled on this night.
+    private static bool SextonTolled(int personIdx, int night, int[] cardInts, int cardCount)
+    {
+        for (int c = 0; c < cardCount; c++)
+        {
+            int off = c * CardStride;
+            if (cardInts[off] == KindReport && (cardInts[off + 1] & FlagQuoted) == 0
+                && cardInts[off + 7] == MoveRoleSexton && cardInts[off + 2] == personIdx
+                && cardInts[off + 17] == night)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static List<PathSpec> BuildProfilePaths(
         int personIdx,
         int night,
@@ -885,6 +907,14 @@ internal static class LiveActivityKernel
         if (night >= personDeathBeforeNight[personIdx])
         {
             result.Add(PathSpec.StayHome(1.0));
+            return result;
+        }
+        // A good Sexton walks every block on the night it says it tolled (Michael, Nov 21), so a
+        // sighting of it anywhere that night fits; a lying one walks as its evil profile has it.
+        if (roleCode == MoveRoleSexton && profKind != ProfDemon && profKind != ProfMinion
+            && SextonTolled(personIdx, night, cardInts, cardCount))
+        {
+            result.Add(PathSpec.LampTour(personHomes[personIdx], 1.0));
             return result;
         }
 
@@ -1480,6 +1510,18 @@ internal static class LiveActivityKernel
                             sN = (sN + sV + sM) * fo;
                             sV = 0.0;
                             sM = 0.0;
+                            continue;
+                        }
+                        if (roleCode == MoveRoleSexton && SextonTolled(personIdx, night, cardInts, cardCount))
+                        {
+                            // The toll walk comes first (world_night.gd), and a holder already out
+                            // doesn't visit (Burdens.unrequited_visit): no visit tonight, and a
+                            // visit that was due stays due (Codex on #562).
+                            double tN = sN * fo;
+                            double tM = (sV + sM) * fo;
+                            sN = tN;
+                            sV = 0.0;
+                            sM = tM;
                             continue;
                         }
                         double nN = sN * (1.0 - visitChance) * fo;
