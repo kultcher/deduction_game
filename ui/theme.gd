@@ -222,6 +222,14 @@ static func make(mono: Font = null) -> Theme:
 	th.set_color("font_disabled_color", "CheckBox", color("muted"))
 	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 		th.set_stylebox(st, "CheckBox", StyleBoxEmpty.new())
+	# A cream paper square with a gold edge, ticked in red ink (Limner, Nov 28; drawn by
+	# tools/art/draw_checkbox_icons.py). Before this, checkboxes drew no box at all.
+	for pair in [["unchecked", "checkbox_off"], ["checked", "checkbox_on"],
+			["unchecked_disabled", "checkbox_off_disabled"], ["checked_disabled", "checkbox_on_disabled"]]:
+		var icon = tex("ui/" + pair[1])
+		if icon != null:
+			th.set_icon(pair[0], "CheckBox", icon)
+	th.set_constant("h_separation", "CheckBox", 8)
 	th.set_color("font_color", "Label", text)
 	# Text fields: cream with a gold edge.
 	var field = flat(color("paper"), color("border"), 1, 3, 6)
