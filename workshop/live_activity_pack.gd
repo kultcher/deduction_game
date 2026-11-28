@@ -39,6 +39,8 @@ static func _move_role_code(role: String) -> int:
 			return 5
 		"monitor":
 			return 7
+		"sexton":
+			return 8
 		_:
 			return 6
 
@@ -234,6 +236,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 					pos_m |= (1 << pos_i)
 			card_ints[off + 6] = pos_m
 			card_ints[off + 17] = int(data.get("count", 0))
+		elif kind_code == 7 and move_rc == 8: # sexton: the night it says it tolled, in [17]
+			card_ints[off + 17] = int(data.get("night", card.get("night", -1)))
 		elif kind_code == 3: # legacy trace
 			card_ints[off + 11] = _block_code(str(data.get("material", "")))
 
