@@ -350,7 +350,7 @@ func _init() -> void:
 	var first_item = cv.card_list._items[0]
 	var list_at: Vector2 = cv.card_list.get_item_area_rect(first_item).get_center()
 	await _right_click(cv.card_list.global_position + list_at)
-	_check(cv.card_menu.visible and cv._context_card == first_item.get_metadata(0), "a mouse right-click on a text entry opens the same card menu")
+	_check(preload("res://ui/column_menus.gd").is_open(cv.card_menu) and cv._context_card == first_item.get_metadata(0), "a mouse right-click on a text entry opens the same card menu")
 	cv.card_menu.hide()
 	cv.set_panel_open("cards", false)
 	# This test invokes the callback directly; establish the engine drag context

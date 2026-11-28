@@ -381,7 +381,7 @@ func show_card_menu(num: int, at: Vector2i) -> void:
 
 func _on_card_action(action: int) -> void:
 	var num = _context_card
-	card_menu.hide()
+	preload("res://ui/column_menus.gd").close(card_menu)
 	if g == null or num < 1 or num > g.board.size() or g.board[num - 1].get("deleted", false):
 		return
 	match action:
@@ -446,7 +446,7 @@ func _btn(parent: Node, text: String, cb: Callable) -> Button:
 	return b
 
 func set_game(game) -> void:
-	card_menu.hide()
+	preload("res://ui/column_menus.gd").close(card_menu)
 	_context_card = 0
 	g = game
 	for key in panels:

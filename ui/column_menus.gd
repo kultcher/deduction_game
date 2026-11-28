@@ -1,6 +1,7 @@
 ## Presentation-only column layout; native menu indices, IDs and callbacks survive.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
 const LIMIT = 8
 
 static func watch(node: Node) -> void:
@@ -21,8 +22,16 @@ static func bind(menu: PopupMenu) -> void:
 		var count = 0
 		for i in range(menu.item_count):
 			if not menu.is_item_separator(i): count += 1
-		if count > LIMIT:
-			show_columns.call_deferred(menu))
+		# Every menu opens as a panel of plaque buttons like the dialogue options (Michael,
+		# Nov 28: "More ▾" and the board's filters were bare text on a grey box); past
+		# eight entries it splits into balanced columns.
+		if count > 0:
+			_open_if_shown.call_deferred(menu))
+
+## The panel opens a frame after the menu; a menu closed in between stays closed.
+static func _open_if_shown(menu: PopupMenu) -> void:
+	if is_instance_valid(menu) and menu.visible:
+		show_columns(menu)
 
 static func groups(menu: PopupMenu) -> Array:
 	var titles: Array = []
@@ -67,6 +76,9 @@ static func show_columns(menu: PopupMenu) -> void:
 	var owner = menu.get_parent().get_window()
 	var popup = PopupPanel.new()
 	popup.name = "ColumnMenu"
+	# A window added to the root doesn't inherit the screen's theme: carry it over, or the
+	# buttons come out as the engine's grey boxes.
+	popup.theme = theme_for(menu)
 	owner.add_child(popup)
 	menu.set_meta("column_popup", popup)
 	popup.popup_hide.connect(popup.queue_free, CONNECT_ONE_SHOT)
@@ -93,6 +105,7 @@ static func show_columns(menu: PopupMenu) -> void:
 			if group.title != "":
 				var label = Label.new()
 				label.text = group.title
+				label.add_theme_color_override("font_color", UITheme.color("accent"))
 				section.add_child(label)
 			var options = HBoxContainer.new()
 			options.add_theme_constant_override("separation", 12)
@@ -105,13 +118,16 @@ static func show_columns(menu: PopupMenu) -> void:
 			button.text = menu.get_item_text(index)
 			button.icon = menu.get_item_icon(index)
 			button.clip_text = true
-			button.custom_minimum_size.x = 200
+			button.custom_minimum_size = Vector2(200, 30)
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			button.tooltip_text = menu.get_item_tooltip(index) + "\n" + menu.get_item_text(index)
 			button.disabled = menu.is_item_disabled(index)
 			button.set_meta("menu_index", index)
 			if menu.is_item_checkable(index) or menu.is_item_radio_checkable(index):
 				button.text = ("✓ " if menu.is_item_checked(index) else "  ") + button.text
+				# A ticked entry shows as a pressed (red) plaque, like the board's active tabs.
+				button.toggle_mode = true
+				button.set_pressed_no_signal(menu.is_item_checked(index))
 			button.pressed.connect(func(): activate(menu, index, popup, button))
 			column.add_child(button)
 			if not button.disabled:
@@ -144,6 +160,30 @@ static func show_columns(menu: PopupMenu) -> void:
 			return
 	if not all.is_empty(): all[0].grab_focus()
 
+## Whether the menu is showing, as itself or as its panel of buttons.
+static func is_open(menu: PopupMenu) -> bool:
+	if menu.visible:
+		return true
+	var panel = menu.get_meta("column_popup") if menu.has_meta("column_popup") else null
+	return is_instance_valid(panel) and panel.visible
+
+## Close the menu from code, panel included (PopupMenu.hide() alone leaves the panel up).
+static func close(menu: PopupMenu) -> void:
+	menu.hide()
+	var panel = menu.get_meta("column_popup") if menu.has_meta("column_popup") else null
+	if is_instance_valid(panel):
+		panel.hide()
+
+## The theme of the nearest themed control the menu belongs to (or its window's), so the
+## column panel matches the screen it opened from.
+static func theme_for(menu: PopupMenu) -> Theme:
+	var node: Node = menu.get_parent()
+	while node != null:
+		if (node is Control or node is Window) and node.theme != null:
+			return node.theme
+		node = node.get_parent()
+	return null
+
 static func activate(menu: PopupMenu, index: int, popup: PopupPanel, button: Button) -> void:
 	if menu.is_item_disabled(index): return
 	var submenu = menu.get_item_submenu(index)
@@ -158,6 +198,7 @@ static func activate(menu: PopupMenu, index: int, popup: PopupPanel, button: But
 	menu.index_pressed.emit(index)
 	if keep:
 		button.text = ("✓ " if menu.is_item_checked(index) else "  ") + menu.get_item_text(index)
+		button.set_pressed_no_signal(menu.is_item_checked(index))
 	else:
 		popup.hide()
 
