@@ -197,6 +197,7 @@ test_town_ui
 test_town_vibe
 test_trace_art
 test_trapped_explanation
+test_travel_confirm
 test_turned_premise
 test_vigil_nightwatch
 test_vote_shape

@@ -127,6 +127,11 @@ func _test_day_pane(scene) -> void:
 		_check(_labels(scene).has("Talk to " + someone[0].name), "a clicked person is offered for a talk")
 	_press(scene, "Examine " + C.block_name(b0))
 	_press(scene, "Visit " + C.block_name(b0))
+	# Visit asks first, like "Travel to <block>" (Michael, Nov 28); confirm it.
+	var ask = scene.get_node_or_null("TravelConfirm")
+	_check(not g.moved and (ask != null or preload("res://ui/travel_confirm.gd").skip_confirm()), "Visit asks before going")
+	if ask != null:
+		ask.find_children("*", "Button", true, false).filter(func(b): return b.text == "Travel")[0].pressed.emit()
 	_check(g.moved and g.w.loc_block(g.loc) == b0, "Visit goes to the block (%s)" % g.loc)
 
 
