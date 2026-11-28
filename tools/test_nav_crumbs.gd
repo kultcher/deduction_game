@@ -87,6 +87,10 @@ func _run() -> void:
 		stage.queue = [stage.current]
 		if scene.meeting_view.presenting():
 			check(_shape(scene) == [["Town", false], ["Meeting", false], [n.name, true]], "someone speaking: Town ▸ Meeting ▸ %s (%s)" % [n.name, str(_shape(scene))])
+			check(not Crumbs.crumbs(scene)[0].go.is_valid() and Crumbs.crumbs(scene)[1].go.is_valid(), "while they speak, Town can't be taken (the map won't open) but Meeting can")
+			scene.nav_crumbs.refresh(scene)
+			var town_btn: Array = scene.nav_crumbs.get_children().filter(func(b): return b is Button and b.text == "Town")
+			check(not town_btn.is_empty() and town_btn[0].disabled, "so its button is greyed out (Codex)")
 		else:
 			print("(the stage stub didn't count as presenting; speaker crumb not checked)")
 	g.state = "talk"

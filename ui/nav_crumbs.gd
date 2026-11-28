@@ -26,10 +26,13 @@ static func crumbs(m) -> Array:
 	if g.state in ["meeting", "nomination"]:
 		var speaking: bool = m.meeting_view != null and m.meeting_view.presenting()
 		var on_map: bool = m.meeting_show_map and m.map_stage.visible and not speaking
-		out.append({"label": "Town", "current": on_map, "go": func():
+		# While someone speaks the meeting holds the circle (main._refresh_all), so the map
+		# can't open: the Town crumb shows but is greyed out rather than doing nothing (Codex).
+		var to_town: Callable = Callable() if speaking else func():
 			m.meeting_show_map = true
 			m.map.zoom_to("")
-			m._refresh_all()})
+			m._refresh_all()
+		out.append({"label": "Town", "current": on_map, "go": to_town})
 		out.append({"label": "Meeting", "current": not on_map and not speaking, "go": func():
 			if speaking and m.meeting_view.stage != null and m.meeting_view.stage.has_method("clear"):
 				m.meeting_view.stage.clear()
@@ -83,7 +86,7 @@ static func _speaker_name(m) -> String:
 ## Rebuild only when what's shown changes.
 func refresh(m) -> void:
 	var list: Array = crumbs(m)
-	var sig: String = "|".join(PackedStringArray(list.map(func(c): return "%s:%s" % [c.label, c.current])))
+	var sig: String = "|".join(PackedStringArray(list.map(func(c): return "%s:%s:%s" % [c.label, c.current, c.go.is_valid()])))
 	visible = list.size() > 1 or (list.size() == 1 and not list[0].current)
 	if sig == _sig:
 		return
@@ -103,7 +106,9 @@ func refresh(m) -> void:
 		b.set_pressed_no_signal(c.current)
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 15)
-		b.tooltip_text = "You are here" if c.current else "Go to %s" % c.label
+		var go_now: Callable = c.go
+		b.disabled = not c.current and not go_now.is_valid()
+		b.tooltip_text = "You are here" if c.current else ("Not while someone is speaking" if b.disabled else "Go to %s" % c.label)
 		var go: Callable = c.go
 		b.pressed.connect(func():
 			b.set_pressed_no_signal(c.current)

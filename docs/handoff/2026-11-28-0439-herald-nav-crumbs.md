@@ -22,15 +22,17 @@
 
 - The crumbs read "Town" and "Meeting", the block's own name ("Chapel Hill", "Docks"), and the person's name.
 - The separator is "▸".
+- While someone is speaking, the Town crumb is greyed out with the tooltip "Not while someone is speaking". The meeting keeps the circle up during a speech, so the map can't open then (Codex on #591).
 - The duplicates are kept until he says.
 
 ## Measured
 
-- New suite `tools/test_nav_crumbs.gd` (13 checks, in the fast list):
+- New suite `tools/test_nav_crumbs.gd` (15 checks, in the fast list):
   - no row on the whole town before you move;
   - `Town ▸ Docks` in a close-up, and Town zooms out;
   - talking shows `Town ▸ <block> ▸ <person>`; the block crumb shows the block with the talk waiting, the person's crumb brings it back, and Town shows the whole town;
   - the current crumb is pressed;
-  - a meeting shows `Town ▸ Meeting`, the map peek marks Town, and a speaker gets their own crumb.
+  - a meeting shows `Town ▸ Meeting`, the map peek marks Town, and a speaker gets their own crumb;
+  - during a speech, Town is greyed out and Meeting still works.
 - Suites passing: `test_nav_crumbs`, `test_map_return`, `test_day_conversation_view`, `test_conversation_gifts`, `test_control_flow`, `test_ui`, `test_approach_vn`, `test_playtest_ui_nov22`, `test_day_plaque`, `test_audit_ui`.
 - Checked by eye at 1280×800 (close-up and conversation) and 1920×1080 (block crumb mid-conversation).
