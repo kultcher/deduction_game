@@ -15,22 +15,23 @@ func _check(cond: bool, msg: String) -> void:
 		_fails += 1
 		print("FAIL: " + msg)
 
-func _play_one(seed_v: int) -> void:
+func _play_one(seed_v: int) -> Dictionary:
 	var g = Game.new()
 	g.detailed_logging = false
 	g.log_dir = "user://logs/test_case_memory"
 	g.new_case(seed_v, 7)
 	var guard := 0
-	while g.state != "over" and guard < 60:
+	while g.state != "over" and guard < 300:
 		guard += 1
 		match g.state:
 			"day": g.command("wait")
 			"approach": g.command("decline")
 			"talk": g.command("bye")
-			"meeting": g.command("wait")
+			"meeting": g.command("done" if g.town_quiet else "wait")
 			"nomination": g.command("no")
 			"night": g.command("sleep")
 			_: break
+	return {"state": g.state, "days": g.w.day, "commands": guard}
 
 func _init() -> void:
 	var bridge = SolverBackend._bridge()
@@ -44,7 +45,10 @@ func _init() -> void:
 	var cs_after: Array[float] = []
 
 	for i in range(4):
-		_play_one(42 + i)
+		var res: Dictionary = _play_one(42 + i)
+		_check(res.state == "over",
+			"game %d (seed %d) reached over state (got '%s' on day %d after %d commands)" % [
+				i + 1, 42 + i, res.state, res.days, res.commands])
 		WorkshopCaches.clear_all()
 		var m: PackedInt64Array = bridge.GetMemoryStats(true)
 		var gd_mb: float = OS.get_static_memory_usage() / 1048576.0
