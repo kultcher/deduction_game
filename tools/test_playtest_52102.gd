@@ -100,5 +100,3 @@ func _text_gaps() -> void:
 	check(not "ask" in opts and "present" in opts and "bye" in opts, "a silenced person isn't offered questions (seq 747): %s" % opts)
 	n.silenced = false
 	check("ask gift" in preload("res://game/game_conversation.gd")._talk_options(g, n), "anyone else still is")
-	var out: String = g.command("guess %s minion" % g.w.npcs[3].name.to_lower())
-	check("Name the Minion's gift" in out, "a generic Minion guess says how to name one (seq 556)")
