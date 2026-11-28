@@ -61,7 +61,7 @@
 
 ## Measured
 
-- **New:** `tools/test_withheld_asks.gd`, 17 checks, on the slow CI list (about 2.5 minutes).
+- **New:** `tools/test_withheld_asks.gd`, 18 checks, on the slow CI list (about 2.5 minutes).
   - **Private asks:** 11 asks out of 80 owed pairs, against about 14.5 expected from the
     approved formula. Never twice a day, and never when nothing is owed: a claim made today, a
     reading already heard, a Gravedigger's claim, or an evil asker.
@@ -82,6 +82,12 @@
     - a sighting held back from a Call on gets `shared_at` once volunteered (24 of 24);
     - a pressed claimant's sighting reaches the town as the claimant's (17 of 17; 2 without
       the fix).
+  - **A dead reader's reading held back from a Call on (Codex on #588):** gets `shared_at` once
+    the NPC relays it to the town (91 of 91; 0 without the fix).
+- **`test_own_night_knowledge` (Lantern's, changed with Lantern's agreement):** the new ask rolls
+  moved its relay search onto seed 100027, where the relayer is already at 0.989 without the
+  relay, leaving nothing to measure. The search now skips a relayer above 0.95 and lands on
+  100031, as before (+4.32 log-odds). The check's bar is unchanged.
 - **Also pass:** test_call_on_respond, test_call_on (every voice has both new lines),
   test_conversation_gifts, test_silenced_shares_nothing, test_dialogue_voices,
   test_dialogue_fixes_testimony, test_silence_pressure.

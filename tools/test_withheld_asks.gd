@@ -66,6 +66,7 @@ func _init() -> void:
 	_meeting_press()
 	_call_on_record()
 	_sightings()
+	_late_readings()
 	print("Withheld asks: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -359,3 +360,49 @@ func _sightings() -> void:
 		heard += int(w.living_good().any(func(l): return l != c and l != n and l.heard.has(key)))
 	print("pressed claimants who told a sighting: %d; heard by the town: %d" % [pressed, heard])
 	_check(pressed >= 3 and heard == pressed, "a pressed claimant's night sighting reaches the town as the claimant's")
+
+## A dead reader's reading, held back from a Call on by the one it told: the refusal gets
+## shared_at once that NPC relays it to the town (Codex on #588).
+func _late_readings() -> void:
+	var recs := 0
+	var closed := 0
+	for sd in range(8700, 8800):
+		var w = _world(sd, 3)
+		var src = null
+		for m in w.living_good():
+			if not m.info_log.is_empty():
+				src = m
+				break
+		if src == null:
+			continue
+		var e: Dictionary = src.info_log[0]
+		e["shared"] = false
+		var c = null
+		for m in w.living_good():
+			if m != src and MindCallOn._unshared_readings(w, m).is_empty() and MindCallOn._untold_sightings(w, m).is_empty():
+				c = m
+				break
+		if c == null:
+			continue
+		src.alive = false
+		c.known_claims[src.id] = {"role": src.role, "readings": [e], "via": src.id, "first_claimed_day": 1}
+		_closed(c)
+		c.traits["composure"] = 1.0
+		c.trust = 0.0
+		c.npc_trust[src.id] = 0.0
+		var r: Dictionary = MindCallOn.respond(w, c)
+		if not r.outcome in ["deferred", "deflected"]:
+			continue
+		var rec: Dictionary = w.withheld_refusals[-1]
+		if rec.claim.role != str(e.get("role", "")) or rec.claim.day != int(e.get("day", -1)):
+			continue
+		recs += 1
+		c.traits["privacy"] = 0.0
+		c.npc_trust[src.id] = 1.0
+		for k in range(20):
+			MindMeeting._late_relay(w, c, [], [])
+			if c.told_to.has("town|late:%s:%d:%s" % [src.id, int(e.get("day", -1)), str(e.get("role", ""))]):
+				break
+		closed += int(rec.has("shared_at"))
+	print("late-reading refusals at a Call on: %d; closed once relayed: %d" % [recs, closed])
+	_check(recs >= 3 and closed == recs, "a dead reader's reading held back from a Call on gets shared_at once relayed")
