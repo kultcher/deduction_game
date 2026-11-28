@@ -70,6 +70,7 @@ test_fabrication_check
 test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
+test_free_move
 test_gift_doubt
 test_gift_doubt_good
 test_gossip_tiers
@@ -123,6 +124,7 @@ test_night_sighting_rebuttal
 test_nightwatch_whole_list
 test_nomination_and_evil_tuning
 test_nomination_case
+test_nov28_ui
 test_npc_chatter
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness

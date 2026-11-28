@@ -119,5 +119,7 @@ func _approved_wording() -> void:
 	check(["confessor", "monitor", "psychologist"].all(func(r): return C.ROLES[r]["desc"].begins_with("Each night (not the night before you arrived),")), "(h) the other three night gifts")
 	var src: String = FileAccess.get_file_as_string("res://game/game_meeting.gd") + FileAccess.get_file_as_string("res://game/game_day_night.gd") + FileAccess.get_file_as_string("res://game/game_conversation.gd")
 	for line in [", or 'clemency' to spare them", "No one rises to speak for or against %s.", "You promised %s a vigil on %s tonight.",
-			"(you may still move once within %s: 'go <place>')", "e.g. 'go town hall', or a crime scene by the victim's name"]:
+			"e.g. 'go town hall', or a crime scene by the victim's name"]:
 		check(line in src, "the approved line is in place: %s" % line)
+	# (f), the move hint, went with the one-move rule itself (#586, Michael Nov 28).
+	check(not "move once within" in src, "(f) the one-move hint is gone with its rule")
