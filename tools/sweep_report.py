@@ -179,6 +179,32 @@ def bluff_stats(games):
     return stats
 
 
+
+def marked_watch(games):
+    """The Marked watch (Michael, Nov 27): (a) Marked-dealt games where the real holder was
+    never hanged, both among games with an evil Marked claim and among all Marked games; (b) once the holder was hanged, the evil
+    claimer's change in the town's mean evil chance (last sample before the hanging against
+    the first after it) and what became of them, by Demon or Minion. Records from before the
+    watch (no `burden_claims`) are skipped."""
+    watched = [g for g in games if "burden_claims" in g and g.get("secret") == "marked"]
+    with_evil = [g for g in watched if any(c.get("kind") == "marked" and c.get("alignment_at_claim") == "evil" for c in g["burden_claims"])]
+    never_all = [g for g in watched if g.get("after_holder", {}).get("holder_hanged_day", -1) < 0]
+    never = [g for g in never_all if g in with_evil]
+    rows = {"demon": [], "minion": []}
+    for g in with_evil:
+        ah = g.get("after_holder", {})
+        hd = ah.get("holder_hanged_day", -1)
+        if hd < 0:
+            continue
+        for c in ah.get("evil_claimers", []):
+            series = g.get("claimer_suspicion", {}).get(c["id"], [])
+            before = [x["mean_evil"] for x in series if x["day"] < hd or (x["day"] == hd and x["phase"] == "dawn")]
+            after = [x["mean_evil"] for x in series if x["day"] > hd or (x["day"] == hd and x["phase"] == "after_meeting")]
+            delta = (after[0] - before[-1]) if before and after else None
+            won = g.get("winner") == "evil"
+            rows["demon" if c.get("demon") else "minion"].append({"delta": delta, "hanged": c.get("hanged"), "survived": c.get("survived"), "won": won})
+    return {"marked_games": len(watched), "with_evil_claim": len(with_evil), "holder_never_hanged": len(never), "holder_never_hanged_all": len(never_all), "after_holder": rows}
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("jsonl")
@@ -371,6 +397,23 @@ def main():
                 out.append("| %d | %s | %d | %d (%s) | %d (%s) | %d | %d |" % (npcs, cell_label(k), n, flips[0], pct(flips[0] / n),
                                                                             flips[1], pct(flips[1] / n), flips[2], flips[3]))
     out.append("")
+
+    # ---------------- the Marked watch
+    mw = marked_watch(games)
+    summary["marked_watch"] = mw
+    if mw["marked_games"]:
+        out.append("## Marked watch\n")
+        out.append("- Games with Marked dealt: %d; with an evil Marked claim: %d." % (mw["marked_games"], mw["with_evil_claim"]))
+        out.append("- (a) The real holder was never hanged: %d of %d games with an evil Marked claim; %d of %d Marked games in all." % (mw["holder_never_hanged"], mw["with_evil_claim"], mw["holder_never_hanged_all"], mw["marked_games"]))
+        out.append("- (b) After the holder's hanging, the evil claimer:\n")
+        out.append("| Claimer | n | Mean change in town's evil chance | Hanged | Survived | Evil won |")
+        out.append("|---|---|---|---|---|---|")
+        for kind in ["demon", "minion"]:
+            rs = mw["after_holder"][kind]
+            ds = [r["delta"] for r in rs if r["delta"] is not None]
+            out.append("| %s | %d | %s | %d | %d | %d |" % (kind.capitalize(), len(rs), ("%+.3f" % mean(ds)) if ds else "—",
+                sum(1 for r in rs if r["hanged"]), sum(1 for r in rs if r["survived"]), sum(1 for r in rs if r["won"])))
+        out.append("")
 
     # ---------------- health
     out.append("## Health\n")

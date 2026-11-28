@@ -126,6 +126,10 @@ var _demon_key = ""
 var _demon_guess = ""
 var last_commands: int = 0
 var last_guard: int = 0
+## The Marked watch (tools/sweep_record.gd): the good town's mean evil chance for each person,
+## sampled at each dawn and after each meeting. Reads only.
+var mw_samples: Array = []
+var _mw_last_key: String = ""
 
 func _init() -> void:
 	var args = _parse(OS.get_cmdline_user_args())
@@ -186,7 +190,7 @@ func _init() -> void:
 		if jsonl != null:
 			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": _mode_name(),
 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
-				"commands": last_commands, "guard": last_guard, "stuck": r["metrics"].get("guard_exhausted", false),
+				"commands": last_commands, "guard": last_guard, "marked_watch_samples": mw_samples, "stuck": r["metrics"].get("guard_exhausted", false),
 				"wall_s": (Time.get_ticks_msec() - t0) / 1000.0})
 			jsonl.store_line(JSON.stringify(rec))
 			jsonl.flush()
@@ -275,6 +279,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var guard = 0
 	var scale_days: Array = []
 	var recorded_day = -1
+	mw_samples = []
+	_mw_last_key = ""
 	while g.state != "over" and guard < 600:
 		guard += 1
 		if g.state == "night" and recorded_day != g.w.day:
@@ -291,6 +297,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		if action_kind != "" and not g.last_events.any(func(e): return e.k == "error"):
 			new_talk_counts[action_kind] += 1
 		_out(reply)
+		_mw_sample()
 		if "Cannot present" in reply:
 			blocked_cmds[cmd] = true # never retry a blocked presentation
 	last_commands = guard
@@ -372,6 +379,33 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 
 ## One day's suspicion picture for every living good NPC (real minds only), read
 ## against the truth. Uses the same bounded reads the simulation acts on.
+## A Marked-watch sample at each dawn ("day") and after each meeting ("night"): for every
+## person, the mean evil chance the good living NPCs hold for them (their last connections
+## refresh, DemonCandidates.evil_chances_of_npc). Reads only: no draws, nothing written back.
+func _mw_sample() -> void:
+	if g == null or g.w == null or not (g.state in ["day", "night"]):
+		return
+	var key: String = "%d:%s" % [g.w.day, g.state]
+	if key == _mw_last_key:
+		return
+	_mw_last_key = key
+	var DC = preload("res://workshop/demon_candidates.gd")
+	var sums: Dictionary = {}
+	var counts: Dictionary = {}
+	for n in g.w.living():
+		if n.is_evil():
+			continue
+		var post: Dictionary = DC.evil_chances_of_npc(n)
+		for pid in post:
+			if str(pid) == n.id:
+				continue
+			sums[pid] = float(sums.get(pid, 0.0)) + float(post[pid])
+			counts[pid] = int(counts.get(pid, 0)) + 1
+	var mean: Dictionary = {}
+	for pid in sums:
+		mean[pid] = snappedf(float(sums[pid]) / float(counts[pid]), 0.0001)
+	mw_samples.append({"day": g.w.day, "phase": "dawn" if g.state == "day" else "after_meeting", "mean_evil": mean})
+
 func _scale_snapshot() -> Dictionary:
 	var w = g.w
 	var npcs: Array = []

@@ -101,6 +101,19 @@ One JSON object per game. Flat fields:
   `good_secret_walkers_executed` (Lovers or Sleepwalker hanged).
 - **Information:** `impaired_readings` (good readings that were false: poison,
   Delusional, Marked), `impaired_readings_shared`, `fake_info` (evil fabrications).
+- **The Marked watch** (Michael, Nov 27; read-only, so records match those without it apart from
+  these fields):
+  - `burden_claims`: every burden claim, public or private (the `burden_claim` dev-log entries),
+    as `{who, kind, day, phase, public, alignment_at_claim, role, reactive, why}`. `reactive` is
+    read from the claim's logged reason: a reading, a nomination, the town turning on them, a
+    sighting that caught them out, or a rival's claim.
+  - `claimer_suspicion`: `{claimer: [{day, phase, mean_evil}]}`, the good living townsfolk's mean
+    evil chance for each claimer (their last connections refresh, not suspicion), sampled at
+    each dawn (`phase: "dawn"`) and after each meeting (`"after_meeting"`).
+  - `after_holder`: `{holder, holder_hanged_day, evil_claimers}`, for the real Marked holder.
+    `evil_claimers` is filled only when the holder was hanged: each evil Marked claimer's `id`,
+    `role`, `demon`, `first_nominated_after` (the first day it was nominated after the
+    hanging, or -1), `hanged` and `survived`.
 - **Bot:** `player_commands`, `player_nominations`, `player_nominations_executed_evil`,
   `player_nominations_executed_good`.
 - **Health:** `wall_s`, `guard` (commands issued), `stuck` (the 600-command guard ran
@@ -125,6 +138,10 @@ A lost game has only identity fields plus `failed` (`crash` / `timeout` / `start
 - **Pairs** only list role pairs with n ≥ 200 both ways and a 10-point difference.
 - **Paired seeds** compare bot and passive on the same deal: how often the player turns
   a loss into a win, and the reverse.
+- **Marked watch** (games with Marked dealt and the watch fields):
+  - (a) the games with an evil Marked claim where the real holder was never hanged;
+  - (b) once the holder was hanged, each evil claimer's change in the town's mean evil chance (the last sample before the hanging against the first after it) and how often it was hanged, survived, or evil won, by Demon and Minion.
+  - The two signs Michael watches: a holder who is never hanged (Marked isn't helping evil), and the clash clearing the evil claimer too strongly once the holder hangs.
 - **Health** lists stuck, failed and error games with seeds, seeds with no record, wall
   times and the slowest seeds. Stuck games are left out of every rate.
 
