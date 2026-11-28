@@ -61,7 +61,7 @@
 
 ## Measured
 
-- **New:** `tools/test_withheld_asks.gd`, 15 checks, on the slow CI list (about 2.5 minutes).
+- **New:** `tools/test_withheld_asks.gd`, 17 checks, on the slow CI list (about 2.5 minutes).
   - **Private asks:** 11 asks out of 80 owed pairs, against about 14.5 expected from the
     approved formula. Never twice a day, and never when nothing is owed: a claim made today, a
     reading already heard, a Gravedigger's claim, or an evil asker.
@@ -78,6 +78,10 @@
       recorded as public with the presser as asker.
   - **Call on:** 27 refusals of the Demonologist's ask were recorded with asker "player". Each
     got `shared_at` when the reading later came out before the town.
+  - **Night sightings (Codex on #588):**
+    - a sighting held back from a Call on gets `shared_at` once volunteered (24 of 24);
+    - a pressed claimant's sighting reaches the town as the claimant's (17 of 17; 2 without
+      the fix).
 - **Also pass:** test_call_on_respond, test_call_on (every voice has both new lines),
   test_conversation_gifts, test_silenced_shares_nothing, test_dialogue_voices,
   test_dialogue_fixes_testimony, test_silence_pressure.

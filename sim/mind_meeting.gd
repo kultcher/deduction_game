@@ -341,6 +341,7 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array, bump: f
 		if n.told_to.has(_town_sighting_key(n, b)) or not _public_sighting_allowed(w, n, b): continue
 		var report = sighting_report(w, n, b, b.day)
 		n.told_to[_town_sighting_key(n, b)] = true
+		MindWithheld.note_shared(w, n, {"role": "", "day": int(b.day)}, "public")  # a sighting held back from a Call on, now told
 		_add_observation(groups, report.observation)
 		facts.append(report.fact)
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
