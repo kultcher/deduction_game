@@ -530,7 +530,7 @@ class Social:
 	const ROLE_WILLING_TRUST_SCALE = 0.5
 	const ROLE_WILLING_PRESSURE_SCALE = 0.3
 	const ROLE_WILLING_THRESHOLD = 0.55
-	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.5
+	const CORRECT_ROLE_GUESS_BONUS_PROB = 0.6  # was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure)
 
 
 # ---------------------------------------------------------------- 6. Town Meeting: Claims, Consensus, Nominations & Votes
@@ -774,6 +774,10 @@ class Dialogue:
 	## Demon and a Scion are careful.
 	const PRESSED_AGAIN_BACKUP_MINION = 0.6
 	const PRESSED_AGAIN_BACKUP_CAREFUL = 0.3
+	## "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up
+	## gets the same deflection as a wrong one, and either may show the press's nervous tell, at
+	## PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this.
+	const GUESS_NERVES_STRENGTH = 0.5
 
 	## Night whereabouts, confession, stonewalling & slip rates
 	const CONFESS_TRUST_PIVOT = 0.6
