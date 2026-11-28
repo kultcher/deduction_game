@@ -62,7 +62,8 @@ func _run() -> void:
 	if not people.is_empty():
 		people[0].pressed.emit()
 		await _frames(2)
-		check(pm.is_item_checked(0) and people[0].button_pressed and people[0].text.begins_with("✓"), "pressing one ticks it, and it turns red")
+		check(pm.is_item_checked(0) and people[0].button_pressed and people[0].text.begins_with("☑"), "pressing one ticks it, and it turns red")
+		check(people.size() < 2 or people[1].text.begins_with("☐"), "an unticked one shows an empty box, so it reads as a setting")
 	scene.queue_free()
 	print("Plaque menus: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

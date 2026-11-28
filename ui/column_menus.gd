@@ -79,6 +79,8 @@ static func show_columns(menu: PopupMenu) -> void:
 	# A window added to the root doesn't inherit the screen's theme: carry it over, or the
 	# buttons come out as the engine's grey boxes.
 	popup.theme = theme_for(menu)
+	# A gold edge and room inside, to sit with the plaques (Limner).
+	popup.add_theme_stylebox_override("panel", UITheme.flat(UITheme.color("popup"), UITheme.color("accent").darkened(0.15), 2, 6, 10))
 	owner.add_child(popup)
 	menu.set_meta("column_popup", popup)
 	popup.popup_hide.connect(popup.queue_free, CONNECT_ONE_SHOT)
@@ -124,11 +126,18 @@ static func show_columns(menu: PopupMenu) -> void:
 			button.disabled = menu.is_item_disabled(index)
 			button.set_meta("menu_index", index)
 			if menu.is_item_checkable(index) or menu.is_item_radio_checkable(index):
-				button.text = ("✓ " if menu.is_item_checked(index) else "  ") + button.text
+				# A box, ticked or not, says "this is a setting" before it's on (Limner).
+				button.text = ("☑ " if menu.is_item_checked(index) else "☐ ") + button.text
 				# A ticked entry shows as a pressed (red) plaque, like the board's active tabs.
 				button.toggle_mode = true
 				button.set_pressed_no_signal(menu.is_item_checked(index))
 			button.pressed.connect(func(): activate(menu, index, popup, button))
+			# An untitled separator keeps its entries apart with a gap (the dev log and Exit
+			# in More; Limner).
+			if index > 0 and menu.is_item_separator(index - 1) and menu.get_item_text(index - 1) == "" and column.get_child_count() > 0:
+				var gap := Control.new()
+				gap.custom_minimum_size.y = 10
+				column.add_child(gap)
 			column.add_child(button)
 			if not button.disabled:
 				buttons.append(button)
@@ -197,7 +206,7 @@ static func activate(menu: PopupMenu, index: int, popup: PopupPanel, button: But
 	menu.id_pressed.emit(menu.get_item_id(index))
 	menu.index_pressed.emit(index)
 	if keep:
-		button.text = ("✓ " if menu.is_item_checked(index) else "  ") + menu.get_item_text(index)
+		button.text = ("☑ " if menu.is_item_checked(index) else "☐ ") + menu.get_item_text(index)
 		button.set_pressed_no_signal(menu.is_item_checked(index))
 	else:
 		popup.hide()
