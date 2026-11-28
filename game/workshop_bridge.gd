@@ -180,6 +180,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		input["own_home"] = own_home(w, n, input.listener.own_outings)
 		if not n.is_evil():
 			input["own_burden"] = own_burden(n)
+			input.listener["withheld"] = withheld_seen(w, n)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -200,6 +201,20 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		input.receipts.append({"private": true, "card": own_guard})
 	# No role/alignment certainty is manufactured from truth or inferred from a gift.
 	input.issues.append({"code": "listener_history_partial", "fact": "", "detail": "Legacy knowledge lacks complete report/learning times and withdrawal receipts; own and known readings are retained."})
+
+## The refusals to share a reading that `n` saw (sim/mind_withheld.gd's record): the ones it
+## asked for in private, and every one before the town. For Connections.withheld.
+static func withheld_seen(w, n) -> Array:
+	var out: Array = []
+	for r in w.withheld_refusals:
+		var seen_by: Array = r.get("known_to", [])
+		if str(r.get("claimant", "")) == n.id or not (n.id in seen_by or "public" in seen_by):
+			continue
+		var claim: Dictionary = r.get("claim", {})
+		out.append({"claimant": str(r.claimant), "role": str(claim.get("role", "")), "night": int(claim.get("day", -1)),
+			"day": int(r.get("day", 0)), "kind": str(r.get("kind", "")),
+			"shared_day": int(r.shared_at) / 4 if r.has("shared_at") else -1})
+	return out
 
 static func _reading(source: String, e: Dictionary) -> Dictionary:
 	var card = {"kind": "info", "source": source, "subject": [], "role": e.get("role", ""),

@@ -2,7 +2,7 @@
 
 **Status: direction from Michael (Nov 22, 2026); values approved Nov 28. "Call on" is built (#542,
 #545); the NPC asking and pressing, and the refusal record, are built (Beadle, Nov 28,
-`sim/mind_withheld.gd`); the cost is not yet.** Written by Claude-Vicar,
+`sim/mind_withheld.gd`); the cost is built (Lantern, Nov 28, `Connections.withheld`).** Written by Claude-Vicar,
 from a design pass with Michael on the Coroner's question from playtest 51795 (PR #526).
 - **What happened:** Fenwick, the Poisoner, claimed Archivist on day 1 and never gave the
   reading the claim implies. A bug caused that, and Beadle has fixed it. Even so, no NPC asked
@@ -52,6 +52,15 @@ now and then, never as a matter of course, so the threads stay the player's to p
 - **Alignment-blind** (Michael): the cost ignores whether good or evil is likelier to dodge.
 - **It doesn't stack** over the same claim, and it's discounted by the asker's trust.
 - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
+- **As built** (`workshop/connections.gd`, `withheld`; `Tuning.Workshop.WITHHELD_*`):
+  - **The cost:** one log-odds term on the claimant in each listener's belief refresh, beside its items, core and stored cases.
+  - **Who counts it:** a listener counts the refusals it saw, from `game/workshop_bridge.gd` `withheld_seen`. Those are the private refusals it asked for, and every refusal made before the town.
+  - **No stacking:** one cost per reading (claimant, gift and night), at the strongest kind seen. It ages from the first refusal to today, or to the day the reading came out.
+  - **Trust:** scaled by 2 × (1 − the listener's trust in the claimant). At typical trust it counts as is.
+  - **From even odds:**
+    - a deferral is 53% suspected;
+    - a deflection 62%, then 68% on its third day out and 76% on its fifth.
+  - **Not covered:** evil minds, and the Test juror, which has no listener of its own.
 
 ## 5. The player's version: a softer ask at the meeting
 

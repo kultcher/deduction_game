@@ -1089,6 +1089,18 @@ class Workshop:
 	## presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade).
 	const CONNECTIONS_CASE_FADE_BOUGHT = 0.9
 	const CONNECTIONS_CASE_BUYIN_FULL = 0.7
+	## Withheld readings (docs/design/withheld_readings.md §4; Michael, Nov 28): a claimant
+	## asked for the reading its gift owes, who holds it back, looks a little more suspicious
+	## to whoever saw the refusal (the asker in private, everyone at the meeting). A fixed
+	## cost, the same whatever the claimant's alignment: odds of DEFER_FACTOR for a refusal
+	## with a reason (a friend, a burden, distrust of the asker), DEFLECT_FACTOR for a bare
+	## one, each growing DAY_STEP-fold in log-odds for every further day the reading stays
+	## out. One cost per withheld reading, the strongest seen, at the listener's distrust of
+	## the claimant (typical trust counts it as is, full trust cancels it, none doubles it).
+	## Once the reading comes out it stops growing, and a deferral's cost is lifted.
+	const WITHHELD_DEFER_FACTOR = 1.15
+	const WITHHELD_DEFLECT_FACTOR = 1.6
+	const WITHHELD_DAY_STEP = 1.25
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
