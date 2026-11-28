@@ -182,9 +182,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CIVIL_TALK_BASE` | `0.04` | Conversation, pressing, promises, nominations, clemency & presentations | `sim/mind_dialogue.gd` |
 | `CIVIL_TALK_PRIVACY_DAMP` | `0.0` | Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5) | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_LIMIT` | `3` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
-| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
+| `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social_approaches.gd` |
@@ -314,7 +314,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
 | `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
 | `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
-| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social_approaches.gd` |
+| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.6` | was 0.5 (Michael, Nov 27: a right first guess a little likelier to open them up; no lasting pressure) | `sim/social_approaches.gd` |
 
 ## Meeting
 
@@ -483,9 +483,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_press.gd` |
 | `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_press.gd` |
 | `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind_cases.gd` |
-| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
-| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
+| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
+| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd`, `sim/social_approaches.gd` |
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
+| `PRESSED_AGAIN_OPENNESS` | `0.15` | Caught out and pressed again (Michael, Nov 20 plan; values Nov 27). A good NPC that owned a night but kept the reason: each earlier press about that night adds this to the openness check for giving the reason (its gift, or a known burden's walk). | `sim/mind_dialogue.gd`, `sim/mind_press.gd` |
+| `PRESSED_AGAIN_BACKUP_MINION` | `0.6` | Evil pressed again about a night it owned with no walking bluff to tell: the chance per re-press that it backs into a walking gift no one has claimed. A Minion is bolder; the Demon and a Scion are careful. | `sim/mind_press.gd` |
+| `PRESSED_AGAIN_BACKUP_CAREFUL` | `0.3` |  | `sim/mind_press.gd` |
+| `GUESS_NERVES_STRENGTH` | `0.5` | "Are you the <gift>?" (playtest 52102, Michael, Nov 27): a right guess short of owning up gets the same deflection as a wrong one, and either may show the press's nervous tell, at PRESS_NERVES_HIDING (right) or _HONEST (wrong) x (1 - Composure) x this. | `sim/social_approaches.gd` |
 | `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_answers.gd` |
 | `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_answers.gd` |
 | `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
@@ -729,7 +733,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DOUBT_GD_GOOD_TRUST_MIN` | `0.60` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_MISLED_SCALE` | `0.8` |  | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_UNRELIABLE_SCALE` | `0.5` |  | `workshop/source_doubt.gd` |
-| `DOUBT_ARG_DELUSIONAL_SCALE` | `0.7` | An argued "carries a hidden burden: Delusional": d = this x the argument's weight (capped at DOUBT_ARG_CAP) becomes the odds 1 / (1 - d) on the subject's Delusional worlds (shared Delusion doubt, Nov 22), no longer a discount on their readings. At full weight, about 3.3. | `workshop/source_doubt.gd` |
 | `DOUBT_ARG_CAP` | `0.9` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/source_doubt.gd` |
 | `DOUBT_CHALLENGE_STRONG_AGR` | `0.75` |  | `workshop/source_doubt.gd` |

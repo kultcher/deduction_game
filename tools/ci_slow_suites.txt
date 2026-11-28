@@ -8,11 +8,14 @@ test_call_on_respond
 test_connections_cache
 test_conversation_gifts
 test_frame_planter_fixes
+test_guess_tell
 test_npc_interactions
 test_own_night_knowledge
+test_pressed_again
 test_relay_bluff_games
 test_self_sighting
 test_shadow
+test_silenced_shares_nothing
 test_social_credibility
 test_trace_solver
 test_workshop_action

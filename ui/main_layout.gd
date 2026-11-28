@@ -128,23 +128,6 @@ static func build(m) -> void:
 	m.map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	m.map.clicked.connect(m._on_map_clicked)
 	m.map_stage.add_child(m.map)
-	m.day_panel = PanelContainer.new()
-	m.day_panel.name = "DayPhasePanel"
-	m.day_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.day_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	m.day_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	m.day_panel.grow_vertical = Control.GROW_DIRECTION_END
-	m.day_panel.offset_top = 8
-	m.day_panel.custom_minimum_size = Vector2(124, 0)
-	m.day_panel.add_theme_stylebox_override("panel", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 2, 10, 6))
-	m.day_label = Label.new()
-	m.day_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	m.day_label.add_theme_font_size_override("font_size", 16)
-	m.day_label.add_theme_constant_override("line_spacing", 1)
-	m.day_label.add_theme_color_override("font_color", UITheme.color("ink"))
-	m.day_panel.add_child(m.day_label)
-	m.map_stage.add_child(m.day_panel)
 	m.conversation_view = preload("res://ui/day_conversation_view.gd").new()
 	m.conversation_view.visible = false
 	m.map_stage.add_child(m.conversation_view)
@@ -348,6 +331,22 @@ static func build(m) -> void:
 	m.case_view.workshop_execute = m._run_workshop
 	m.case_view.build(m.mono)
 	m.case_view.changed.connect(m._refresh_side)
+
+	m.day_panel = PanelContainer.new()
+	m.day_panel.name = "DayPhasePanel"
+	m.day_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.day_panel.custom_minimum_size = Vector2(124, 0)
+	m.day_panel.add_theme_stylebox_override("panel", UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 2, 10, 6))
+	m.day_label = Label.new()
+	m.day_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	m.day_label.add_theme_font_size_override("font_size", 16)
+	m.day_label.add_theme_constant_override("line_spacing", 1)
+	m.day_label.add_theme_color_override("font_color", UITheme.color("ink"))
+	m.day_panel.add_child(m.day_label)
+	# On every screen (Michael, Nov 27): above the map, the meeting, a conversation and the
+	# Case board, placed each frame at the top centre of whichever is showing (main.gd).
+	m.add_child(m.day_panel)
 	m.case_view.notes_requested.connect(m._open_notes)
 	m.case_view.roles_requested.connect(func(): Roles.open(m))
 	m.case_view.visibility_changed.connect(func():

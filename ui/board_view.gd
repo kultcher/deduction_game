@@ -886,7 +886,7 @@ func _gui_input(ev: InputEvent) -> void:
 					return
 			var h2 = _hit(mb.position)
 			if not h2.is_empty():
-				card_context_requested.emit(h2["n"], Vector2i(get_screen_transform() * mb.position))
+				card_context_requested.emit(h2["n"], preload("res://ui/column_menus.gd").popup_point(self, mb.position))
 				accept_event()
 		elif mb.button_index == MOUSE_BUTTON_MIDDLE:
 			_panning = mb.pressed

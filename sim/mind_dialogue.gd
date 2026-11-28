@@ -166,13 +166,14 @@ static func reveal_trait(w, n) -> String:
 	w.dlog.add("trait_reveal", "player", n.id, {"trait": t, "tier": tier, "value": n.traits[t]})
 	return "You get the measure of %s: %s. (%s: %s)" % [n.name, C.TRAIT_TEXT[t][tier] % n.name, t.capitalize(), tier]
 
-## Disclosure tier the NPC is willing to reach right now (1..4).
-static func _target_tier(w, n, trace_id: int = 0) -> int:
+## Disclosure tier the NPC is willing to reach right now (1..4). `pressed_again` is added to
+## openness when it's pressed again about a night it owned (Tuning.Dialogue.PRESSED_AGAIN_OPENNESS).
+static func _target_tier(w, n, trace_id: int = 0, pressed_again: float = 0.0) -> int:
 	# One mood per NPC per day (a fixed daily sample, like fear), so asking again the same
 	# day can't fish for a better roll (Oct 30, docs/social_trust_pass.md).
 	var jitter: float = (_day_roll(n.id, w.day, 0x0BE7) - 0.5) * 2.0 * Tuning.Dialogue.OPENNESS_JITTER
 	var openness = (1.0 - trait_of(n, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT + n.trust * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT + n.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(n, "composure")) \
-		+ Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter
+		+ Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1) + Tuning.Dialogue.OPENNESS_BASE_OFFSET + jitter + pressed_again
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 	var gift_terms = {}
 	C.role_def(role).score_disclosure_tier(w, n, gift_terms)
@@ -188,7 +189,7 @@ static func _target_tier(w, n, trace_id: int = 0) -> int:
 	w.dlog.decision(n.id, "gift_disclosure", "tier", t, {"openness": openness,
 		"parts": {"privacy": (1.0 - trait_of(n, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT, "trust": n.trust * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT,
 			"pressure": n.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(n, "composure")),
-			"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET, "jitter": jitter}.merged(gift_terms),
+			"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET, "jitter": jitter}.merged(gift_terms).merged({"pressed_again": pressed_again} if pressed_again != 0.0 else {}),
 		"jitter_min": -Tuning.Dialogue.OPENNESS_JITTER, "jitter_max": Tuning.Dialogue.OPENNESS_JITTER, "thresholds": [{"above": Tuning.Dialogue.TIER_FULL, "tier": 4}, {"above": Tuning.Dialogue.TIER_PARTIAL, "tier": 3},
 			{"above": Tuning.Dialogue.TIER_VAGUE, "tier": 2}, {"otherwise": 1}], "comparison": ">"}, "", trace_id)
 	w.dlog.think(n.id, "disclosure", "Disclosure tier %d (openness %.2f; privacy %.2f, trust %.2f, pressure %.2f)." %

@@ -48,6 +48,7 @@ var view_tabs: Array = []
 var hide_unselected: CheckBox
 var rows_btn: Button
 var day_label: Label
+var back_button: Button       # the main screen's Day/Phase plaque sits beside it
 var profile                   # ui/profile_panel.gd
 var prof_opt: OptionButton:
 	get: return profile.person_opt
@@ -99,7 +100,7 @@ func build(font: Font) -> void:
 	back_slot.custom_minimum_size.x = 220
 	back_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_child(back_slot)
-	_btn(back_slot, "◀ Back to town", func(): visible = false)
+	back_button = _btn(back_slot, "◀ Back to town", func(): visible = false)
 	var title = Label.new()
 	title.text = "Case Board"
 	title.add_theme_color_override("font_color", UITheme.color("accent"))
@@ -511,10 +512,17 @@ func open_theory() -> void:
 	set_panel_open("profile", true)
 	guess_opt.grab_focus()
 
-func _input(ev: InputEvent) -> void:
-	if visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+## Esc steps back one level: the Workshop canvas gets it first (it cancels a link or a
+## selection), then a fullscreen Workshop shrinks, then the board closes. It used to close the
+## board from _input, before the canvas ever saw the key (release audit, Nov 27).
+func _unhandled_key_input(ev: InputEvent) -> void:
+	if not (visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE):
+		return
+	if workshop != null and workshop.fullscreen:
+		workshop.set_fullscreen(false)
+	else:
 		visible = false
-		get_viewport().set_input_as_handled()
+	get_viewport().set_input_as_handled()
 
 func _meta(o: OptionButton) -> String:
 	if o.selected < 0:

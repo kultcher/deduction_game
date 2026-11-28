@@ -28,7 +28,7 @@ func _init(include_defaults: bool = true) -> void:
 		register_term({"id": "role:" + role_id, "kind": "role", "content_id": role_id,
 			"color": UITheme.color("role_evil" if role["align"] == "evil" else "role_good"), "bold": true,
 			"label": role["name"], "tooltip": role["name"] + "\n" + role["desc"],
-			"icon_path": path if FileAccess.file_exists(path) else "",
+			"icon_path": path if ResourceLoader.exists(path, "Texture2D") else "",
 			"aliases": [{"text": role["name"], "case_sensitive": role_id in AMBIGUOUS_ROLES},
 				{"text": role["name"], "role_only": true}, {"text": role_id, "role_only": true}]})
 	# Burdens (code: secrets), in violet with their icons. Their names are ordinary words too ("marked",
@@ -39,7 +39,7 @@ func _init(include_defaults: bool = true) -> void:
 		register_term({"id": "secret:" + secret_id, "kind": "secret", "content_id": secret_id,
 			"color": UITheme.color("role_secret"), "bold": true,
 			"label": secret["name"], "tooltip": secret["name"] + " (burden)\n" + secret["desc"],
-			"icon_path": spath if FileAccess.file_exists(spath) else "",
+			"icon_path": spath if ResourceLoader.exists(spath, "Texture2D") else "",
 			"aliases": [{"text": secret["name"], "case_sensitive": true},
 				{"text": secret["name"], "role_only": true}, {"text": secret_id, "role_only": true}]})
 
