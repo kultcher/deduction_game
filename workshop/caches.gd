@@ -18,6 +18,7 @@ const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const RoleConstraints = preload("res://workshop/role_constraints.gd")
+const SharedLedger = preload("res://workshop/shared_ledger.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SupportModel = preload("res://workshop/support_model.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
@@ -37,6 +38,7 @@ static func clear_all() -> void:
 	CaseEval._team_prior_cache.clear()
 	CaseEval._fits_cache.clear()
 	CaseEval._bare_fits_cache.clear()
+	CaseEval._own_delusion_weight_cache.clear()
 	CaseWhy._mask_cache.clear()
 	Connections._kept.clear()
 	Chronology._cached_people = null
@@ -59,6 +61,10 @@ static func clear_all() -> void:
 	Reasoner.matches.clear()
 	Reasoner.preparations.clear()
 	RoleConstraints.cache.clear()
+	RoleConstraints._names_evil_cache.clear()
+	RoleConstraints._burden_share_cache.clear()
+	SharedLedger.last_reason_ctx = {}
+	SharedLedger.last_adjusted = {}
 	Solver.universes.clear()
 	Solver.report_matches.clear()
 	Solver.movement_cache.clear()
