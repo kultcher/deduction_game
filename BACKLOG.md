@@ -28,14 +28,15 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
     2. Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval` `[open]`
-    3. A case-strength helper that names what would firm the case up `[decided: direction]`
+    3. A case-strength helper that names what would firm the case up `[decided: direction; not started, Michael, Nov 28]`
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
     2. A friend's doubtful defence `[decided]`
     3. Withheld readings: asking for what someone hasn't said `[decided]`
-    4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
-    5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. Good NPCs lie tactically `[open]`
+    4. Passing information on: hidden sources and deliberate seeding `[decided]`
+    5. Evil seeds made-up information through a trusted townsperson `[tentative]`
+    6. A gift-holder seeks protection before revealing `[decided: direction]`
+    7. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -82,7 +83,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Brute kills scored as hexes on custom scripts `[later]`
   3. Gift doubt for readings the judge doesn't check `[open]`
   4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  5. "Not being seen out" as evidence `[open]`
+  5. "Not being seen out" as evidence `[deferred, Michael, Nov 28]`
   6. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
@@ -162,6 +163,7 @@ Lantern). Nothing is open here.
   - **Herald** owns how it's shown and worded.
   - **Not yet decided:** where it shows (the badge's words, a hover, the Why readout), how
     many items it names, and whether it names only gifts on the script.
+  - **Not started, and stays on the backlog** (Michael, Nov 28).
 
   [decided: direction]
 
@@ -255,6 +257,12 @@ Lantern). Nothing is open here.
       deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
     - `known_to`: the asker alone for a private ask, "public" at the meeting;
     - `shared_at`, set when the claimant later gives that reading.
+    - Settled with Lantern (Nov 28): the claim is always `{day, role}` (the night of the dodged
+      reading and its gift), with `fact_id` added alongside once one exists; `known_to` is
+      always a list (`[asker]` or `["public"]`); `shared_at` is set on every entry for that
+      claimant and claim.
+  - **Asking and answering: built** (Beadle, Nov 28; `sim/mind_withheld.gd`, `MindCallOn.respond`
+    with an asker, `w.withheld_refusals`). The cost is Lantern's, next.
   - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
     sized from bot runs.
 
@@ -270,11 +278,38 @@ Lantern). Nothing is open here.
     - **Trust-discounted:** it costs less when the asker trusts the holder.
     - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
 
-- **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
-  revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
-  is pointed the right way without exposing the Seer. From
-  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1; it may
-  generalise to other gifts as the note grows. Owner Beadle. [decided: direction]
+- **Passing information on: hidden sources and deliberate seeding** (Michael, Nov 21; widened
+  to every role Nov 28). It began as "a hidden Seer seeds its readings into the gossip
+  network": before revealing, a Seer passes its information through someone it trusts, as
+  hearsay, so the town is pointed the right way without exposing the Seer. Michael (Nov 28)
+  made it general. The design is in
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.7.
+  - **The source is always hidden** when information is passed on: in private, to the player,
+    and at the meeting. The exceptions are a dead person's reading, and anything the source has
+    since said publicly.
+  - **Deliberate seeding,** by any good role: a holder picks someone it trusts and passes its
+    information on.
+
+    | Constant | Value | What it does |
+    |---|---|---|
+    | `SEED_TRUST_MIN` | 0.7 | how much the holder must trust someone to seed through them |
+    | `SEED_CHANCE` | 0.35 | the chance to seed, ×1.5 when the reading points at a suspected Demon |
+    | `SEED_RELAY_CHANCE` | 0.4 | the chance the person seeded passes it on |
+
+  - **"Ask about <person>" no longer depends on that person's gossip.** What surfaces goes by
+    role:
+    - asking "are you the Seer, or have you heard of one" surfaces a Seer reading the NPC has
+      heard, always, with the source hidden; likewise for each role;
+    - asking about the dead always surfaces their claim and readings, if the NPC knows them;
+    - an evil NPC surfaces such information 25% of the time, and never if it incriminates the
+      Demon.
+
+  Owner Beadle. [decided]
+
+- **Evil seeds made-up information through a trusted townsperson** (Michael, Nov 28). The evil
+  mirror of deliberate seeding: an evil NPC passes a made-up reading through a good person who
+  trusts it, so the lie spreads with the source hidden. A possibility for later. Owner Beadle.
+  [tentative]
 
 - **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
   reveal looks for protection first, from the player or a known Warden. Same source; it may
@@ -683,7 +718,7 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   complete watch list or coverage says someone wasn't out. It goes under the circumstantial
   hub, since it's hard to confirm and subject to chance. From
   [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.3. Owner
-  Lantern. **[open]**
+  Lantern. **[deferred, Michael, Nov 28]**
 - **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
   broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
   tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in

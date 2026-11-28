@@ -125,15 +125,17 @@ func _run() -> void:
 	g.events = before_events
 	view.begin(n.id, n.name)
 	_check(scene.conversation_view.controls.get_children().any(func(c): return c is Button and c.text == "Leave"), "line 115")
-	var buttons = scene.actions.get_children().filter(func(c): return c is Button and c.text == "Look at the map")
-	_check(buttons.size() == 1, "line 117")
-	buttons[0].pressed.emit()
+	# The breadcrumb row moves between the map and the conversation (Michael, Nov 28).
+	var Crumbs = preload("res://ui/nav_crumbs.gd")
+	var town: Array = Crumbs.crumbs(scene).filter(func(c): return c.label == "Town")
+	_check(town.size() == 1 and town[0].go.is_valid(), "line 117")
+	town[0].go.call()
 	_check(not scene.conversation_view.visible and g.state == "talk", "line 119")
-	_check(scene.actions.get_children().any(func(c): return c is Button and c.text == "Look at conversation"), "line 120")
+	_check(Crumbs.crumbs(scene).back().label == n.name, "line 120")
 	# The conversation's options wait while the map is up (Michael, Nov 17).
 	_check(not scene.actions.get_children().any(func(c): return c is Button and c.text == "Leave"), "line 122")
-	_check(scene.map_return.visible and scene.map_return.text == "Return to conversation", "line 123")
-	scene.actions.get_children().filter(func(c): return c is Button and c.text == "Look at conversation")[0].pressed.emit()
+	_check(not scene.actions.get_children().any(func(c): return c is Button and c.text in ["Look at the map", "Look at conversation"]), "line 123")
+	Crumbs.crumbs(scene).back().go.call()
 	_check(scene.conversation_view.visible, "line 125")
 	scene._run("ask gift")
 	var said: Array = g.last_events.filter(func(e): return e.get("k") == "speech" and e.get("speaker") == n.id)

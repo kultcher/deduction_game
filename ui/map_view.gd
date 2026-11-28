@@ -138,6 +138,7 @@ var zoom_block: String = "":
 		zoom_block = v
 		_snap_zoom()
 var _last_zoom_block: String = ""
+var show_back_sign: bool = true   # the main screen's Town crumb replaces it (Michael, Nov 28)
 var _current_view: Rect2 = OVERVIEW
 var _zoom_dim_alpha: float = 0.0
 var _zoom_tween: Tween
@@ -535,7 +536,7 @@ func _draw() -> void:
 			if zoom_block != "":
 				if _hover.get("kind", "") == "location" and _hover.get("id", "") == l:
 					_ui_commands.append({"kind": "hover_box", "rect": drawn.grow(3), "radius": 7, "bw": 2})
-				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if not g.free_move_used and w.loc_block(g.loc) == b and g.loc != l else "")
+				var hint = "Click to spend the phase here" if not g.moved else ("Click to step over (free move)" if w.loc_block(g.loc) == b and g.loc != l else "")
 				if g.state != "day":
 					hint = ""
 				var un = g.unseen_at_ui(l)
@@ -571,7 +572,7 @@ func _draw() -> void:
 					if g.state == "day":
 						if not (n.alive and n.at_home()):
 							home_hint = "nobody's in; you can only call on someone who's home"
-						elif g.moved and (g.free_move_used or w.loc_block(g.loc) != b):
+						elif g.moved and w.loc_block(g.loc) != b:
 							home_hint = "they're in, but you've already chosen where to spend this phase"
 						else:
 							home_hint = "click to call on them" + (" (free move)" if g.moved else "")
@@ -595,7 +596,7 @@ func _draw() -> void:
 	if _zoom_dim_alpha > 0.01 and dim_block != "" and BLOCK_RECTS.has(dim_block):
 		_ui_commands.append({"kind": "zoom_dim", "rect": _r(_block_rect(dim_block)), "alpha": _zoom_dim_alpha})
 	# Back button and status.
-	if zoom_block != "":
+	if zoom_block != "" and show_back_sign:
 		var br = _sign(font, "◀ Whole town", Vector2(70, 24), 13)
 		_hits.push_front({"rect": br, "kind": "back", "id": "", "label": "Back to the whole town", "hint": ""})
 	if not _hover.is_empty():

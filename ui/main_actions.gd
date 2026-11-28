@@ -100,9 +100,8 @@ static func refresh(m) -> void:
 			approach(m, w)
 			m.actions = lower_actions
 		"talk":
-			m._button(m.actions, "Look at conversation" if m.conversation_show_map else "Look at the map", func():
-				m.conversation_show_map = not m.conversation_show_map
-				m._refresh_all())
+			# The breadcrumb row moves between the map and the conversation (Michael, Nov 28:
+			# it replaces the "Look at the map / Look at conversation" toggle).
 			if m.conversation_show_map:
 				# The conversation's options wait while the map is up: go back to it to carry on
 				# (Michael, Nov 17).
@@ -118,7 +117,6 @@ static func refresh(m) -> void:
 			for pc in m.g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not m.g.shown_protection.has(int(c.n))):
 				var pnum: int = int(pc.n)
 				m._button(m.actions, "Show the town %s" % m.g.protection_label(pc), func(): m._run("present %d" % pnum))
-			map_toggle(m)
 			m._button(m.actions, "Let the town speak (wait)", func(): m._run("wait"))
 			if not m.g.presented_today:
 				m._button(m.actions, "Present a deduction to everyone…", func(): Pickers.card(m, "Present a deduction to the meeting",
@@ -153,7 +151,6 @@ static func refresh(m) -> void:
 		"nomination":
 			var nm: Dictionary = w.meeting["pending"]
 			m.action_title.text = "Vote on %s" % w.by_id[nm["nominee"]].name
-			map_toggle(m)
 			m._button(m.actions, "Vote to execute", func(): m._run("vote yes"))
 			m._button(m.actions, "Vote to spare", func(): m._run("vote no"))
 			if not nm.get("supporters_done", false):
@@ -265,14 +262,14 @@ static func day(m, w) -> void:
 		else:
 			var b = m._button(m.actions, "%s is deep in conversation" % n.name, func(): pass, C.npc_color(n.id))
 			b.disabled = true
-	if not m.g.free_move_used:
-		for l in w.locations_on(w.loc_block(m.g.loc)):
-			if l == m.g.loc or l.begins_with("home_"):
-				continue
-			var who: Array = GameDayNight._present(m.g, l).filter(func(x): return x.busy_with == "")
-			if not who.is_empty():
-				for n in who:
-					m._button(m.actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): m._run("talk " + n.id), C.npc_color(n.id))
+	# Moving within the block is always free now (#586), so the rest of the block is a step away.
+	for l in w.locations_on(w.loc_block(m.g.loc)):
+		if l == m.g.loc or l.begins_with("home_"):
+			continue
+		var who: Array = GameDayNight._present(m.g, l).filter(func(x): return x.busy_with == "")
+		if not who.is_empty():
+			for n in who:
+				m._button(m.actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): m._run("talk " + n.id), C.npc_color(n.id))
 	if not m.g.loc.begins_with("home_") and not C.is_player_building(m.g.loc):
 		m._button(m.actions, "Search here", func(): m._run("search"))
 	if m.g.loc == "tavern":
@@ -287,8 +284,7 @@ static func day(m, w) -> void:
 		var th_btn = m._button(m.actions, th_lbl, func(): m._run("records"))
 		th_btn.disabled = (not th_open) or th_left <= 0
 	m._button(m.actions, "Wait", func(): m._run("wait"))
-	if not m.g.free_move_used:
-		hint(m, "You can still step to the other spot on this block (click it on the map).")
+	hint(m, "You can still step to the other spot on this block (click it on the map).")
 
 static func talk(m, w) -> void:
 	var n = m.g.talk_with
@@ -327,12 +323,6 @@ static func talk(m, w) -> void:
 		func(c): return not c.get("tavern_gossip", false) and c.get("pressable", true) and c.get("workshop_usable", true),
 		func(num, extra): m._run(("present %d" % num) + extra), false, true))
 	m._button(m.actions, "Leave", func(): m._run("bye"))
-
-## During the meeting: switch the top-left view between the meeting circle and the map.
-static func map_toggle(m) -> void:
-	m._button(m.actions, "Back to the meeting" if m.meeting_show_map else "Look at the map", func():
-		m.meeting_show_map = not m.meeting_show_map
-		m._refresh_all())
 
 static func hint(m, t: String) -> void:
 	if m.actions == m.conversation_view.controls:

@@ -344,7 +344,9 @@ workshop/live_activity_base.gd, live_activity_profiles.gd, live_activity_pack.gd
                   LiveActivity's constants, movement inputs and per-person profiles, the C#
                   packing and routes, and the joint factor machinery; one inheritance chain
                   under live_activity.gd, which keeps factors(), score() and _likelihood()
-workshop/cs/      the C# solver kernel (built by Demonologist.csproj)
+workshop/cs/      the C# solver kernel (built by Demonologist.csproj); never hardcodes copies
+                  of sim/tuning.gd constants — GDScript injects them via SolverBackend.sync_tuning()
+                  or per call (guarded by tools/test_cs_tuning_parity.gd)
 game/game.gd      command interpreter and state container; emits structured events
 game/game_conversation.gd, game_meeting.gd, game_day_night.gd, game_screens.gd,
    game_board.gd, game_presentation.gd

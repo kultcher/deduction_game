@@ -413,6 +413,15 @@ class Social:
 	const PLANTER_TARGET_TRUST_MIN = 0.48
 	const MURDER_RELAY_BONUS = 0.35
 	const IDLE_CHAT_WEIGHT = 0.18  # was 0.30 (meeting plan M1: more leads, less weather)
+	## Withheld readings, asking in private (docs/design/withheld_readings.md; Michael, Nov 28):
+	## in a conversation with someone it heard claim an information gift a day or more ago, and
+	## from whom it has heard no reading since, a good NPC asks for the reading with this chance:
+	## the base, plus the wary part times its suspicion of the claimant, plus the Insight part
+	## times its Insight. At most once per pair per day. About 0.15 for an average asker, 0.35 for
+	## a wary, sharp one.
+	const ASK_PRIVATE_BASE = 0.10
+	const ASK_PRIVATE_WARY = 0.30
+	const ASK_PRIVATE_INSIGHT = 0.10
 	const DAY_RUMOR_WEIGHT = 0.45
 	const UNEASE_SUSP_MIN = 0.34
 	const HEARSAY_TRUST_SCALE = 0.75
@@ -630,6 +639,12 @@ class Meeting:
 	## town?" decision as that much more pressure would, and lowers the bar for volunteering a
 	## night sighting by as much.
 	const CALL_ON_PRESSURE_BUMP = 0.3
+	## Withheld readings, pressing at the meeting (Michael, Nov 28): a good NPC at least this
+	## confident, suspecting (at the accusing level, GOOD_ACCUSE_MIN_SUSP) a public claimant who
+	## has gone a day without giving a reading, presses them before the town with chance
+	## PRESS_WITHHELD_SCALE x its Confidence (about 0.15 to 0.25). At most once per meeting.
+	const PRESS_WITHHELD_CONFIDENCE_MIN = 0.6
+	const PRESS_WITHHELD_SCALE = 0.25
 	const PUBLIC_CLAIM_FEW_LEFT = 0.8
 	const REVEAL_COST_PRIVACY_SLOPE = 0.8
 	const REVEAL_COST_BASE = 0.2
@@ -1078,6 +1093,18 @@ class Workshop:
 	## presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade).
 	const CONNECTIONS_CASE_FADE_BOUGHT = 0.9
 	const CONNECTIONS_CASE_BUYIN_FULL = 0.7
+	## Withheld readings (docs/design/withheld_readings.md §4; Michael, Nov 28): a claimant
+	## asked for the reading its gift owes, who holds it back, looks a little more suspicious
+	## to whoever saw the refusal (the asker in private, everyone at the meeting). A fixed
+	## cost, the same whatever the claimant's alignment: odds of DEFER_FACTOR for a refusal
+	## with a reason (a friend, a burden, distrust of the asker), DEFLECT_FACTOR for a bare
+	## one, each growing DAY_STEP-fold in log-odds for every further day the reading stays
+	## out. One cost per withheld reading, the strongest seen, at the listener's distrust of
+	## the claimant (typical trust counts it as is, full trust cancels it, none doubles it).
+	## Once the reading comes out it stops growing, and a deferral's cost is lifted.
+	const WITHHELD_DEFER_FACTOR = 1.15
+	const WITHHELD_DEFLECT_FACTOR = 1.6
+	const WITHHELD_DAY_STEP = 1.25
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
@@ -1187,7 +1214,7 @@ class Workshop:
 	## the Demonologist missed them (the player can't be wrong; the town doesn't know that).
 	## With the walker-claim split below, an empty vigil on a claimed walker's block is about
 	## 10:1 against the claim (strong, not certain).
-	## Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`.
+	## Passed to `workshop/cs/LiveActivity.cs` via `SolverBackend.sync_tuning()`.
 	const VIGIL_MISS = 0.05
 	## A good person who was out at night still telling the town "I was home": hiding a
 	## night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17
@@ -1196,7 +1223,7 @@ class Workshop:
 	## Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was
 	## proof of evil (Michael: "a caught lie from someone who could be good stops being
 	## proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else
-	## stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`.
+	## stays hard. Passed per card via `workshop/live_activity_pack.gd`.
 	const GOOD_OWN_ALIBI_OUT = 0.2
 	## While an excuse for a caught "I was home" stands ("Fine, I was out", a walking duty that
 	## fits, "being out isn't wicked"; Beadle's caught-out ladder), that night's own "home"
@@ -1209,7 +1236,7 @@ class Workshop:
 	## A good person who claims a walking gift: how the movement model splits their nights
 	## between doing the duty, staying home anyway, and a secret's outing (before Nov 5:
 	## 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the
-	## Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`.
+	## Sleepwalker never go to walking-gift holders. Passed to `LiveActivity.cs` via `SolverBackend.sync_tuning()`.
 	const WALKER_CLAIM_GIFT = 0.95
 	const WALKER_CLAIM_HOME = 0.03
 	const WALKER_CLAIM_SECRET = 0.02

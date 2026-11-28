@@ -766,7 +766,9 @@ static func names_evil(view: Dictionary, card: Dictionary, who: int) -> bool:
 	if card.get("kind", "") != "report" or card.get("quoted", false) or ids_of(view).find(str(card.get("source", ""))) == who:
 		return false
 	var Solver = load("res://workshop/solver.gd")
-	var key: String = str([Solver._universe_key(view), str(card.get("id", "")), who])
+	# Keyed on the card's content as well as its id: a later case can reuse an id for a
+	# different reading (audit Nov 27, Part 4 item 5).
+	var key: String = str([Solver._universe_key(view), str(card.get("id", "")), str(card.get("source", "")), str(card.get("role", "")), hash(card.get("data", {})), who])
 	if _names_evil_cache.has(key):
 		return bool(_names_evil_cache[key])
 	var worlds: Array = Solver.universe(view)

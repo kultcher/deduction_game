@@ -137,6 +137,10 @@ const CORE_JOIN_SHARP: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN_SHARP
 const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
 const PREMISE_SHARE: float = Tuning.Workshop.PREMISE_BYSTANDER_SHARE
 const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
+## Withheld readings: the fixed cost of holding back a reading when asked (withheld).
+const WITHHELD_DEFER: float = Tuning.Workshop.WITHHELD_DEFER_FACTOR
+const WITHHELD_DEFLECT: float = Tuning.Workshop.WITHHELD_DEFLECT_FACTOR
+const WITHHELD_DAY_STEP: float = Tuning.Workshop.WITHHELD_DAY_STEP
 ## A case the listener bought fades slower: up to CASE_FADE_BOUGHT a day (buy_in_rate).
 const CASE_FADE_BOUGHT: float = Tuning.Workshop.CONNECTIONS_CASE_FADE_BOUGHT
 const CASE_BUYIN_FULL: float = Tuning.Workshop.CONNECTIONS_CASE_BUYIN_FULL
@@ -1195,12 +1199,15 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	Profiler.close(part)
 	for p in told.lean:
 		total[p] += float(told.lean[p])
+	var held_back: Dictionary = withheld(listener, int(core_state.get("day", -1)), others)
+	for p in held_back.lean:
+		total[p] += float(held_back.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
 	Profiler.count("connections_judgements", int(run.judgements))
 	Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
-		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
+		"items": entries, "core": own, "core_memory": memory, "cases": told, "withheld": held_back, "judgements": run.judgements}
 
 
 ## Leave-one-out posterior for ReasonAttribution._connections_drop: skips re-running
@@ -1330,6 +1337,10 @@ static func drop_card_posterior(view: Dictionary, case_data: Dictionary, listene
 	var cases_lean: Dictionary = full_result.get("cases", {}).get("lean", {})
 	for p in cases_lean:
 		total[p] += float(cases_lean[p])
+	var held_lean: Dictionary = full_result.get("withheld", {}).get("lean", {})
+	for p in held_lean:
+		if total.has(p):
+			total[p] += float(held_lean[p])
 	var settled: Dictionary = combine(others, full_result.baseline, total, core_res.get("proved", {}))
 	if cache_verify:
 		var prev_cache: bool = cache_enabled
@@ -1354,6 +1365,54 @@ static func drop_card_posterior(view: Dictionary, case_data: Dictionary, listene
 			cache_stats.wrong += 1
 			push_warning("Connections.drop_card_posterior differs from full refresh (%s)" % cid)
 	return settled.posterior
+
+
+## Withheld readings (docs/design/withheld_readings.md §4; Michael, Nov 28): the cost, in
+## log-odds, of each claimant this listener saw hold back the reading its gift owes when asked.
+## `listener.withheld` lists the refusals it saw (game/workshop_bridge.gd), each
+## {claimant, role, night, day, kind: "deferred" | "deflected", shared_day (-1 while out)}.
+## One cost per withheld reading (claimant, gift, night), however often it was asked for: the
+## strongest kind seen, aged from the first refusal to today, or to the day the reading came
+## out (then a deferral's cost is lifted). Fixed and alignment-blind: no rate of how often good
+## or evil dodge enters it. Scaled by the listener's distrust of the claimant.
+## Returns {"lean": {id: log-odds}, "entries": [{claimant, role, night, kind, days, lean}]}.
+static func withheld(listener: Dictionary, day: int, others: Array) -> Dictionary:
+	var by_reading: Dictionary = {}
+	for r in listener.get("withheld", []):
+		var who: String = str(r.get("claimant", ""))
+		if who == str(listener.get("id", "")) or who not in others:
+			continue
+		var key: String = "%s:%s:%d" % [who, str(r.get("role", "")), int(r.get("night", -1))]
+		var shared: int = int(r.get("shared_day", -1))
+		if not by_reading.has(key):
+			by_reading[key] = {"claimant": who, "role": str(r.get("role", "")), "night": int(r.get("night", -1)),
+				"kind": str(r.get("kind", "")), "first": int(r.get("day", day)), "shared": shared}
+			continue
+		var cur: Dictionary = by_reading[key]
+		if str(r.get("kind", "")) == "deflected":
+			cur.kind = "deflected"
+		cur.first = mini(int(cur.first), int(r.get("day", day)))
+		if shared >= 0 and (int(cur.shared) < 0 or shared < int(cur.shared)):
+			cur.shared = shared
+	var lean: Dictionary = {}
+	var entries: Array = []
+	var keys: Array = by_reading.keys()
+	keys.sort()
+	for key in keys:
+		var cur: Dictionary = by_reading[key]
+		var shared_day: int = int(cur.shared)
+		if shared_day >= 0 and cur.kind != "deflected":
+			continue  # a deferral's reason held up: the reading came out
+		var until: int = day if shared_day < 0 else mini(day, shared_day)
+		var days: int = maxi(0, until - int(cur.first))
+		var factor: float = WITHHELD_DEFLECT if cur.kind == "deflected" else WITHHELD_DEFER
+		var distrust: float = 2.0 * (1.0 - presenter_trust(listener, cur.claimant))
+		var size: float = log(factor) * pow(WITHHELD_DAY_STEP, days) * distrust
+		if size == 0.0:
+			continue
+		lean[cur.claimant] = float(lean.get(cur.claimant, 0.0)) + size
+		entries.append({"claimant": cur.claimant, "role": cur.role, "night": cur.night, "kind": cur.kind, "days": days, "lean": size})
+	return {"lean": lean, "entries": entries}
 
 
 ## Everyone's chance from the baseline and the summed leans: one common shift, so the people
@@ -1789,6 +1848,9 @@ static func summary(result: Dictionary) -> Dictionary:
 			"cards": int(entry.cards), "on": top_c, "lean": snappedf(size_c, 0.001)})
 	if not told.is_empty():
 		short["cases"] = told
+	var held_back: Array = result.get("withheld", {}).get("entries", [])
+	if not held_back.is_empty():
+		short["withheld"] = held_back.map(func(e): return {"on": e.claimant, "kind": e.kind, "days": int(e.days), "lean": snappedf(float(e.lean), 0.001)})
 	return short
 
 
