@@ -113,7 +113,7 @@ class Worker:
             games = self.last - seed
             if self.a.games_per_proc > 0:
                 # Restart autoplay every N games: a 10-NPC process's memory grows game by game
-                # (about 2.3 GB after one game, 4.5 GB by the third, Nov 28), and four of them
+                # (passive: about 2.3 GB after one game and 4.5 GB by the third; bot: 5.3 GB after two, Nov 28), and four of them
                 # running a whole shard's seeds outgrew a hosted runner (run 46079890031).
                 games = min(games, self.a.games_per_proc)
             cmd = [self.a.godot, "--headless", "--path", self.a.project, "--script", "res://tools/autoplay.gd", "--",

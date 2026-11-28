@@ -11,11 +11,11 @@ on:
         description: "Games per cell"
         default: "2000"
       cells:
-        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional), "procs": autoplay processes per shard (default 2 for 10 NPCs, 4 for 7), "games_per_proc": restart autoplay after this many games (default 3 for 10 NPCs, 0 = never for 7)}'
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional), "procs": autoplay processes per shard (default 2 for 10 NPCs, 4 for 7), "games_per_proc": restart autoplay after this many games (default 2 for 10 NPCs, 0 = never for 7)}'
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
-        default: '{"7_passive":5,"10_passive":50,"7_bot":85,"10_bot":350,"7_bot_pre_m4":50,"10_bot_pre_m4":210}'
+        default: '{"7_passive":5,"10_passive":120,"7_bot":115,"10_bot":550,"7_bot_pre_m4":50,"10_bot_pre_m4":330}'
       target_hours:
         description: "Planned hours per shard job (the hard cap is 6)"
         default: "3"
@@ -53,9 +53,11 @@ jobs:
           import json, math, os
           seed0 = int(os.environ["SEED_START"]); games = int(os.environ["GAMES"])
           cells = json.loads(os.environ["CELLS"]); costs = json.loads(os.environ["COSTS"])
-          # A 10-NPC autoplay process peaks near 4.5 GB by its third game and keeps growing, so
-          # four of them over a whole shard outgrew the runner (run 46079890031, Nov 27: every
-          # 10-NPC shard was killed). 10-NPC cells default to 2 processes, restarted every 3 games.
+          # A 10-NPC autoplay process grows game by game (passive: 2.3 GB after one game, 4.5 GB by
+          # the third; bot: 5.3 GB after two, Nov 28), so four of them over a whole shard outgrew
+          # the runner (run 46079890031: every 10-NPC shard was killed). 10-NPC cells default to
+          # 2 processes, restarted every 2 games. Costs measured Nov 28 after Burdens: 10_passive
+          # ~115 s and 10_bot ~530 s a game; 7_bot shards ran ~4 h against a 3 h plan at 85.
           hours = float(os.environ["HOURS"])
           shards = []
           for c in cells:
@@ -68,7 +70,7 @@ jobs:
               force = str(c.get("force_demon", ""))
               cost = float(costs.get("%d_%s" % (npcs, mode), costs.get("%d_bot" % npcs, 220)))
               procs = int(c.get("procs", 2 if npcs == 10 else 4))
-              gpp = int(c.get("games_per_proc", 3 if npcs == 10 else 0))
+              gpp = int(c.get("games_per_proc", 2 if npcs == 10 else 0))
               per = max(procs, int(hours * 3600 * procs // cost))
               k = max(1, math.ceil(games / per))
               size = math.ceil(games / k)
