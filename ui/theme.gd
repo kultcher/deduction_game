@@ -50,6 +50,18 @@ static func ink_of(c: Color) -> Color:
 
 static var _cache = {}
 
+## How many entries each texture cache keeps before dropping the oldest. Map zoom asks for a new
+## size every frame, so unbounded caches grew without limit (release audit, Nov 27).
+const TEX_CACHE_MAX = 256
+const NINE_CACHE_MAX = 96
+
+## Stores `value` under `key`, first dropping the oldest entries if the cache is full (a
+## Dictionary keeps insertion order).
+static func _remember(cache: Dictionary, key, value, cap: int) -> void:
+	while cache.size() >= cap:
+		cache.erase(cache.keys()[0])
+	cache[key] = value
+
 ## A texture from assets (path relative to res://assets/, no extension), or null. Loads the
 ## imported resource when there is one, else the PNG directly (headless runs, fresh art).
 static func tex(rel: String, scale: float = 1.0):
@@ -74,7 +86,7 @@ static func tex(rel: String, scale: float = 1.0):
 			if scale != 1.0:
 				img.resize(maxi(1, int(img.get_width() * scale)), maxi(1, int(img.get_height() * scale)), Image.INTERPOLATE_LANCZOS)
 			t = ImageTexture.create_from_image(img)
-	_cache[key] = t
+	_remember(_cache, key, t, TEX_CACHE_MAX)
 	return t
 
 ## A nine-slice box from a piece of art, scaled so it's `height` pixels tall (0 = native),
@@ -82,11 +94,18 @@ static func tex(rel: String, scale: float = 1.0):
 static var _nine_cache = {}
 
 static func nine(rel: String, height: float, margins: Array, content: Array = []):
+	# Whole pixels, for the key and the resize alike, so two heights that share a key can't make
+	# different art (Limner) and a zoom's fractional heights don't each make a new texture.
+	if height > 0:
+		height = maxf(1.0, roundf(height))
+	# Margins scale with a zooming height too (map_view.gd), so round them as well.
+	margins = margins.map(func(x): return roundf(float(x)))
+	content = content.map(func(x): return roundf(float(x)))
 	var ck = "%s|%s|%s|%s" % [rel, height, str(margins), str(content)]
 	if _nine_cache.has(ck):
 		return _nine_cache[ck]
 	var sb = _make_nine(rel, height, margins, content)
-	_nine_cache[ck] = sb
+	_remember(_nine_cache, ck, sb, NINE_CACHE_MAX)
 	return sb
 
 static func _make_nine(rel: String, height: float, margins: Array, content: Array):

@@ -32,7 +32,7 @@ func _context_input(ev: InputEvent) -> void:
 		if item != null:
 			var num = item.get_metadata(0)
 			if num is int and num > 0:
-				card_context_requested.emit(num, Vector2i(get_screen_transform() * ev.position))
+				card_context_requested.emit(num, preload("res://ui/column_menus.gd").popup_point(self, ev.position))
 				accept_event()
 
 const C = preload("res://sim/content.gd")

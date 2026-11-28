@@ -116,7 +116,7 @@ func _gui_input(ev: InputEvent) -> void:
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
 			var n = _hit(ev.position)
 			if n > 0:
-				card_context_requested.emit(n, Vector2i(get_screen_transform() * ev.position))
+				card_context_requested.emit(n, preload("res://ui/column_menus.gd").popup_point(self, ev.position))
 				accept_event()
 		elif ev.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 			var most = maxf(0.0, deductions().size() * (CARD_W + 10) + 246 - size.x)

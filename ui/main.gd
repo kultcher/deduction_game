@@ -247,6 +247,21 @@ func _new_case() -> void:
 	conversation_finished = false
 	_phase_held = false
 	pacing_open = false
+	# Nothing from the last case carries over: its overlays, the meeting's held events, the
+	# approach, the reveal and the guess window (release audit, Nov 27).
+	for overlay in ["Pacing", "GrimReveal", "DailyGuess"]:
+		var node = get_node_or_null(overlay)
+		if node != null:
+			remove_child(node)
+			node.queue_free()
+	_reveal_after_pacing = false
+	daily_guess_open = false
+	daily_guess_off_for = null
+	reveal_seen_for = null
+	_deferred_meeting_events = []
+	meeting_show_map = false
+	approach_stage = ""
+	_approach_key = ""
 	_deferred_log_events = []
 	_day_pick = ""
 	conversation_show_map = false
@@ -282,7 +297,10 @@ func _new_case() -> void:
 	if is_inside_tree() and show_script_at_start:
 		Roles.open(self)
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open:
+	# Esc focuses the command line, but not under an overlay that owns the screen (the pacing
+	# sequence, the New Case screen, the grim reveal, the guess window) (release audit, Nov 27).
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open \
+			and not pacing_open and not (new_case_screen != null and new_case_screen.visible) and get_node_or_null("GrimReveal") == null:
 		input.grab_focus()
 func _open_case_view() -> void:
 	case_view.refresh()
@@ -380,7 +398,7 @@ func _on_submit(text: String) -> void:
 func _run(cmd: String) -> void:
 	# While a finished conversation or a reading holds the old phase, nothing runs until the
 	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
-	if conversation_finished or _phase_held or pacing_open:
+	if conversation_finished or _phase_held or pacing_open or daily_guess_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -461,7 +479,7 @@ func _log_events(evs: Array) -> void:
 func _presenting() -> bool:
 	if g == null:
 		return false
-	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty()
+	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty() or daily_guess_open
 ## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
 func _capture_meeting(previous_state: String) -> void:
 	var was: bool = previous_state in ["meeting", "nomination"]

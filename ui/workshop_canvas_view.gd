@@ -623,11 +623,14 @@ func _gui_input(event: InputEvent) -> void:
 			drag_out = event.position.x < 0.0 and movers.size() == 1
 		last_mouse = event.position
 		queue_redraw()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE and (linking != "" or not group.is_empty() or box_from != null):
+		# Something to cancel: cancel it and keep the key. With nothing to cancel, Esc goes on
+		# to the Case board (it closes, or leaves fullscreen).
 		linking = ""
 		group = []
 		box_from = null
 		queue_redraw()
+		accept_event()
 	elif event is InputEventKey and event.pressed and event.keycode in [KEY_DELETE, KEY_BACKSPACE] and not group.is_empty():
 		var ids_g: Array = group.duplicate()
 		group = []
