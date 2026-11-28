@@ -10,6 +10,7 @@ const Solver = preload("res://workshop/solver.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Activity = preload("res://workshop/live_activity.gd")
 const Caches = preload("res://workshop/caches.gd")
+const LiveAssessment = preload("res://workshop/live_assessment.gd")
 
 var checks = 0
 var fails = 0
@@ -42,8 +43,9 @@ func _seen(id: String, night: int, block: String) -> Dictionary:
 	return {"id": id, "fact_id": id, "kind": "sighting", "source": "t", "subject": "s", "subjects": ["s"], "night": night, "block": block,
 		"data": {}, "role": "", "observed_at": {"day": night, "phase": "night"}, "reported_at": {"day": night + 1, "phase": "morning"}}
 
-func _p(cards: Array, target: String) -> float:
-	Caches.clear_all()
+func _p(cards: Array, target: String, fresh: bool = true) -> float:
+	if fresh:
+		Caches.clear_all()
 	var view: Dictionary = _view(cards)
 	var listener: Dictionary = CaseEval.neutral_listener(view)
 	listener["id"] = "a"
@@ -71,5 +73,26 @@ func _init() -> void:
 		var cs: float = Activity._likelihood(view, cards, s, align)
 		var gd: float = Activity._likelihood_gd(view, cards, s, align)
 		check(absf(cs - gd) <= 1e-9 * maxf(1.0, absf(gd)), "C# and GDScript agree on the Sexton's walk (%s: %s against %s)" % [align, cs, gd])
+	# The movement caches key on the toll report: the same sightings with and without it are
+	# different inputs, so the order they're judged in doesn't matter (Codex on #562).
+	Caches.clear_all()
+	var warm_off: float = _p([_claim(), _seen("s2", 2, "docks")], "s", false)
+	var warm_on: float = _p([_claim(), _toll(2), _seen("s2", 2, "docks")], "s", false)
+	var cold_off: float = _p([_claim(), _seen("s2", 2, "docks")], "s")
+	check(absf(warm_on - on_toll) < 1e-9, "with no toll judged first, the toll night still reads as a tour (%.3f against %.3f)" % [warm_on, on_toll])
+	check(absf(_p([_claim(), _seen("s2", 2, "docks")], "s", false) - cold_off) < 1e-9 and absf(warm_off - cold_off) < 1e-9,
+		"and the sighting without a toll is judged the same either way (%.3f against %.3f)" % [warm_off, cold_off])
+	# The Sexton's own duty account ("I tolled the church bell and walked every parish"), a
+	# sighting of itself, reads as its toll report for that night (Codex on #562).
+	var duty_e: Dictionary = {"id": "duty", "fact_id": "duty", "kind": "sighting", "source": "s", "subjects": ["s"], "text": "",
+		"observed_at": {"day": 2, "phase": "night"}, "content": {"block": "market", "duty_claim": true, "duty": "sexton"}}
+	var duty: Dictionary = LiveAssessment.activity_card(duty_e, {"people": _view([]).people, "public_events": []})
+	check(duty.get("kind", "") == "report" and duty.get("role", "") == "sexton" and int(duty.get("data", {}).get("night", -1)) == 2 and duty.get("duty_only", false),
+		"a Sexton's duty account becomes a toll report for its night (%s)" % [duty])
+	if duty.get("kind", "") == "report":
+		duty["reported_at"] = {"day": 3, "phase": "afternoon"}
+		var by_duty: float = _p([_claim(), duty, _seen("s2", 2, "docks")], "s")
+		var duty_alone: float = _p([_claim(), duty], "s")
+		check(by_duty <= duty_alone + 0.005, "a sighting on the night of the duty account doesn't count against it (%.3f against %.3f)" % [by_duty, duty_alone])
 	print("Sexton toll tour: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

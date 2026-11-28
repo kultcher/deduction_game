@@ -18,7 +18,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor", "sexton"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):

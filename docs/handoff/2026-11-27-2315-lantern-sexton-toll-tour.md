@@ -49,3 +49,11 @@ test_burden_unrequited_walk pass. So does the whole fast list, 238 of 238 in two
 ## Proposed for the backlog
 
 None.
+
+## Codex round 1
+
+- **The movement caches** now key on the Sexton's toll report (`movement_inputs`), so a sighting judged with and without a toll no longer shares a cached answer.
+- **A Sexton's duty account** ("I tolled the church bell and walked every parish", a `duty_claim` sighting from `sim/roles/sexton.gd`) is adapted into a `duty_only` Sexton report naming its night, as the Medium and Lamplighter duty accounts are. So the walk of every block applies from it too.
+- **test_sexton_toll_tour** has 8 checks now: the order of evaluation without clearing caches, and the duty account. Without the cache fix, the order check fails.
+- **Suites:** these pass: test_night_sighting_rebuttal, test_evil_play, test_meeting_m2b, test_workshop_regressions and test_connections_core.
+- **Golden:** identical to `baseline_1bf8a4b` on all five seeds at `--tol 0`.
