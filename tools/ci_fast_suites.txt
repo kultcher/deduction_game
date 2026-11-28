@@ -157,6 +157,7 @@ test_reading_confirm
 test_reading_trust
 test_readings_agree
 test_recency
+test_regular_clues
 test_relay_bluff
 test_relay_challenge_menu
 test_relay_lie_attribution

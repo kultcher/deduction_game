@@ -536,6 +536,13 @@ func _capture_scene_search(cmd: String) -> void:
 		var title: String = place if cards.size() == 1 else "%s · trace %d of %d" % [place, i + 1, cards.size()]
 		var text: String = prose[i] if i < prose.size() and prose[i] != "" else str(c.get("text", ""))
 		inspect_pages.append({"title": title, "texture": TraceArt.icon(c, "large"), "text": text})
+	# A regular's belonging, found at a social spot (Michael, Nov 28): its own page over the
+	# place, paced like the other searches. No picture of the thing yet.
+	var found: Dictionary = g.last_search_clue
+	if inspect_pages.is_empty() and not found.is_empty() and not g.last_events.any(func(e): return e.get("k", "") == "error"):
+		var where: String = g.w.loc_name(str(found.get("loc", ""))).trim_prefix("the ")
+		inspect_pages.append({"title": "%s · left behind" % (where.substr(0, 1).to_upper() + where.substr(1)), "texture": null,
+			"text": str(found.get("text", "")), "loc": str(found.get("loc", "")), "action": "Searching the place"})
 	if not inspect_pages.is_empty():
 		_show_inspect_page()
 ## Tavern gossip and Town Hall records come up in the conversation view over the building's

@@ -98,6 +98,7 @@ var divulge_due: Array = []
 ## others about them. id -> [location ids].
 var known_haunts = {}
 var regulars_searched = {}   # place -> true: a place's regulars can be asked about once per game
+var last_search_clue: Dictionary = {}   # the last search's find of a regular {who, loc, clue, text}, for the screen
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.

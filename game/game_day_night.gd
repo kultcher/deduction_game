@@ -182,6 +182,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			if C.is_player_building(g.loc):
 				g._err("There are no personal drops or crime scenes inside %s; use 'records' to check the town register." % g.w.loc_name(g.loc))
 				return
+			g.last_search_clue = {}
 			_search(g)
 			_end_phase(g, "")
 		"gossip":
@@ -412,8 +413,8 @@ static func _search(g) -> void:
 
 
 ## Searching a social spot also turns up one of its regulars (someone with it as a haunt),
-## once per place per game. Whoever works there points them out; with nobody working there,
-## you hear it around the place. Returns true if this search was the place's one ask.
+## once per place per game, by something of theirs left there (game/regular_clues.gd).
+## Returns true if this search was the place's one look.
 static func _search_regulars(g, l: String) -> bool:
 	if not C.LOCATIONS.has(l) or g.regulars_searched.has(l):
 		return false
@@ -431,17 +432,15 @@ static func _search_regulars(g, l: String) -> bool:
 	pick_rng.seed = hash([g.w.seed_value, l, "regulars"])
 	unknown.sort_custom(func(a, b): return a.id < b.id)
 	var r = unknown[pick_rng.randi_range(0, unknown.size() - 1)]
-	var workers: Array = g.w.living().filter(func(n): return n.work == l and n != r)
-	var told: String
-	if not workers.is_empty():
-		var wk = workers[0]
-		told = "%s, the %s, tells you %s is a regular at %s when not working." % [wk.name, str(wk.occupation), r.name, place]
-	else:
-		told = "Asking around %s, you learn %s is a regular here when not working." % [place, r.name]
+	# A thing of theirs left behind, not someone's word: the worker who used to name the
+	# regular needn't even be there (Michael, Nov 28).
+	var clue: String = preload("res://game/regular_clues.gd").pick(r.id, r.name, pick_rng)
+	var told: String = "Searching %s, you find %s. %s must spend time here when not working." % [place, clue, r.name]
 	if unknown.size() > 1:
-		told += " They're not the only one."
+		told += " Others leave their traces here too."
 	g._narr(told)
-	_learn_haunt(g, r, l, "player", "%s often goes to %s when off work (you asked after the regulars there, day %d)." % [r.name, place, g.w.day], "search")
+	g.last_search_clue = {"who": r.id, "loc": l, "clue": clue, "text": told}
+	_learn_haunt(g, r, l, "player", "%s often goes to %s when off work (you found %s there, day %d)." % [r.name, place, clue, g.w.day], "search")
 	return true
 
 
