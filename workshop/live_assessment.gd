@@ -63,6 +63,13 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			continue
 		if e.id not in snapshot.selected and e.kind == "sighting":
 			continue # Own sightings enter only through a separately learned owner.
+		if e.kind in ["sighting", "conversation"] and e.content.get("anonymous", false):
+			var told: Dictionary = anonymous_sighting_card(e, snapshot)
+			if told.is_empty():
+				result.issues.append("The unnamed sighting needs an identified teller and a known place and time.")
+			else:
+				cards.append(told)
+			continue
 		if e.id not in snapshot.selected and e.kind == "info" and e.content.get("role", "") not in ROLES:
 			continue # Independent unsupported readings keep their native baseline owner.
 		if e.kind == "info" and e.content.get("role") == "medium":
@@ -292,6 +299,29 @@ static func _mark_excuses(cards: Array, today: int) -> void:
 
 ## Live activity receipts keep their exact original identity. Old trace cards without
 ## a structured scene cannot be reconstructed from prose or hidden scene records.
+## A sighting or a daytime meeting passed on with its witness hidden (Michael, Nov 28): the teller's account,
+## as for an unnamed reading (testimony_card). It's the sighting it reports, told by the teller,
+## weighed at relay weight (testimony_only), and never says the teller was there.
+static func anonymous_sighting_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
+	var teller: String = str(e.content.get("teller", ""))
+	if teller not in snapshot.people.map(func(p): return p.id):
+		return {}
+	var told: Dictionary = e.duplicate(true)
+	told.source = teller
+	var card: Dictionary = activity_card(told, snapshot)
+	if card.is_empty():
+		return {}
+	card["testimony_only"] = true
+	card["anonymous"] = true
+	# Told at the meeting, it's heard at relay weight: the movement model reads hearing_weight
+	# (live_activity_pack; Codex on #602), not the readings' reliability map. Passed on in
+	# private, the ledger's private hearsay weight stands, with no second discount.
+	if str(e.content.get("hearing", "")) == "private":
+		card["private_relay"] = true
+	else:
+		card["hearing_weight"] = C.RELAY_WEIGHT
+	return card
+
 static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var ids: Array = snapshot.people.map(func(p): return p.id)
 	var block: String = e.content.get("block", "")

@@ -125,7 +125,8 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 	var t: Dictionary = card.get("when", when(card, learned_day, learned_phase))
 	var src: String = card.get("source", "")
 	var out: Array = []
-	var firsthand = src in ["player", "evidence", ""]
+	# An unnamed relay has no source, yet someone told you (Michael, Nov 28): never firsthand.
+	var firsthand = src in ["player", "evidence", ""] and not card.get("anonymous", false)
 	var is_rumour = card.get("tavern_gossip", false) or src == "rumour"
 	var witness_mark: String = "solid" if firsthand else ("dotted" if is_rumour else "hollow")
 	match k:
@@ -134,7 +135,7 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 			# (ui/board_view.gd), not as two more full dots (Nov 10).
 			for who in card.get("subject", []):
 				out.append({"who": who, "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t,
-					"mark": "convo" if k == "conversation" and not is_rumour else witness_mark})
+					"mark": "convo" if k == "conversation" and not is_rumour and not card.get("anonymous", false) else witness_mark})
 		"alibi":
 			# Someone says they were home: a square, not a sighting's circle.
 			var who2: String = card.get("subject", [""])[0]

@@ -8,6 +8,7 @@
 test_agreement_trust
 test_anger_reasons
 test_anonymous_relay_model
+test_anonymous_sighting
 test_ask_night_results
 test_attention_0b
 test_audit_ui
