@@ -26,25 +26,22 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Cases and the Workshop](#cases-and-the-workshop)
-    1. \*Argon's audit: cleanup `[decided]`
+    1. Argon's audit: cleanup `[decided]`
     2. Drive "points elsewhere" from `heard` (`ProfileJudge`) instead of full-weight `CaseEval` `[open]`
-    3. A case-strength helper that names what would firm the case up `[decided: direction]`
+    3. A case-strength helper that names what would firm the case up `[decided: direction; not started, Michael, Nov 28]`
   - [NPC behaviour](#npc-behaviour)
     1. Legwork that shapes the meeting `[open]`
-    2. A friend's doubtful defence `[decided]`
-    3. Withheld readings: asking for what someone hasn't said `[decided]`
-    4. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
-    5. A gift-holder seeks protection before revealing `[decided: direction]`
-    6. Good NPCs lie tactically `[open]`
+    2. \*Passing information on: hidden sources and deliberate seeding `[decided]`
+    3. Evil seeds made-up information through a trusted townsperson `[tentative]`
+    4. A gift-holder seeks protection before revealing `[decided: direction]`
+    5. Good NPCs lie tactically `[open]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
     1. Show answers carried into the next case when filing `[decided]`
-    2. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
-  2. \*Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. Smarter evil `[deferred]`
   2. Vigil request and reward rework `[deferred]`
@@ -78,12 +75,11 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Presenting a card to one NPC
   3. The Test juror reporting a condition separately `[later]`
 - [6. The connections model: open items](#6-the-connections-model-open-items)
-  1. \*A reason citing a pairing the model didn't weigh `[polish]`
-  2. Brute kills scored as hexes on custom scripts `[later]`
-  3. Gift doubt for readings the judge doesn't check `[open]`
-  4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  5. "Not being seen out" as evidence `[open]`
-  6. Observable actions as evidence (Stage 1B) `[tentative]`
+  1. Brute kills scored as hexes on custom scripts `[later]`
+  2. Gift doubt for readings the judge doesn't check `[open]`
+  3. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  4. "Not being seen out" as evidence `[deferred, Michael, Nov 28]`
+  5. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -132,10 +128,10 @@ Lantern). Nothing is open here.
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1: done.** `mind_meeting.gd` (#404), `mind_dialogue.gd` (#417), `world.gd`
        (#426) and `mind.gd` (#433), Beadle, with Lantern on `mind.gd`'s case side.
-     - **Tier 2, under way:** Herald's splits are done: the live Workshop's field editors
-       (#438), the canvas's card layouts (#439), and the voices, one file per character in
-       `sim/voices/` (#458). `social.gd` is in review (Beadle, #452). Left: `live_activity` and
-       `case_eval` (Lantern).
+     - **Tier 2: done.** Herald's splits: the live Workshop's field editors (#438), the
+       canvas's card layouts (#439), and the voices, one file per character in `sim/voices/`
+       (#458). Beadle's `social.gd` (#452). Lantern's `live_activity` (five files) and
+       `case_eval` (four). Checked Nov 28.
      - **Tier 3** waits for the purge.
 
   [decided]
@@ -162,6 +158,7 @@ Lantern). Nothing is open here.
   - **Herald** owns how it's shown and worded.
   - **Not yet decided:** where it shows (the badge's words, a hover, the Why readout), how
     many items it names, and whether it names only gifts on the script.
+  - **Not started, and stays on the backlog** (Michael, Nov 28).
 
   [decided: direction]
 
@@ -187,100 +184,40 @@ Lantern). Nothing is open here.
 
   Owners when chosen: Beadle, with Herald for the lines. [open]
 
-- **A friend's doubtful defence** (Michael, Nov 22). When a friend of the nominee is close to
-  voting yes, it voices a doubtful defence: "I've known Kiran for a long time. He wouldn't be
-  capable of something like this... would he?" (Michael's line, approved). It's a new voice tier.
-  It replaces the proposal "a same-day defence holds back the vote", which Michael declined.
-  Grief not fading stays as intended (Oct 30). Owners: Beadle (the trigger), Herald (the lines
-  for each voice).
-  - **Revised (Michael, Nov 22): two parts.**
-    1. **The line tier,** as above (`support_doubt_for`, triggered for a friend close to yes).
-    2. **Social pressure is damped for a voter who strongly trusts the nominee,** above a trust
-       level. That covers the player's vote and consensus; evidence-based suspicion isn't
-       damped.
-  - **Why:** the Coroner found Isolde, at trust 0.95 and suspicion 0.18 toward Kiran, pushed to
-    the edge of voting yes by Michael's vote and the consensus.
-  - **Next:** Beadle proposes the shape and the constants.
-  - **Lines** (Michael, Nov 22): the doubtful-defence lines for all 15 voices are approved, and
-    use "they" for the nominee. A yes-side line is added for a friend who votes yes despite the
-    bond (the "forgive me, Kiran" beat). Herald drafts it, and Michael approves the wording.
-
-  [decided]
-
-- **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
-  Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
-  - **NPCs ask in private:** now and then, an NPC asks a claimant for a reading it should
-    already have, such as a first-night gift's.
-  - **NPCs press at the meeting:** rarely, a confident NPC presses someone it suspects of
-    holding back.
-  - **The cost:** a deferral with a reason costs a little, a bare deflection more, and the cost
-    builds by day.
-  - **The player's version:** one softer ask per meeting, outside a nomination. Refusing costs
-    some suspicion and makes a circumstantial card.
-
-  Owners: Beadle (behaviour), Lantern (the cost), Herald (the UI and lines), Quill (the card).
-  [decided]
-
-  - **Un-held (Michael, Nov 28),** after a hold from Nov 23. The player's "Call on" is built
-    (#542, #545); the NPC asking, pressing and cost are now to be built, to the shape and
-    values below.
-  - **Beadle's shape (approved, Nov 28):**
-    - **Asking in private:** in an NPC-to-NPC conversation, a good NPC that heard someone claim
-      an information gift at least a day ago, and has heard no reading from them since, may
-      ask for it (Herald's `ask_reading_private` line). At most once per pair per day. A
-      first-night gift is owed from day 1; an ongoing one once a night has passed since the
-      claim.
-    - **Pressing at the meeting:** a confident NPC that suspects a public claimant who has gone
-      a day without a reading may press them (Herald's `press_withheld` line), at the existing
-      accusing level of suspicion. At most once per meeting.
-    - **The answer:** the "Call on" rules. The holder gives the reading; defers with a reason
-      (a friend, a burden, or distrust of the asker); or deflects. A bluffer with a fabricated
-      reading mostly answers. A private ask is answered to the asker only. Both pushes reuse
-      `CALL_ON_PRESSURE_BUMP`.
-    - **Five new constants (approved, Michael, Nov 28):**
-
-      | Constant | Value | What it does |
-      |---|---|---|
-      | `ASK_PRIVATE_BASE` | 0.10 | the base chance to ask, per conversation with the claimant |
-      | `ASK_PRIVATE_WARY` | 0.30 | added per unit of the asker's suspicion of the claimant |
-      | `ASK_PRIVATE_INSIGHT` | 0.10 | added per unit of the asker's Insight |
-      | `PRESS_WITHHELD_CONFIDENCE_MIN` | 0.6 | how confident an NPC must be to press |
-      | `PRESS_WITHHELD_SCALE` | 0.25 | multiplied by confidence: the chance to press |
-
-      That's about 0.15 for an average asker and 0.35 for a wary, sharp one; a press about
-      0.15–0.25 when someone qualifies.
-  - **The refusal record (agreed with Lantern, Nov 23)**, for Lantern's cost:
-    - one entry per refusal: asker (an NPC, or "player" for "Call on"), claimant, the claim
-      dodged (its fact id, or its day and role), the statement tick, private or meeting,
-      deferred or deflected, and the reason ("friend", "burden", "distrust" or none);
-    - `known_to`: the asker alone for a private ask, "public" at the meeting;
-    - `shared_at`, set when the claimant later gives that reading.
-    - Settled with Lantern (Nov 28): the claim is always `{day, role}` (the night of the dodged
-      reading and its gift), with `fact_id` added alongside once one exists; `known_to` is
-      always a list (`[asker]` or `["public"]`); `shared_at` is set on every entry for that
-      claimant and claim.
-  - **Asking and answering: built** (Beadle, Nov 28; `sim/mind_withheld.gd`, `MindCallOn.respond`
-    with an asker, `w.withheld_refusals`). The cost is Lantern's, next.
-  - **The cost (approved, Michael, Nov 28):** Lantern's fixed refusal cost, rather than one
-    sized from bot runs.
+- **Passing information on: hidden sources and deliberate seeding** (Michael, Nov 21; widened
+  to every role Nov 28). It began as "a hidden Seer seeds its readings into the gossip
+  network": before revealing, a Seer passes its information through someone it trusts, as
+  hearsay, so the town is pointed the right way without exposing the Seer. Michael (Nov 28)
+  made it general. The design is in
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.7.
+  - **The source is always hidden** when information is passed on: in private, to the player,
+    and at the meeting. The exceptions are a dead person's reading, and anything the source has
+    since said publicly.
+  - **Deliberate seeding,** by any good role: a holder picks someone it trusts and passes its
+    information on.
 
     | Constant | Value | What it does |
     |---|---|---|
-    | `WITHHELD_DEFER_FACTOR` | 1.15 | the cost of a deferral with a reason |
-    | `WITHHELD_DEFLECT_FACTOR` | 1.6 | the cost of a bare deflection |
-    | `WITHHELD_DAY_STEP` | 1.25 | how much more it costs for each day the reading stays out |
+    | `SEED_TRUST_MIN` | 0.7 | how much the holder must trust someone to seed through them |
+    | `SEED_CHANCE` | 0.35 | the chance to seed, ×1.5 when the reading points at a suspected Demon |
+    | `SEED_RELAY_CHANCE` | 0.4 | the chance the person seeded passes it on |
 
-    - **Alignment-blind** (Michael): the cost doesn't depend on whether good or evil is likelier
-      to dodge, so there's no metagaming of who defers.
-    - **It doesn't stack:** several refusals over the same claim don't add up.
-    - **Trust-discounted:** it costs less when the asker trusts the holder.
-    - **Once the reading is shared,** a deferral's cost is removed; a deflection's stays.
+  - **"Ask about <person>" no longer depends on that person's gossip.** What surfaces goes by
+    role:
+    - asking "are you the Seer, or have you heard of one" surfaces a Seer reading the NPC has
+      heard, always, with the source hidden; likewise for each role;
+    - asking about the dead always surfaces their claim and readings, if the NPC knows them;
+    - an evil NPC surfaces such information 25% of the time, and never if it incriminates the
+      Demon.
+  - **In progress** (Nov 28): Lantern's #599 (an unnamed relay in the belief model) and Quill's
+    #602 (unnamed sightings and private relays as evidence) are open.
 
-- **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
-  revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
-  is pointed the right way without exposing the Seer. From
-  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1; it may
-  generalise to other gifts as the note grows. Owner Beadle. [decided: direction]
+  Owner Beadle. [decided]
+
+- **Evil seeds made-up information through a trusted townsperson** (Michael, Nov 28). The evil
+  mirror of deliberate seeding: an evil NPC passes a made-up reading through a good person who
+  trusts it, so the lie spreads with the source hidden. A possibility for later. Owner Beadle.
+  [tentative]
 
 - **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
   reveal looks for protection first, from the player or a known Warden. Same source; it may
@@ -315,24 +252,6 @@ Candidates for a unified retuning proposal, not approved changes.
   An answer the player picked on a Workshop card carries into the next case without being
   shown. Low priority. Owner Herald or Quill, as they agree. [decided]
 
-- **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
-  block, so:
-  - the Night Watch card's "pass by" is reworded, along with the Vigil tooltip's "passing
-    through": Herald #448;
-  - no voiced line says "road": Herald #446, merged.
-
-  **Wording approved (Michael, Nov 20):**
-  - **#446, the no-roads rewording:** approved as drafted, with its kept phrases: the
-    Lamplighter's "lamp route", the Augur's "crossed paths", the idiom "a long road from
-    murder", and general street flavour.
-  - **The Night Watch card:** "I watched {block}: I saw A and B out." With one person, "I saw
-    A out." With nobody, "nobody stirred".
-  - **The Vigil tooltip:** "You only see if its residents leave home. You do not see people
-    arrive on this block from elsewhere."
-
-  The Night Watch card and Vigil tooltip are in Herald's #448, first in the golden queue;
-  the item closes when #448 merges. Owner Herald. [decided]
-
 ### Performance
 
 The one performance item, "Late-game meeting and presenting cost", is in
@@ -358,26 +277,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
     resistance.
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
-
-- **Graded gossip.** Each gossip occasion has a budget of mixed-value items, so the player
-  usually gets at least two useful pieces. (Michael, Nov 19) Owner Beadle, with Quill on the
-  value tiers; plan first. [decided]
-  - **Approved (Michael, Nov 19):** new constants `TAVERN_TIER1_TARGET` = 2 and
-    `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
-  - **The tiers (Michael, Nov 20, later):**
-    - **Tier 1:** a reading or other stated information, or a night sighting that names a
-      place;
-    - **Tier 2:** role claims, hints and secrets;
-    - **Tier 3:** everything else.
-
-    The targets stay at 2 and 1, and Beadle's budget calls are approved.
-  - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
-    `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
-    both met on about 4% of tavern evenings today, though the town's news would allow it on
-    about 84%. Merged (#431, Nov 20).
-  - **Budget built** (Beadle, Nov 20, #437; handoff `2026-11-20-1400-beadle-gossip-budget.md`):
-    each evening fills its tier-1 and tier-2 targets first, then draws as before. Both targets
-    are met on about 73% of evenings (from 3%). Merged (#437, Nov 20).
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -549,8 +448,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
 ## Release readiness
 
 From Argon's release audit ([the release audit](docs/maintenance/codebase_and_release_audit_2026-11-27.md), merged in #563). Michael accepted these on Nov 27. Each cites
-the audit section it comes from. The fix-as-you-go bugs went straight to the leads, and the
-architecture items are still a proposal for Michael, so neither is here.
+the audit section it comes from. The fix-as-you-go bugs went straight to the leads, so they
+aren't here. The UI ones are fixed (Herald, #579), and so is the Workshop cache reset
+(Lantern, #574).
 
 - **Platforms and resolution** (audit Part 2, and P2 item 11). Windows is the primary target, and
   the Steam Deck (1280×800, 16:10) is worth pursuing. The scope:
@@ -595,8 +495,8 @@ architecture items are still a proposal for Michael, so neither is here.
 - **Sharp UI plaques at 1440p and 4K** (audit Part 2, item 5, the second half; Michael, Nov 27).
   Low priority.
   - **The problem:** plaques and signs are shrunk on the CPU to about 34 px at logical size,
-    then stretched by the content scale, so they blur on high-DPI screens. Herald is fixing the
-    first half of that audit item, the cache leak.
+    then stretched by the content scale, so they blur on high-DPI screens. The first half of
+    that audit item, the cache leak, is fixed (Herald, #579).
   - **The fix:** keep the art at full or 2× resolution, and draw it as a nine-patch with
     separate source and screen margins, through a custom draw or RenderingServer's nine-patch.
     That drops the CPU resize.
@@ -615,7 +515,8 @@ architecture items are still a proposal for Michael, so neither is here.
   - Consolidate `ui/main.gd`'s modal state into one overlay stack, and unify the duplicated VN and
     courtroom stage (Herald).
 
-  **Not part of this:** a single source for tuning values is in progress with Argon.
+  **Not part of this:** a single source for tuning values, done by Argon (#577): the C# kernels
+  now take their tuning values from `sim/tuning.gd` rather than keeping copies.
   [decided: direction]
 
 ## Workshop gaps (NYI)
@@ -665,9 +566,6 @@ obsolescence audit** (`docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.
 be done "relatively soon, before we build any more larger features". Michael approved its
 four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 
-- **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
-  connections model what is believed, so a reason can name cards the belief didn't combine.
-  **[polish]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
@@ -689,7 +587,7 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   complete watch list or coverage says someone wasn't out. It goes under the circumstantial
   hub, since it's hard to confirm and subject to chance. From
   [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.3. Owner
-  Lantern. **[open]**
+  Lantern. **[deferred, Michael, Nov 28]**
 - **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
   broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
   tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in

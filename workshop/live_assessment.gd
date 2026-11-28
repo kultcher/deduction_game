@@ -670,10 +670,7 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			role = ""
 	var context = {"id": e.id, "fact_id": e.fact_id, "source": teller, "kind": "context", "context_kind": "unattributed_report", "role": "", "data": {}, "observed_at": e.observed_at, "text": e.text,
 		"testimony_only": true, "context_note": "Original evidence or observation time is unestablished; this account is context only."}
-	# Passed on in private (Michael, Nov 28): the ledger's private hearsay weight stands, with no
-	# second relay discount, so the card says so and takes no hearing weight of its own.
-	var private_relay: bool = str(e.content.get("hearing", "")) == "private"
-	if private_relay:
+	if str(e.content.get("hearing", "")) == "private":
 		context["private_relay"] = true
 	if role == "psychologist" and data.has("subject"):
 		context.context_note = "Relayed opinions are context, not alignment evidence."
@@ -689,9 +686,8 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return context
 	if role in ["nightwatch", "warden", "lamplighter", "veteran", "martyr", "sexton"]:
 		if role == "nightwatch" and not data.seen.is_empty():
-			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block}, true)
-			if not private_relay:
-				context["hearing_weight"] = C.RELAY_WEIGHT
+			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block,
+				"hearing_weight": 1.0 if context.get("private_relay", false) else C.RELAY_WEIGHT}, true)
 		return context # No identity/visit/protection proof from an unattributed original.
 	context.merge({"kind": "report", "role": role, "data": data.duplicate(true), "night": -1, "observed_at": observed,
 		"reported_at": Solver.TimeModel.statement_time(e), "provenance": e.provenance.duplicate(true)}, true)
@@ -928,7 +924,11 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			# unknown ward, an unclaimed Veteran, or their own failed gift could explain it.
 			reliability[card.id] *= Tuning.Roles.WARDEN_SAVE_RELIABILITY
 		elif card.get("testimony_only", false):
-			reliability[card.id] = C.RELAY_WEIGHT
+			# A relay told at the meeting counts at RELAY_WEIGHT; one passed on in private keeps
+			# its hearsay weight in the ledger and counts in full here (Michael, Nov 28: hearsay
+			# weight unchanged). Either way it's someone else's reading, so doubt about the
+			# relayer's own gift doesn't touch it (Codex on #599).
+			reliability[card.id] = 1.0 if card.get("private_relay", false) else C.RELAY_WEIGHT
 	var result = {"id": src.id, "name": src.name, "trust": src.trust, "confidence": src.confidence,
 		"insight": src.insight, "reasoning_mode": src.get("reasoning_mode", "full"),
 		"confidence_mode": src.get("confidence_mode", "scale"), "theories": src.get("theories", {}).duplicate(true),
