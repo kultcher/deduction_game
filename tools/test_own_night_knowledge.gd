@@ -117,18 +117,29 @@ func _init() -> void:
 		print("NOTE: %s: the fake sighting moves the planter %+.2f log-odds (%+.3f)" % [label, lift1, e.with - e.without])
 		check(lift1 >= _logit(0.65) - _logit(0.5), "%s: the fake sighting raises the planter at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label, lift1, e.with - e.without])
 	# 2. An evil Medium's invented relay of the listener, out on a night they were home.
+	# A relayer the rest already holds above 0.95 leaves no room to measure a lift: the search
+	# moves on to the next deal (Lantern, Nov 28; #588 moved the seed onto such a deal, 100027).
 	var r: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
+	var e2: Dictionary = {}
+	for _try in 4:
+		if r.is_empty():
+			break
+		e2 = _effect(r.g, r.listener, r.teller, func(c): return str(c.get("relay_source", "")) == r.teller)
+		if e2.get("without", 1.0) < 0.95:
+			break
+		print("seed %d: the relayer is already at %.3f without the relay; no room to lift, next deal" % [r.seed, e2.without])
+		r = Seeds.relay(3, func(t): return t.is_evil(), true, r.seed + 1)
 	if r.is_empty():
 		_missing("an evil relay of the listener")
 	else:
-		var e2: Dictionary = _effect(r.g, r.listener, r.teller, func(c): return str(c.get("relay_source", "")) == r.teller)
 		var label2: String = "seed %d: %s, relayed out by %s" % [r.seed, r.listener, r.teller]
 		print("%s: %.3f with the relay, %.3f without" % [label2, e2.with, e2.without])
 		check(e2.dropped > 0, "%s: the relay is held" % label2)
 		# In log-odds, so a relayer the rest already makes nearly certain still has room: at
 		# least what 15 points from even odds is (0.50 -> 0.65). Which seed the finder picks
-		# moves with the game (with poison self-doubt on it is 100031, where the relayer is at
-		# 0.97 without the relay; the earlier 100055 shows the same +25 points either way).
+		# moves with the game, and the search skips a relayer the rest already holds above 0.95
+		# (it was 100031, at 0.71 without the relay, before #588; the earlier 100055 shows the
+		# same +25 points either way).
 		var lift: float = _logit(e2.with) - _logit(e2.without)
 		check(lift >= _logit(0.65) - _logit(0.5), "%s: the invented relay raises the relayer at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label2, lift, e2.with - e2.without])
 	# 3. (The Sleepwalker case retired with the burdens prototype.)

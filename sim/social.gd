@@ -57,6 +57,9 @@ static func converse(w, a, b, when: String) -> void:
 	if a.is_evil() and b.is_evil():
 		Evil.share_intel(w, a, b, "meeting (%s)" % when)
 		return
+	# Asking for a reading someone's claimed gift owes (withheld readings, Michael, Nov 28).
+	for p in [[a, b], [b, a]]:
+		MindWithheld.maybe_ask_private(w, p[0], p[1])
 	# Each side can pass on several things; every further item needs more trust, and each
 	# pick keeps the idle-chat chance, so a conversation can trail off (Nov 5).
 	for p in [[a, b], [b, a]]:
@@ -427,6 +430,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			Mind.hear_claim(w, l, src.id, e["role"], wgt, "relayed", Mind.WorkshopLedger.reading(src.id, e, s.id))
 			if not (e in l.known_claims[src.id]["readings"]):
 				l.known_claims[src.id]["readings"].append(e)
+			if src == s and not relayed:
+				MindWithheld.note_shared(w, s, e, l.id)
 			l.hearsay.append(hs)
 		"sighting":
 			var orig_src_id: String = str(item.get("from", s.id))

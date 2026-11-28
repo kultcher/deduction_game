@@ -10,6 +10,7 @@ const Evil = preload("res://sim/evil.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const PsychologistRole = preload("res://sim/roles/psychologist.gd")
 const Burdens = preload("res://sim/burdens.gd")
+const MindWithheld = preload("res://sim/mind_withheld.gd")
 
 static func trait_of(n, t: String) -> float:
 	return n.traits.get(t, 0.5)

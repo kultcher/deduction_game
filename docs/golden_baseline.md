@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 28, Michael's 52102 wording and the Psychologist's all-clear): `baseline_c0cb269`
+### Current baseline (Nov 28, withheld readings: NPCs ask and press): `baseline_2e97efe`
+
+`tools/golden/baseline_2e97efe/` is the capture from `claude/beadle-withheld-asks` at `2e97efe`,
+after merging main: `baseline_c0cb269` plus NPCs asking in private, and pressing at
+the meeting, for a reading a claimed gift owes (`sim/mind_withheld.gd`). It supersedes
+`baseline_c0cb269`.
+- **Divergence from `baseline_c0cb269`:** seed 42 only, at record 36 (day 2, afternoon). In a
+  conversation Kiran asks Fenwick, in private, what the Medium showed them; Fenwick, who has no
+  reading yet, says there's nothing more to tell. That roll moves the random draws after it: the
+  run is 77 records, not 104, and Fenwick, not Dorian, nominates Agnes. 900, 54875, 692 and 98933
+  are identical: no conversation there met an owed reading, and no one qualified to press, so
+  no roll was made.
+- **Outcomes:** unchanged on every seed: the same winners, days and hangings (42: Agnes hanged on
+  day 2, good wins, on the same votes).
+- **Stability:** two captures were identical at `--tol 0`. Before #576 merged, the same change
+  captured as `baseline_446c9c2` (never on main); with `--ignore engine,reply,text` the two are
+  identical on every seed.
+
+### Earlier baseline (Nov 28, Michael's 52102 wording and the Psychologist's all-clear): `baseline_c0cb269`
 
 `tools/golden/baseline_c0cb269/` is the capture from `claude/herald-52102-wording` at `c0cb269`:
 `baseline_1bf8a4b` plus the nine prompt and description lines Michael approved on Nov 27, and the
