@@ -1,0 +1,13 @@
+{
+ "cells": {},
+ "games": 0,
+ "failed": 0,
+ "shas": [],
+ "effects": {},
+ "health": {
+  "stuck": [],
+  "failed": [],
+  "missing": {},
+  "error_games": 0
+ }
+}
