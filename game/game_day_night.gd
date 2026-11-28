@@ -115,7 +115,6 @@ static func _day_command(g, verb: String, rest: String) -> void:
 				return
 			_warn_busy_visit(g, sought)
 			g.moved = true
-			g.free_move_used = false
 			g.loc = l
 			g.w.player_loc = l
 			g.w.dlog.add("player_move", "player", "", {"loc": l})
@@ -505,7 +504,6 @@ static func _learn_haunt(g, n, l: String, source: String, text: String, via: Str
 static func _end_phase(g, talked_id: String) -> void:
 	g.w.phase_player_loc = g.loc
 	g.moved = false
-	g.free_move_used = false
 	g.loc = ""
 	g.w.player_loc = ""
 	g.approached_id = ""

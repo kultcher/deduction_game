@@ -50,7 +50,6 @@ var approach = {}          # pending approach: {npc, agenda}
 var approached_id = ""     # npc who approached at the start of this phase
 var approached_loc = ""    # location named in that approach
 var moved = false          # has the player chosen a location this phase
-var free_move_used = false  # never set now (moving within a block is free, Nov 28); the UI still reads it until Herald drops it
 var loc = ""
 var talk_with = null
 var questions_left = 0
