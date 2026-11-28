@@ -562,6 +562,11 @@ func _dispatch(text: String) -> void:
 				var conf = p1[p1.size() - 1].to_int() if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else 2
 				var gtext = " ".join(p1.slice(1, p1.size() - 1 if p1.size() > 2 and p1[p1.size() - 1].is_valid_int() else p1.size()))
 				var role = find_role(gtext)
+				if role == "" and gtext.to_lower() in ["minion", "a minion"]:
+					# A Minion guess names its gift (playtest 52102, seq 556); say how.
+					var example: String = C.role_name(w.case_script.minions[0]).to_lower() if w.case_script != null and not w.case_script.minions.is_empty() else "poisoner"
+					_err("Name the Minion's gift ('guess %s %s'), or guess 'evil'." % [gn.name.to_lower(), example])
+					return
 				if set_guess(gn.id, role if role != "" else gtext.to_lower(), conf):
 					_narr(theory_status())
 				else:
