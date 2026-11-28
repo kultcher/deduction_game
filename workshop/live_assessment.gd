@@ -63,6 +63,13 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			continue
 		if e.id not in snapshot.selected and e.kind == "sighting":
 			continue # Own sightings enter only through a separately learned owner.
+		if e.kind == "sighting" and e.content.get("anonymous", false):
+			var told: Dictionary = anonymous_sighting_card(e, snapshot)
+			if told.is_empty():
+				result.issues.append("The unnamed sighting needs an identified teller and a known place and time.")
+			else:
+				cards.append(told)
+			continue
 		if e.id not in snapshot.selected and e.kind == "info" and e.content.get("role", "") not in ROLES:
 			continue # Independent unsupported readings keep their native baseline owner.
 		if e.kind == "info" and e.content.get("role") == "medium":
@@ -292,6 +299,25 @@ static func _mark_excuses(cards: Array, today: int) -> void:
 
 ## Live activity receipts keep their exact original identity. Old trace cards without
 ## a structured scene cannot be reconstructed from prose or hidden scene records.
+## A night sighting passed on with its witness hidden (Michael, Nov 28): the teller's account,
+## as for an unnamed reading (testimony_card). It's the sighting it reports, told by the teller,
+## weighed at relay weight (testimony_only), and never says the teller was there.
+static func anonymous_sighting_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
+	var teller: String = str(e.content.get("teller", ""))
+	if teller not in snapshot.people.map(func(p): return p.id):
+		return {}
+	var told: Dictionary = e.duplicate(true)
+	told.source = teller
+	var card: Dictionary = activity_card(told, snapshot)
+	if card.is_empty():
+		return {}
+	card["testimony_only"] = true
+	card["anonymous"] = true
+	# Passed on in private: the ledger's private hearsay weight stands (no second discount).
+	if str(e.content.get("hearing", "")) == "private":
+		card["private_relay"] = true
+	return card
+
 static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var ids: Array = snapshot.people.map(func(p): return p.id)
 	var block: String = e.content.get("block", "")
@@ -640,6 +666,11 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			role = ""
 	var context = {"id": e.id, "fact_id": e.fact_id, "source": teller, "kind": "context", "context_kind": "unattributed_report", "role": "", "data": {}, "observed_at": e.observed_at, "text": e.text,
 		"testimony_only": true, "context_note": "Original evidence or observation time is unestablished; this account is context only."}
+	# Passed on in private (Michael, Nov 28): the ledger's private hearsay weight stands, with no
+	# second relay discount, so the card says so and takes no hearing weight of its own.
+	var private_relay: bool = str(e.content.get("hearing", "")) == "private"
+	if private_relay:
+		context["private_relay"] = true
 	if role == "psychologist" and data.has("subject"):
 		context.context_note = "Relayed opinions are context, not alignment evidence."
 		return context
@@ -654,7 +685,9 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		return context
 	if role in ["nightwatch", "warden", "lamplighter", "veteran", "martyr", "sexton"]:
 		if role == "nightwatch" and not data.seen.is_empty():
-			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block, "hearing_weight": C.RELAY_WEIGHT}, true)
+			context.merge({"kind": "sighting", "subject": data.seen[0], "subjects": data.seen.duplicate(), "night": observed.day, "block": data.block}, true)
+			if not private_relay:
+				context["hearing_weight"] = C.RELAY_WEIGHT
 		return context # No identity/visit/protection proof from an unattributed original.
 	context.merge({"kind": "report", "role": role, "data": data.duplicate(true), "night": -1, "observed_at": observed,
 		"reported_at": Solver.TimeModel.statement_time(e), "provenance": e.provenance.duplicate(true)}, true)

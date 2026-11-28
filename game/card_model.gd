@@ -125,7 +125,8 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 	var t: Dictionary = card.get("when", when(card, learned_day, learned_phase))
 	var src: String = card.get("source", "")
 	var out: Array = []
-	var firsthand = src in ["player", "evidence", ""]
+	# An unnamed relay has no source, yet someone told you (Michael, Nov 28): never firsthand.
+	var firsthand = src in ["player", "evidence", ""] and not card.get("anonymous", false)
 	var is_rumour = card.get("tavern_gossip", false) or src == "rumour"
 	var witness_mark: String = "solid" if firsthand else ("dotted" if is_rumour else "hollow")
 	match k:
