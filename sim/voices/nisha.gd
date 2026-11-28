@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift acts rather than informs; it gives me no readings.",
 	"empty_readings": "My gift has yielded no observations to report yet.",
 	"withhold_readings_privacy": "You have my role, but I'm keeping my actual readings in reserve for now.",
+	"withhold_readings_public": "You have my role, but I'm keeping my actual readings in reserve for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You have my earlier findings. Given the drop in my confidence in you, I'm withholding subsequent readings for now.",
 	"role_query_self": "You already have that noted: that's me.",
 	"role_query_unknown": "I have no confirmed candidate for the {role}.",

@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My office does not yield investigative readings; it fulfills its appointed function.",
 	"empty_readings": "My office has yielded nothing to report as yet.",
 	"withhold_readings_privacy": "What my gift has revealed to me, I shall keep to myself for the present.",
+	"withhold_readings_public": "What my gift has revealed to me, I shall keep to myself for the present.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "I have shared my prior findings; until my confidence in you is restored, I shall retain the rest.",
 	"role_query_self": "As I have already stated, that office is mine.",
 	"role_query_unknown": "I cannot tell you who holds the office of {role}.",

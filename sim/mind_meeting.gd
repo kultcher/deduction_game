@@ -760,16 +760,17 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 
 ## Called at the actual disclosure, including inside a streamed speaker's turn.
 ## The promise itself still lapses through GameBoard._break_confidences as before.
-static func _public_disclosure(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
+static func _public_disclosure(w, n, lines: Array, facts: Array, share_readings: bool = true, say_held: bool = true) -> void:
 	if not n.claim_public and n.dialogue_memory.get("confidence_requested", false):
 		lines.append(say_voiced(n, "release_confidence_public", "I've decided the town should hear it."))
 		n.dialogue_memory.erase("confidence_requested")
-	_go_public(w, n, lines, facts, share_readings)
+	_go_public(w, n, lines, facts, share_readings, say_held)
 
 ## Come out with their gift at the meeting (if not already) and share their unshared
 ## readings with the town. Adds the lines and cards; shared by the claim step and the
 ## reveal tier of an accusation.
-static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
+static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = true, say_held: bool = true) -> void:
+	var newly_claimed: bool = not n.claim_public
 	if not n.claim_public:
 		var claim: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
 		n.claimed_role = claim
@@ -822,6 +823,20 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 					PsychRole.record_heard(w, l, n.id, pub_fact, is_false_pub, f_why_pub)
 		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty(), "volunteer"))
 		_say_gift_doubt(w, n, lines, facts)
+	if say_held:
+		_say_readings_held(n, newly_claimed, lines)
+
+## A claim that comes out without its readings (a podium outing, or a burden keeping them back)
+## says so, rather than leaving the claim hanging (Michael, Nov 28). Only on a new claim, and only
+## when the gift has readings still unshared. Each voice's own "keeping my readings" line; a
+## voice can give the town its own form ("withhold_readings_public").
+static func _say_readings_held(n, newly_claimed: bool, lines: Array) -> void:
+	if not newly_claimed or not C.has_readings(n.claimed_role):
+		return
+	if not n.info_log.any(func(e): return not e.get("shared", false) and not e.get("disowned", false)):
+		return
+	var key: String = "withhold_readings_public" if Dialogue.voice_line(n.id, "withhold_readings_public", "") != "" else "withhold_readings_privacy"
+	lines.append(say_voiced(n, key, "What it's shown me, I'll keep to myself for now."))
 
 ## "My gift may have been turned" (BACKLOG, Michael, Nov 17-18), said once to the town by a
 ## public claimant who has it waiting (`n.gift_doubt`): for now only a boxed-in liar
@@ -886,7 +901,7 @@ static func last_words(w, n) -> Dictionary:
 	var already_claimed: bool = n.claim_public and n.claimed_role == claim
 	if n.claim_public and n.claimed_role != claim:
 		n.claim_public = false # With nothing to hide, correct their earlier claim.
-	_public_disclosure(w, n, lines, facts, false)
+	_public_disclosure(w, n, lines, facts, false, false)   # last words: nothing left to keep back
 	if lines.is_empty():
 		if already_claimed:
 			lines.append(say_voiced(n, "gallows_confirm_role", "As I've said, I am the %s." % C.role_name(claim), {"role": C.role_name(claim)}))

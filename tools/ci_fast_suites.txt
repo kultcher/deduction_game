@@ -32,6 +32,7 @@ test_case_script
 test_caught_lie_softening
 test_caught_lying
 test_caught_out_ladder
+test_claim_only_reveal
 test_codex_fixes
 test_confessed_night
 test_connections

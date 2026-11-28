@@ -123,6 +123,7 @@ const LINES = {
 	"passive_gift_note": "Mine is a gift of action rather than revelation, my friend—it tells me no tales.",
 	"empty_readings": "Alas, the stage is bare—my gift has shown me nothing yet!",
 	"withhold_readings_privacy": "What my gift has revealed must wait for the proper scene, my friend.",
+	"withhold_readings_public": "What my gift has revealed must wait for the proper scene, friends.",   # to the town, after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You have the earlier chapters, my friend; the newest pages stay with me for now.",
 	"role_query_self": "You are looking right at them, my friend—that would be me!",
 	"role_query_unknown": "Alas, who plays the {role} in this cast is a mystery to me!",

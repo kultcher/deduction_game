@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift doesn't tell me secrets about anyone, truly—it only does its quiet work.",
 	"empty_readings": "I'm sorry, truly—my gift hasn't shown me anything yet.",
 	"withhold_readings_privacy": "Please forgive me—what it's shown me, I must keep to myself a little longer.",
+	"withhold_readings_public": "Please forgive me—what it's shown me, I must keep to myself a little longer.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "I shared what I had before, truly, but I'm too uneasy now to share the rest.",
 	"role_query_self": "That would be me, as I told you.",
 	"role_query_unknown": "I'm sorry, I truly couldn't tell you who the {role} is.",

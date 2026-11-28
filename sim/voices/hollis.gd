@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My office is operational rather than epistemic; it generates no readings.",
 	"empty_readings": "My office has produced no reportable observations to date.",
 	"withhold_readings_privacy": "The specific observations of my office must remain undisclosed for the present.",
+	"withhold_readings_public": "The specific observations of my office must remain undisclosed for the present.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You possess my earlier reports; given my reduced confidence in your approach, I shall withhold the remainder.",
 	"role_query_self": "As previously established, that office is mine.",
 	"role_query_unknown": "I have no verified knowledge of who holds the office of {role}.",

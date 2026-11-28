@@ -105,6 +105,7 @@ const LINES = {
 	"passive_gift_note": "My gift doesn't whisper names to me. It simply does its quiet work.",
 	"empty_readings": "It hasn't shown me anything yet, I'm afraid.",
 	"withhold_readings_privacy": "What my gift has shown me, I'll keep to myself for now.",
+	"withhold_readings_public": "What my gift has shown me, I'll keep to myself for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "I've told you what I knew before, dear. The rest I'll keep to myself for now.",
 	"role_query_self": "Why, that would be me, love.",
 	"role_query_unknown": "I couldn't tell you who the {role} is, I'm afraid.",

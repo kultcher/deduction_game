@@ -104,6 +104,7 @@ const LINES = {
 	"passive_gift_note": "My gift is more of a practical talent than a crystal ball—it doesn't tell me things.",
 	"empty_readings": "Patience, my friend—my gift hasn't dealt me a single card yet.",
 	"withhold_readings_privacy": "I've shown you my role card; what it's actually turned up stays up my sleeve for now.",
+	"withhold_readings_public": "I've shown you my role card; what it's actually turned up stays up my sleeve for now.",   # the same, to the town after a claim (Michael, Nov 28)
 	"withhold_readings_trust": "You had the earlier round on the house. Until trust improves, the new results stay with me.",
 	"role_query_self": "Taking a victory lap, Demonologist? As you know, that would be me.",
 	"role_query_unknown": "Much as I'd love to trade in that rumor, I couldn't tell you who the {role} is.",
