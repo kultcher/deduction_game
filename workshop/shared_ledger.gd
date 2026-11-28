@@ -396,6 +396,12 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				if shared:
 					raw_w = maxf(raw_w if owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")) else 0.0, hearing)
 				prepared.listener.reading_reliability[id] = minf(prepared.listener.reading_reliability[id], clampf(raw_w * (rel_base + rel_slope * best_trust), 0.05, 1.0))
+				# A Night Watch account passed on in private is read as a sighting: the movement
+				# model reads its hearing weight, not this reliability, so it takes the same
+				# private-hearsay weight here (Codex on #602). Told at the meeting, it keeps
+				# RELAY_WEIGHT.
+				if adapted[id].get("private_relay", false) and str(adapted[id].get("kind", "")) == "sighting":
+					adapted[id]["hearing_weight"] = prepared.listener.reading_reliability[id]
 				continue
 			if facts[id].kind == "claim":
 				var claim_w: float = player_weight

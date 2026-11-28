@@ -23,7 +23,8 @@ Michael, Nov 28: passing on someone else's information hides its source, everywh
 3. **A relay passed on in private** (`hearing: "private"` on the receipt, now carried into the fact):
    - the Workshop card is marked `private_relay`, and an unnamed Night Watch sighting takes no relay weight of its own;
    - this applies to sightings and readings alike (`testimony_card`);
-   - Lantern's listener skips its relay discount on those cards, so private hearsay keeps the ledger's 0.75 × trust in the teller, as Michael wants. That's Lantern's PR.
+   - Lantern's listener skips its relay discount on those cards, so private hearsay keeps the ledger's 0.75 × trust in the teller, as Michael wants. That's Lantern's PR (#599, merged).
+   - **A Night Watch account passed on in private** is read as a sighting, and the movement model reads its hearing weight, not the reading's reliability. So it counted as certain. `SharedLedger.prepare` now gives it the same private-hearsay weight it gives the reading (Codex's third finding on #602; this is Lantern's file, so Lantern should look). One told at the meeting keeps `RELAY_WEIGHT`, as before.
 
 ## Weighing (Lantern's call, Nov 28: accept, no cap)
 
@@ -34,13 +35,14 @@ On the Test juror, an unnamed sighting reads 1.02 and the same sighting from a n
 
 ## What I measured
 
-- **New:** `test_anonymous_sighting`, 13 checks, 0 failures, on the fast list. It checks:
+- **New:** `test_anonymous_sighting`, 14 checks, 0 failures, on the fast list. It checks:
   - the fact keeps the teller and no witness;
   - the board draws it hollow;
   - a case on it is ready, and the Workshop card is the teller's testimony;
   - a meeting relay is heard at relay weight and isn't marked private;
   - an unnamed meeting keeps the teller, is drawn hollow, and is the teller's testimony;
   - an unnamed evening meeting is heard at relay weight and leaves other evening blocks possible;
+  - a private Night Watch account heard at 0.4 moves whereabouts at most that much (it fails without the fix);
   - a private sighting and a private reading are both marked private relays, and the sighting has no relay weight of its own;
   - both the named and the unnamed sighting are weighed.
 - **Related suites:** `test_workshop_live`, `test_workshop_live_canvas`, `test_workshop_secrets`, `test_workshop_ui`, `test_board`, `test_board_fixes_marks_crowd`, `test_sighting_followup`, `test_night_sighting_rebuttal`, `test_juror_listener`, `test_juror_claims`, `test_meeting_flow`, `test_workshop_regressions`, `test_ui`, `test_medium_relay_challenge`, `test_roles_dead`, `test_conversation_nights`, `test_conversation_gifts`. All pass.

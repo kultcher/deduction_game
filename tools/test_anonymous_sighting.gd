@@ -17,6 +17,9 @@ const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const C = preload("res://sim/content.gd")
 const LiveProfiles = preload("res://workshop/live_activity_profiles.gd")
+const Mind = preload("res://sim/mind.gd")
+const Bridge = preload("res://game/workshop_bridge.gd")
+const Shared = preload("res://workshop/shared_ledger.gd")
 var checks := 0
 var fails := 0
 
@@ -125,6 +128,22 @@ func _init() -> void:
 	# places the witness out that night, which weakens it, and an unnamed one places no one. This
 	# only checks both are weighed.
 	check(r_named.get("ready", false) and float(r_anon.get("lr", 0.0)) > 0.0 and float(r_named.get("lr", 0.0)) > 0.0, "both the named and the unnamed sighting are weighed (x%.3f, x%.3f)" % [float(r_anon.get("lr", 0.0)), float(r_named.get("lr", 0.0))])
+	# A Night Watch account passed on in private, heard by an NPC: the movement model reads its
+	# hearing weight, so the ledger's hearsay weight has to reach it (Codex on #602). It used to
+	# count as certain.
+	var listener = goods[4]
+	var nw_card: Dictionary = {"kind": "info", "role": "nightwatch", "source": witness.id, "via": teller.id, "anonymous": true, "hearing": "private",
+		"day": 1, "phase": C.NIGHT, "data": {"seen": [subject.id], "block": block}, "text": "NWPRIVATE"}
+	var nw_receipt: Dictionary = Evidence.normalize_card(nw_card)
+	Mind.ledger_hear(g.w, listener, "heard:" + nw_receipt.id, [], 0.4, [teller.id, 1, "report"],
+		{"kind": "tell", "workshop_card": nw_receipt, "workshop_teller": teller.id, "workshop_origin": teller.id, "workshop_public": false})
+	var plan: Dictionary = Shared.prepare(Bridge.capture(g, [], listener.id, "private", listener), {}, listener.ledger, {})
+	var nw_got: Dictionary = {}
+	for c in plan.get("prepared", {}).get("view", {}).get("cards", []):
+		if str(c.get("text", "")) == "NWPRIVATE":
+			nw_got = c
+	check(str(nw_got.get("kind", "")) == "sighting" and nw_got.get("private_relay", false) and float(nw_got.get("hearing_weight", 1.0)) <= 0.4 + 1e-6,
+		"a Night Watch account passed on in private and heard at 0.4 moves whereabouts at most that much (%s)" % str({"kind": nw_got.get("kind", ""), "hearing_weight": nw_got.get("hearing_weight", "none")}))
 	print("Anonymous sighting: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
